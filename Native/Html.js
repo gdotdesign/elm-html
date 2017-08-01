@@ -35,19 +35,24 @@ class Program {
 
   transformElements(elements) {
     return _elm_lang$core$Native_List.toArray(elements).map(function(element){
-      switch (element.ctor) {
-        case "Text":
-          return element._0
-      }
-    })
+      return this.transformElement(element)
+    }.bind(this))
   }
 
   transformElement(element) {
-    return Inferno.createElement(
-      element.tag,
-      this.transformAttributes(element.attributes),
-      this.transformElements(element.contents)
-    )
+    switch (element.ctor) {
+      case "C":
+        console.log(element)
+        break
+      case "T":
+        return element._0
+      case "N":
+        return Inferno.createElement(
+          element._0.tag,
+          this.transformAttributes(element._0.attributes),
+          this.transformElements(element._0.contents)
+        )
+    }
   }
 
   transformAttributes(attributes) {
@@ -105,6 +110,7 @@ var _gdotdesign$elm_html$Native_Html = (function () {
 
   return {
     programWithFlags: programWithFlags,
-    program: program
+    program: program,
+    component: function(data) { return data }
   }
 }())
