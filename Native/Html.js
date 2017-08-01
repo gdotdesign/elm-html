@@ -14,8 +14,6 @@ class Program {
   }
 
   update (fn, branch) {
-    console.log(branch)
-
     fn(function(){ return this.map.get(branch) }.bind(this)).then(function(model){
       this.map.set(branch, model)
       this.render()
@@ -35,7 +33,7 @@ class Program {
       case "C":
         if (!this.map.has(branch)) { this.map.set(branch, element.defaults) }
         var data = this.map.get(branch)
-        return this.transformElement(element.view(data), branch)
+        return this.transformElement(element.view(element.props)(data), branch)
       case "T":
         return element._0
       case "N":
@@ -103,8 +101,8 @@ var _gdotdesign$elm_html$Native_Html = (function () {
   return {
     programWithFlags: programWithFlags,
     program: program,
-    component: F2(function(view, defaults) {
-      return { ctor: 'C', view: view, defaults: defaults }
+    component: F3(function(view, defaults, props) {
+      return { ctor: 'C', view: view, defaults: defaults, props: props }
     })
   }
 }())

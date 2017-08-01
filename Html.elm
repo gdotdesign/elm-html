@@ -28,8 +28,8 @@ type alias Element model =
   }
 
 
-type alias Component model =
-  { view : model -> Node model
+type alias Component model props =
+  { view : props -> model -> Node model
   , defaults : model
   }
 
@@ -52,10 +52,10 @@ node tag attributes contents =
     , scrollKey = Nothing
     }
 
-program : Component model -> Program Never model msg
-program prog =
-  Native.Html.program (component prog)
+program : Component model props -> props -> Program Never model msg
+program prog props =
+  Native.Html.program (component prog props)
 
-component : Component a -> Node b
-component component =
-  Native.Html.component component.view component.defaults
+component : Component model props -> props -> Node b
+component component props =
+  Native.Html.component component.view component.defaults props

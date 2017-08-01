@@ -5,20 +5,20 @@ import Counter
 type alias Model =
   { count : Int }
 
-
 increment : Model -> Model
 increment model =
   { model | count = model.count + 1 }
 
-view : Model -> Html.Node Model
-view model =
+
+view : {} -> Model -> Html.Node Model
+view props model =
   node "div"
     [ on "onclick" increment ]
-    [ component Counter.component
-    , component Counter.component
+    [ component Counter.component {}
+    , component Counter.component {}
     , node "div"
       []
-      [ component Counter.component
+      [ component Counter.component {}
       ]
     , text (toString model.count)
     ]
@@ -28,3 +28,4 @@ main = program
   { view = view
   , defaults = { count = 0 }
   }
+  {}

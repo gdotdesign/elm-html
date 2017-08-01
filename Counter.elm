@@ -7,7 +7,7 @@ type alias Model =
   }
 
 
-component : Html.Component Model
+component : Html.Component Model {}
 component =
   { defaults = init
   , view = view
@@ -25,8 +25,8 @@ increment model =
   { model | count = model.count + 1 }
 
 
-view : Model -> Html.Node Model
-view model =
+view : {} -> Model -> Html.Node Model
+view props model =
   node "div"
     [ on "onclick" increment
     ]
