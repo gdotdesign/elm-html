@@ -5,33 +5,52 @@ import Native.Html
 
 import Json.Decode as Json
 
+import Promise exposing (Promise)
+
 type Attribute model
   = Property String String
   | Attribute String String
-  | Event String (Json.Value -> model -> model)
+  | Event String (Json.Value -> model -> Promise model)
 
 type Contents model
-  = Empty
-  | Nodes (List (Node model))
+  = Text String
+  | Node (Element model)
 
-type alias Node model =
+type alias Element model =
   { tag : String
   , styles : List (String, String)
   , attributes : List (Attribute model)
-  , scrollKey : String
-  , contents : Contents model
+  , scrollKey : Maybe String
+  , contents : List (Contents model)
   }
 
 type alias Prog model =
-  { view : model -> Node model
+  { view : model -> Element model
   , init : model
+  }
+
+
+type alias Model =
+  { x: String
   }
 
 program : Prog model -> Program Never model msg
 program prog =
   Native.Html.program prog
 
+add event model =
+  Promise.timeout 1000
+    |> Promise.map (\_ -> { x = model.x ++ "a" })
+
+view model =
+  { tag = "div"
+  , styles = []
+  , attributes = [Event "onclick" add]
+  , contents = [Text model.x]
+  , scrollKey = Nothing
+  }
+
 main = program
-  { view = (\_ -> { tag = "div", styles = [], attributes = [], contents = Nodes [] })
-  , init = ""
+  { view = view
+  , init = { x = "ASd"}
   }
