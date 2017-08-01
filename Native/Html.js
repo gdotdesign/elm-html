@@ -14,12 +14,23 @@ class Program {
   }
 
   update (fn) {
-    this.updatePromise = this.updatePromise.then(function(){
+    // This is sequenced update
+
+    /*this.updatePromise = this.updatePromise.then(function(){
       return fn(this.model).then(function(model){
         this.model = model
         this.render()
       }.bind(this))
+    }.bind(this))*/
+
+    fn(this.getModel.bind(this)).then(function(model){
+      this.model = model
+      this.render()
     }.bind(this))
+  }
+
+  getModel() {
+    return this.model
   }
 
   transformElements(elements) {
@@ -42,7 +53,7 @@ class Program {
   transformAttributes(attributes) {
     var result = {}
 
-    for (var attribute of _elm_lang$core$Native_List.toArray(attributes)) {
+    _elm_lang$core$Native_List.toArray(attributes).forEach(function(attribute){
       switch (attribute.ctor) {
         case "Event":
           result[attribute._0] = function(event) {
@@ -50,7 +61,7 @@ class Program {
           }.bind(this)
         break
       }
-    }
+    }.bind(this))
 
     return result
   }
