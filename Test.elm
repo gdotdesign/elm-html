@@ -3,19 +3,28 @@ import Html exposing (component, node, on, program, text)
 import Counter
 
 type alias Model =
-  {}
+  { count : Int }
 
-init : Model
-init =
-  {}
+
+increment : Model -> Model
+increment model =
+  { model | count = model.count + 1 }
 
 view : Model -> Html.Node Model
 view model =
-  node "div" []
+  node "div"
+    [ on "onclick" increment ]
     [ component Counter.component
+    , component Counter.component
+    , node "div"
+      []
+      [ component Counter.component
+      ]
+    , text (toString model.count)
     ]
+
 
 main = program
   { view = view
-  , init = init
+  , defaults = { count = 0 }
   }

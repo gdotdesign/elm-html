@@ -1,9 +1,9 @@
 class Program {
   constructor (program) {
     this.element = this.createRoot()
-    this.model = program.init
     this.updatePromise = Promise.resolve(null)
-    this.view = program.view
+    this.program = program
+    this.map = new Map()
     this.render()
   }
 
@@ -13,56 +13,48 @@ class Program {
     return element
   }
 
-  update (fn) {
-    // This is sequenced update
+  update (fn, branch) {
+    console.log(branch)
 
-    /*this.updatePromise = this.updatePromise.then(function(){
-      return fn(this.model).then(function(model){
-        this.model = model
-        this.render()
-      }.bind(this))
-    }.bind(this))*/
-
-    fn(this.getModel.bind(this)).then(function(model){
-      this.model = model
+    fn(function(){ return this.map.get(branch) }.bind(this)).then(function(model){
+      this.map.set(branch, model)
       this.render()
     }.bind(this))
   }
 
-  getModel() {
-    return this.model
+  transformElements(elements, branch) {
+    return _elm_lang$core$Native_List
+      .toArray(elements)
+      .map(function(element, index){
+        return this.transformElement(element, branch + "-" + index)
+      }.bind(this))
   }
 
-  transformElements(elements) {
-    return _elm_lang$core$Native_List.toArray(elements).map(function(element){
-      return this.transformElement(element)
-    }.bind(this))
-  }
-
-  transformElement(element) {
+  transformElement(element, branch) {
     switch (element.ctor) {
       case "C":
-        console.log(element)
-        break
+        if (!this.map.has(branch)) { this.map.set(branch, element.defaults) }
+        var data = this.map.get(branch)
+        return this.transformElement(element.view(data), branch)
       case "T":
         return element._0
       case "N":
         return Inferno.createElement(
           element._0.tag,
-          this.transformAttributes(element._0.attributes),
-          this.transformElements(element._0.contents)
+          this.transformAttributes(element._0.attributes, branch),
+          this.transformElements(element._0.contents, branch)
         )
     }
   }
 
-  transformAttributes(attributes) {
+  transformAttributes(attributes, branch) {
     var result = {}
 
     _elm_lang$core$Native_List.toArray(attributes).forEach(function(attribute){
       switch (attribute.ctor) {
         case "Event":
           result[attribute._0] = function(event) {
-            this.update(attribute._1(event))
+            this.update(attribute._1(event), branch)
           }.bind(this)
         break
       }
@@ -72,7 +64,7 @@ class Program {
   }
 
   render () {
-    var root = this.transformElement(this.view(this.model))
+    var root = this.transformElement(this.program, "0")
     Inferno.render(root, this.element)
   }
 }
@@ -111,6 +103,8 @@ var _gdotdesign$elm_html$Native_Html = (function () {
   return {
     programWithFlags: programWithFlags,
     program: program,
-    component: function(data) { return data }
+    component: F2(function(view, defaults) {
+      return { ctor: 'C', view: view, defaults: defaults }
+    })
   }
 }())

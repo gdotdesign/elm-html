@@ -1,15 +1,15 @@
 module Counter exposing (..)
 
-import Html exposing (Component, node, on, program, text)
+import Html exposing (node, on, program, text)
 
 type alias Model =
   { count: Int
   }
 
 
-component : Component Model
+component : Html.Component Model
 component =
-  { init = init
+  { defaults = init
   , view = view
   }
 

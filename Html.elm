@@ -7,15 +7,17 @@ import Native.Html
 import Json.Decode as Json
 import Promise exposing (Promise)
 
+
 type Attribute model
   = Property String String
   | Attribute String String
   | Event String (Json.Value -> (() -> model) -> Promise model)
 
+
 type Node model
   = T String
   | N (Element model)
-  | C Comp
+
 
 type alias Element model =
   { tag : String
@@ -25,12 +27,12 @@ type alias Element model =
   , contents : List (Node model)
   }
 
-type Comp = Comp
 
 type alias Component model =
   { view : model -> Node model
-  , init : model
+  , defaults : model
   }
+
 
 on : String -> (model -> model) -> Attribute model
 on event handler =
@@ -52,9 +54,8 @@ node tag attributes contents =
 
 program : Component model -> Program Never model msg
 program prog =
-  Native.Html.program prog
+  Native.Html.program (component prog)
 
-
-component : Component model -> Node model2
+component : Component a -> Node b
 component component =
-  C (Native.Html.component component)
+  Native.Html.component component.view component.defaults
