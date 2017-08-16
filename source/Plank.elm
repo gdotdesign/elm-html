@@ -3,6 +3,7 @@ module Plank exposing (..)
 import Native.Uid
 import Native.Inferno
 import Native.InfernoCreateElement
+import Native.Program
 import Native.Html
 
 import Json.Decode as Json

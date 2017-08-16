@@ -7,12 +7,22 @@
   "license": "MIT",
   "dependencies": {
     "elm-dev-env": "^1.1.3",
+    "inferno": "^3.7.1",
+    "inferno-create-element": "^3.7.1",
+    "jest": "^20.0.4",
     "standard": "^10.0.3"
   },
+  "scripts": {
+    "test": "yarn jest && yarn standard"
+  },
   "standard": {
-  	"ignore": [
-  		"src/Native/Inferno.js",
-  		"src/Native/InfernoCreateelement.js"
-  	]
+    "env": [
+      "jest",
+      "browser"
+    ],
+    "ignore": [
+      "source/Native/Inferno.js",
+      "source/Native/InfernoCreateelement.js"
+    ]
   }
 }

@@ -19,4 +19,4 @@ var _gdotdesign$elm_html$Native_Uid = (function () { // eslint-disable-line
   return {
     uid: uid
   }
-}())
+}()); // eslint-disable-line
