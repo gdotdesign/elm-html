@@ -4,35 +4,7 @@
 
 /*
   Represents a program whose architecture is based on a map which contains
-  data for components identified by their position in the tree.
-
-  Take this example:
-
-    <div> - 0
-      <component-1> - 0-0
-        <div></div> - 0-0-0
-        <div> - 0-0-1
-          <component-2>Some text</component-2> - 0-0-1-0
-          <component-2>Some text</component-2> - 0-0-2-0
-        </div>
-      </component-1>
-    </div>
-
-  The data for the program looks like this:
-
-    {
-      '0-0': {.. data for an instance of component-1 ..},
-      '0-0-1-0': {.. data for an instance component-2 ..}
-      '0-0-2-0': {.. data for an instance component-2 ..}
-    }
-
-  Logic for component lifecycle:
-  * Components implement their own TEA which is used to update the data
-    of their instance in the map.
-  * Components are identified by unique IDs which can be manually set
-    or generated.
-  * The data is deleted when no component is not associated the leaf
-  * The data is reset when an other components is associated the leaf
+  data for components identified by their unique id.
 
   This program uses:
   - InfernoJS for rendering
@@ -42,7 +14,9 @@ class Program {
   /* Creates a program from a base tree */
   constructor (rootComponent) {
     this.container = this.createContainer()
+    this.listeners = new Map()
     this.root = rootComponent
+    this.ids = new Set()
     this.map = new Map()
     this.render()
   }
@@ -58,15 +32,14 @@ class Program {
   /* Updates data of a component at a given branch
 
      @param {ElmObject} msg - The message for the component at the branch
-     @param {String} branch - The branch to update
-     @param {String} uid - The unique identifier of the component
+     @param {String} id - The id of the component
   */
-  update (msg, branch, uid) {
-    // Don't update anything if the component doesn't own the branch
-    if (this.isBranchStale(branch, uid)) { return }
+  update (msg, id) {
+    // Don't update anything if the component doesn't own the data
+    if (!this.map.has(id)) { return }
 
     // Get the instance
-    var instance = this.map.get(branch)
+    var instance = this.map.get(id)
 
     // Update the component the, return value contains the updated data
     // and maybe a promise
@@ -76,55 +49,53 @@ class Program {
     switch (data._1.ctor) {
       case 'Just':
         data._1._0.then(function (resultMsg) {
-          this.update(resultMsg, branch, uid)
+          this.update(resultMsg, id)
         }.bind(this))
     }
 
-    // Update the branch with the new data
+    // Update the map with the new data
     this.map.set(
-      branch,
+      id,
       { component: instance.component,
         data: data._0 }
     )
+
+    // Notify listener parent
+    var listenerId = this.listeners.get(id)
+    var listener = this.map.get(listenerId)
+    if (instance.component.listener && listener) {
+      _elm_lang$core$Native_List
+        .toArray(data._2)
+        .map(function (promise) {
+          promise.then(function (msg) {
+            this.update(instance.component.listener(msg), listenerId)
+          }.bind(this))
+        }.bind(this))
+    }
 
     // Render - TODO: Just schedule on requestAnimationFrame
     this.render()
   }
 
-  /* Tests if the given branch belongs to the component with the given uid.
-
-     @param {String} branch - The branch
-     @param {String} uid - The unique identifier of the component
-  */
-  isBranchStale (branch, uid) {
-    var instance = this.map.get(branch)
-    return !instance || instance.component.uid !== uid
-  }
-
   /* Transforms elements from Elm representation into virtual dom elements.
 
      @param {ElmList} elements - The elements to transform
-     @param {String} branch - The parent branch
-     @param {String} uid - The unique identifier of the parent component
+     @param {String} parentId - The id of the parent component
   */
-  transformElements (elements, branch, uid) {
+  transformElements (elements, parentId) {
     return _elm_lang$core$Native_List
       .toArray(elements)
       .map(function (element, index) {
-        return this.transformElement(element, branch + '-' + index)
+        return this.transformElement(element, parentId)
       }.bind(this))
   }
 
   /* Transforms an element into a virtual dom element.
 
      @param {ElmHtml} element - The element to transform
-     @param {String} branch - The parent branch
-     @param {String} uid - The unique identifier of the parent component
-     @param {Boolean} isComponent
-      This function is used to transform the rendered component, true if it's
-      that transformation else false
+     @param {String} parentId - The id of the parent component
   */
-  transformElement (element, branch, uid, isComponent) {
+  transformElement (element, parentId) {
     var item = element._0
 
     switch (element.ctor) {
@@ -134,10 +105,25 @@ class Program {
 
       // Component
       case 'C':
-        // If branch is stale set data
-        if (this.isBranchStale(branch, item.uid)) {
+        if (parentId) {
+          item.id = parentId + '::' + item.id
+        }
+
+        if (this.ids.has(item.id)) {
+          console.warn(
+            [ 'The id "' + item.id + '"" has been used before. ',
+              'This can lead to wierd behaviour!!!'
+            ].join('')
+          )
+        }
+
+        this.ids.add(item.id)
+        this.listeners.set(item.id, parentId)
+
+        // If there is no data set it
+        if (!this.map.has(item.id)) {
           this.map.set(
-            branch,
+            item.id,
             { component: item,
               data: item.model }
           )
@@ -145,25 +131,19 @@ class Program {
 
         // Render the component with the current data and transform it's
         // children
-        var instance = this.map.get(branch)
+        var instance = this.map.get(item.id)
         return this.transformElement(
           item.view(instance.data),
-          branch,
-          instance.component.uid,
-          true
+          item.id
         )
 
       // Element
       case 'E':
-        // We don't have a component at this point so it's safe to delete
-        // the data if it exists and we are not transformin a component
-        if (!isComponent) { this.map.delete(branch) }
-
         // Create virtual dom element
         return Inferno.createElement(
           item.tag,
-          this.transformAttributes(item.attributes, branch, uid),
-          this.transformElements(item.contents, branch, uid)
+          this.transformAttributes(item.attributes, parentId),
+          this.transformElements(item.contents, parentId)
         )
     }
   }
@@ -172,10 +152,9 @@ class Program {
      dom events and attributes.
 
      @param {ElmAttribute} attributes - The attributes to transform
-     @param {String} branch - The parent branch
-     @param {String} uid - The unique identifier of the parent component
+     @param {String} id - The id of the component
   */
-  transformAttributes (attributes, branch, uid) {
+  transformAttributes (attributes, id) {
     var result = {}
 
     _elm_lang$core$Native_List
@@ -187,7 +166,7 @@ class Program {
             result[attribute._0] = function (event) {
               // TODO: handle stopPropagation, stopImmediatePropagation,
               // preventDefault here
-              this.update(attribute._1(event), branch, uid)
+              this.update(attribute._1(event), id)
             }.bind(this)
             break
         }
@@ -198,8 +177,13 @@ class Program {
 
   /* Renders the program into the container */
   render () {
-    var vdom = this.transformElement(this.root, '0', 'root')
+    this.ids.clear()
+    var vdom = this.transformElement(this.root)
     Inferno.render(vdom, this.container)
+    for (var key of this.map.keys()) {
+      if (this.ids.has(key)) { continue }
+      this.map.delete(key)
+    }
   }
 }
 

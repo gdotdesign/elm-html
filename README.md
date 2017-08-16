@@ -10,3 +10,11 @@ This is an experiment of creating a different architecture for Elm appliactions 
   - **Inferno** for virtual dom
   - **JSS** for styles
   - **Bluebird** for promises
+
+# Roadmap
+These features are completed / planned
+- [x] Basic promises
+- [x] Html structure
+- [x] Promise based event handling
+- [x] Promise based parent / child communication
+- [ ] Styled nodes

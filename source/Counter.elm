@@ -1,37 +1,62 @@
 module Counter exposing (..)
 
-import Plank exposing (Html, node, text, on)
-import Promise exposing (Promise)
+import Plank exposing (Component, Html, Update, node, text, on, return, emit, thenEmit)
+
+type alias Model =
+  { count: Int
+  }
+
+
+type Msg
+  = Increment
+  | Decrement
+
+
+type Event
+  = Incremented
+  | Decremented
+  | Changed
+
 
 init : Model
 init =
   { count = 0
   }
 
-type alias Model =
-  { count: Int
-  }
 
-type Msg
-  = Increment
-
-update : Msg -> Model -> (Model, Maybe (Promise Msg))
+update : Msg -> Model -> Update Model Msg Event
 update msg model =
   case msg of
+    Decrement ->
+      return
+        { model | count = model.count - 1 }
+          |> emit Decremented
+          |> emit Changed
+
     Increment ->
-      ({ model | count = model.count + 1 }, Nothing)
+      return
+        { model | count = model.count + 1 }
+          |> emit Incremented
+          |> emit Changed
+
 
 view : Model -> Html Msg
 view model =
   node "div"
-    [ on "onclick" (\value -> Increment) ]
-    [ text (toString model)
+    []
+    [ node "button"
+      [ on "onclick" (\value -> Decrement) ]
+      [ text "-"]
+    , text (toString model)
+    , node "button"
+      [ on "onclick" (\value -> Increment) ]
+      [ text "+"]
     ]
 
-component : Html msg
+
+component : Component Model Msg Event
 component =
-  { model = init
-  , update = update
+  { update = update
+  , model = init
   , view = view
   }
-  |> Plank.component

@@ -1,4 +1,4 @@
-/* global Program, _gdotdesign$elm_html$Native_Uid */
+/* global Program, F3 */
 
 /* Native Elm interface. */
 var _gdotdesign$elm_html$Native_Html = (function () { // eslint-disable-line
@@ -12,13 +12,18 @@ var _gdotdesign$elm_html$Native_Html = (function () { // eslint-disable-line
     }
   }
 
-  function component (comp) {
-    comp.uid = _gdotdesign$elm_html$Native_Uid.uid()
-    return comp
+  function component (comp, id, listener) {
+    return {
+      update: comp.update,
+      listener: listener,
+      model: comp.model,
+      view: comp.view,
+      id: id
+    }
   }
 
   return {
-    component: component,
+    component: F3(component),
     program: program
   }
 }())

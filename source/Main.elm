@@ -1,42 +1,72 @@
-import Plank exposing (Html, node, text, on)
+import Plank exposing (Update, Html, node, text, on, mount, return)
 
 import Counter
+import NestedCounter
 import Promise exposing (Promise)
 
 type alias Model =
-  { count: Int
+  { incrementCount: Int
+  , decrementCount: Int
+  , counterChanged: Int
+  , counterCount :Int
   }
 
 type Msg
-  = Increment
-  | DelayedIncrement
+  = Counter Counter.Event
+  | CounterList Counter.Event
 
-update : Msg -> Model -> (Model, Maybe (Promise Msg))
+update : Msg -> Model -> Update Model Msg a
 update msg model =
-  case Debug.log "" msg of
-    DelayedIncrement ->
-      ( { model | count = model.count + 1}, Nothing)
+  case msg of
+    CounterList event ->
+      case event of
+        Counter.Incremented ->
+          return { model | counterCount = model.counterCount + 1 }
 
-    Increment ->
-      ( { model | count = model.count + 1 }
-      , Promise.timeout 1000
-        |> Promise.map (\() -> DelayedIncrement)
-        |> Just
-      )
+        Counter.Decremented ->
+          return { model | counterCount = model.counterCount - 1 }
+
+        _ -> return model
+
+    Counter event ->
+      case event of
+        Counter.Incremented ->
+          return { model | incrementCount = model.incrementCount + 1 }
+
+        Counter.Decremented ->
+          return { model | decrementCount = model.decrementCount + 1 }
+
+        Counter.Changed ->
+          return { model | counterChanged = model.counterChanged + 1 }
+
 
 view : Model -> Html Msg
 view model =
-  node "div"
-    [ on "onclick" (\value -> Increment) ]
-    [ text (toString model)
-    , Counter.component
-    ]
-
+  let
+    counterList =
+      List.range 1 model.counterCount
+      |> List.map (\index -> mount Counter.component ("list-" ++ toString index) Counter)
+  in
+    node "div"
+      []
+      [ text (toString model)
+      , node "div" []
+        [ node "div" []
+          [ mount Counter.component "counter" Counter
+          , mount Counter.component "counter2" Counter
+          , node "hr" [] []
+          , mount NestedCounter.component "nested-counter" Counter
+          , node "hr" [] []
+          , mount Counter.component "list" CounterList
+          , node "div" [] counterList
+          ]
+        ]
+      ]
 
 mod =
-  Plank.component
+  Plank.root
     { view = view
-    , model = { count = 0 }
+    , model = { incrementCount = 0, decrementCount = 0, counterChanged = 0, counterCount = 0 }
     , update = update
     }
 
