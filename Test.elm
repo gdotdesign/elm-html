@@ -1,31 +1,44 @@
-import Html exposing (component, node, on, program, text)
+import Plank exposing (Html, node, text, on)
 
 import Counter
+import Promise exposing (Promise)
 
 type alias Model =
-  { count : Int }
+  { count: Int
+  }
 
-increment : Model -> Model
-increment model =
-  { model | count = model.count + 1 }
+type Msg
+  = Increment
+  | DelayedIncrement
 
+update : Msg -> Model -> (Model, Maybe (Promise Msg))
+update msg model =
+  case Debug.log "" msg of
+    DelayedIncrement ->
+      ( { model | count = model.count + 1}, Nothing)
 
-view : {} -> Model -> Html.Node Model
-view props model =
+    Increment ->
+      ( { model | count = model.count + 1 }
+      , Promise.timeout 1000
+        |> Promise.map (\() -> DelayedIncrement)
+        |> Just
+      )
+
+view : Model -> Html Msg
+view model =
   node "div"
-    [ on "onclick" increment ]
-    [ component Counter.component {}
-    , component Counter.component {}
-    , node "div"
-      []
-      [ component Counter.component {}
-      ]
-    , text (toString model.count)
+    [ on "onclick" (\value -> Increment) ]
+    [ text (toString model)
+    , Counter.component
     ]
 
 
-main = program
-  { view = view
-  , defaults = { count = 0 }
-  }
-  {}
+mod =
+  Plank.component
+    { view = view
+    , model = { count = 0 }
+    , update = update
+    }
+
+main =
+  Plank.program mod

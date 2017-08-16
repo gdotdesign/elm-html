@@ -1,34 +1,37 @@
 module Counter exposing (..)
 
-import Html exposing (node, on, program, text)
-
-type alias Model =
-  { count: Int
-  }
-
-
-component : Html.Component Model {}
-component =
-  { defaults = init
-  , view = view
-  }
-
+import Plank exposing (Html, node, text, on)
+import Promise exposing (Promise)
 
 init : Model
 init =
   { count = 0
   }
 
+type alias Model =
+  { count: Int
+  }
 
-increment : Model -> Model
-increment model =
-  { model | count = model.count + 1 }
+type Msg
+  = Increment
 
+update : Msg -> Model -> (Model, Maybe (Promise Msg))
+update msg model =
+  case msg of
+    Increment ->
+      ({ model | count = model.count + 1 }, Nothing)
 
-view : {} -> Model -> Html.Node Model
-view props model =
+view : Model -> Html Msg
+view model =
   node "div"
-    [ on "onclick" increment
+    [ on "onclick" (\value -> Increment) ]
+    [ text (toString model)
     ]
-    [ text (toString model.count)
-    ]
+
+component : Html msg
+component =
+  { model = init
+  , update = update
+  , view = view
+  }
+  |> Plank.component
