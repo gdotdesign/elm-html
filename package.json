@@ -1,0 +1,18 @@
+{
+  "name": "elm-html",
+  "version": "1.0.0",
+  "main": "index.js",
+  "repository": "git@github.com:gdotdesign/elm-html.git",
+  "author": "Szikszai Gusztáv <guszti5@hotmail.com>",
+  "license": "MIT",
+  "dependencies": {
+    "elm-dev-env": "^1.1.3",
+    "standard": "^10.0.3"
+  },
+  "standard": {
+  	"ignore": [
+  		"src/Native/Inferno.js",
+  		"src/Native/InfernoCreateelement.js"
+  	]
+  }
+}

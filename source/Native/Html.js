@@ -1,3 +1,7 @@
+/* global Inferno, _elm_lang$core$Native_List, _gdotdesign$elm_html$Native_Uid
+
+*/
+
 /*
   Represents a program whose architecture is based on a map which contains
   data for components identified by their position in the tree.
@@ -70,8 +74,8 @@ class Program {
 
     // If there is a promise, schedule an update after it resolves
     switch (data._1.ctor) {
-      case "Just":
-        data._1._0.then(function(resultMsg){
+      case 'Just':
+        data._1._0.then(function (resultMsg) {
           this.update(resultMsg, branch, uid)
         }.bind(this))
     }
@@ -103,11 +107,11 @@ class Program {
      @param {String} branch - The parent branch
      @param {String} uid - The unique identifier of the parent component
   */
-  transformElements(elements, branch, uid) {
+  transformElements (elements, branch, uid) {
     return _elm_lang$core$Native_List
       .toArray(elements)
-      .map(function(element, index){
-        return this.transformElement(element, branch + "-" + index)
+      .map(function (element, index) {
+        return this.transformElement(element, branch + '-' + index)
       }.bind(this))
   }
 
@@ -120,16 +124,16 @@ class Program {
       This function is used to transform the rendered component, true if it's
       that transformation else false
   */
-  transformElement(element, branch, uid, isComponent) {
+  transformElement (element, branch, uid, isComponent) {
     var item = element._0
 
     switch (element.ctor) {
       // Text
-      case "T":
+      case 'T':
         return item
 
       // Component
-      case "C":
+      case 'C':
         // If branch is stale set data
         if (this.isBranchStale(branch, item.uid)) {
           this.map.set(
@@ -151,7 +155,7 @@ class Program {
         )
 
       // Element
-      case "E":
+      case 'E':
         // We don't have a component at this point so it's safe to delete
         // the data if it exists and we are not transformin a component
         if (!isComponent) { this.map.delete(branch) }
@@ -172,21 +176,21 @@ class Program {
      @param {String} branch - The parent branch
      @param {String} uid - The unique identifier of the parent component
   */
-  transformAttributes(attributes, branch, uid) {
+  transformAttributes (attributes, branch, uid) {
     var result = {}
 
     _elm_lang$core$Native_List
       .toArray(attributes)
-      .forEach(function(attribute){
+      .forEach(function (attribute) {
         switch (attribute.ctor) {
-          case "Event":
+          case 'Event':
             // Wire in the event to the update.
-            result[attribute._0] = function(event) {
+            result[attribute._0] = function (event) {
               // TODO: handle stopPropagation, stopImmediatePropagation,
               // preventDefault here
               this.update(attribute._1(event), branch, uid)
             }.bind(this)
-          break
+            break
         }
       }.bind(this))
 
@@ -195,24 +199,24 @@ class Program {
 
   /* Renders the program into the container */
   render () {
-    var vdom = this.transformElement(this.root, "0", "root")
+    var vdom = this.transformElement(this.root, '0', 'root')
     Inferno.render(vdom, this.container)
   }
 }
 
 /* Native Elm interface. */
-var _gdotdesign$elm_html$Native_Html = (function () {
-  function program(tree) {
-    return function() {
-      return function(object) {
-        object.fullscreen = function(){
+var _gdotdesign$elm_html$Native_Html = (function () { // eslint-disable-line
+  function program (tree) {
+    return function () {
+      return function (object) {
+        object.fullscreen = function () {
           window.program = new Program(tree)
         }
       }
     }
   }
 
-  function component(comp) {
+  function component (comp) {
     comp.uid = _gdotdesign$elm_html$Native_Uid.uid()
     return comp
   }
