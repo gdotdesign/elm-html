@@ -11,7 +11,7 @@ module Ui.Input exposing
 @docs placeholder, showClearIcon, kind
 
 # Events
-@docs onChange
+@docs Event
 
 # View
 @docs view, render
@@ -22,25 +22,18 @@ module Ui.Input exposing
 
 import Plank exposing (node, text, on, attribute)
 
-import Ui.Helpers.Emitter as Emitter
-import Ui.Native.Uid as Uid
 import Ui.Icons
 import Ui
 
 import Ui.Styles.Input exposing (defaultStyle)
 import Ui.Styles
 
-import Task
-import DOM
-
-{-| Representation of an input:
+{-| Props for an input.
   - **placeholder** - The text to display when there is no value
   - **showClearIcon** - Whether or not to show the clear icon
   - **disabled** - Whether or not the input is disabled
   - **readonly** - Whether or not the input is readonly
-  - **uid** - The unique identifier of the input
   - **kind** - The type of the input
-  - **value** - The value
 -}
 type alias Model =
   { placeholder : String
@@ -49,16 +42,13 @@ type alias Model =
   , readonly : Bool
   , value : String
   , kind : String
-  , uid : String
   }
 
 
 {-| Messages that an input can receive.
 -}
 type Msg
-  = Done (Result DOM.Error ())
-  | Input String
-  | Clear
+  = Input String
 
 
 {-| Initializes an input with a default value and a placeholder.
@@ -68,7 +58,7 @@ type Msg
         |> Ui.Input.placeholder "Type here..."
         |> Ui.Input.showClearIcon True
 -}
-init : () -> Model
+init : Model
 init _ =
   { showClearIcon = False
   , placeholder = ""
@@ -79,6 +69,7 @@ init _ =
   , value = ""
   }
 
+defaultProps :
 
 {-| Sets the placeholder of an input.
 -}

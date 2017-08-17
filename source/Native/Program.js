@@ -34,24 +34,27 @@ class Program {
      @param {ElmObject} msg - The message for the component at the branch
      @param {String} id - The id of the component
   */
-  update (msg, id) {
+  update (msg, id, tagger) {
     // Don't update anything if the component doesn't own the data
     if (!this.map.has(id)) { return }
 
     // Get the instance
     var instance = this.map.get(id)
 
+    if (tagger) { msg = tagger(msg) }
+
     // Update the component the, return value contains the updated data
     // and maybe a promise
     var data = instance.component.update(msg)(instance.data)
 
     // If there is a promise, schedule an update after it resolves
-    switch (data._1.ctor) {
-      case 'Just':
-        data._1._0.then(function (resultMsg) {
-          this.update(resultMsg, id)
+    _elm_lang$core$Native_List
+        .toArray(data._1)
+        .map(function (promise) {
+          promise.then(function (resultMsg) {
+            this.update(resultMsg, id)
+          }.bind(this))
         }.bind(this))
-    }
 
     // Update the map with the new data
     this.map.set(
@@ -82,11 +85,11 @@ class Program {
      @param {ElmList} elements - The elements to transform
      @param {String} parentId - The id of the parent component
   */
-  transformElements (elements, parentId) {
+  transformElements (elements, parentId, tagger) {
     return _elm_lang$core$Native_List
       .toArray(elements)
       .map(function (element, index) {
-        return this.transformElement(element, parentId)
+        return this.transformElement(element, parentId, tagger)
       }.bind(this))
   }
 
@@ -95,13 +98,21 @@ class Program {
      @param {ElmHtml} element - The element to transform
      @param {String} parentId - The id of the parent component
   */
-  transformElement (element, parentId) {
+  transformElement (element, parentId, tagger) {
     var item = element._0
 
     switch (element.ctor) {
       // Text
       case 'T':
         return item
+
+      // Controlled Component
+      case 'CC':
+        return this.transformElement(
+          item.view(item.model),
+          parentId,
+          item.listener
+        )
 
       // Component
       case 'C':
@@ -142,8 +153,8 @@ class Program {
         // Create virtual dom element
         return Inferno.createElement(
           item.tag,
-          this.transformAttributes(item.attributes, parentId),
-          this.transformElements(item.contents, parentId)
+          this.transformAttributes(item.attributes, parentId, tagger),
+          this.transformElements(item.contents, parentId, tagger)
         )
     }
   }
@@ -154,7 +165,7 @@ class Program {
      @param {ElmAttribute} attributes - The attributes to transform
      @param {String} id - The id of the component
   */
-  transformAttributes (attributes, id) {
+  transformAttributes (attributes, id, tagger) {
     var result = {}
 
     _elm_lang$core$Native_List
@@ -166,7 +177,7 @@ class Program {
             result[attribute._0] = function (event) {
               // TODO: handle stopPropagation, stopImmediatePropagation,
               // preventDefault here
-              this.update(attribute._1(event), id)
+              this.update(attribute._1(event), id, tagger)
             }.bind(this)
             break
         }

@@ -1,6 +1,7 @@
 module Counter exposing (..)
 
-import Plank exposing (Component, Html, Update, node, text, on, return, emit, thenEmit)
+import Plank exposing (Component, Html, Update, node, text, on, return, emit, thenEmit, andThen)
+import Promise exposing (Promise)
 
 type alias Model =
   { count: Int
@@ -32,12 +33,19 @@ update msg model =
         { model | count = model.count - 1 }
           |> emit Decremented
           |> emit Changed
+          |> andThen (delayedDecrement ())
 
     Increment ->
       return
         { model | count = model.count + 1 }
           |> emit Incremented
           |> emit Changed
+
+
+delayedDecrement : () -> Promise Msg
+delayedDecrement _ =
+  Promise.timeout 1000
+    |> Promise.map (\() -> Debug.log "" Decrement)
 
 
 view : Model -> Html Msg
