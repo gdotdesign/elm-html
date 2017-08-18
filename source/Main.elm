@@ -20,6 +20,7 @@ type Msg
   | ControlledCounter Counter.Msg
   | Fetch
   | Result String
+  | Progress Http.Progress
 
 init : Model
 init =
@@ -37,11 +38,13 @@ fetch =
   Http.fetch
     { method = "get"
     , headers = []
-    , url = "https://httpbin.org/get"
+    , url = "https://httpbin.org/stream/100"
     , withCredentials = False
     , body = ""
+    , onProgress = Progress
+    , onFinish = Result
     }
-    |> Task.map Result
+
 
 update : Msg -> Model -> Update Model Msg a
 update msg model =
@@ -81,6 +84,9 @@ update msg model =
 
     Result data ->
       return { model | result = data }
+
+    _ ->
+      return model
 
 view : Model -> Html Msg
 view model =

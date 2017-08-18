@@ -14,10 +14,12 @@ class Program {
   /* Creates a program from a base tree */
   constructor (rootComponent) {
     this.container = this.createContainer()
-    this.listeners = new Map()
     this.root = rootComponent
+
+    this.listeners = new Map()
     this.ids = new Set()
     this.map = new Map()
+
     this.render()
   }
 
@@ -52,7 +54,18 @@ class Program {
         .toArray(data._1)
         .map(function (promise) {
           promise.fork(console.error, function (resultMsg) {
-            this.update(resultMsg, id)
+            if (resultMsg instanceof Process) {
+              // TODO:
+              //   - save process ID,
+              //   - abort it them when component is removed
+              //   - call the parent with the ID if requested
+              //   - add "processes" to Component to start processes when injected
+              resultMsg.call(function(processMsg) {
+                this.update(processMsg, id)
+              }.bind(this))
+            } else {
+              this.update(resultMsg, id)
+            }
           }.bind(this))
         }.bind(this))
 

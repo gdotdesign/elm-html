@@ -5,8 +5,6 @@ import Native.Task
 
 type Task a = Task a
 
-type alias Defferred a = () -> Task a
-
 type Error = Error String
 
 delay : Int -> Task ()
