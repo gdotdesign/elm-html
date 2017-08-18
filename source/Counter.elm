@@ -57,11 +57,11 @@ view model =
   node "div"
     []
     [ node "button"
-      [ on "onclick" (\value -> Decrement) ]
+      [ on "click" (\value -> Decrement) ]
       [ text "-"]
     , text (toString model)
     , node "button"
-      [ on "onclick" (\value -> Increment) ]
+      [ on "click" (\value -> Increment) ]
       [ text "+"]
     ]
 

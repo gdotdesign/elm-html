@@ -1,619 +1,2195 @@
-(function e(t,n,r){function s(o,u){if(!n[o]){if(!t[o]){var a=typeof require=="function"&&require;if(!u&&a)return a(o,!0);if(i)return i(o,!0);var f=new Error("Cannot find module '"+o+"'");throw f.code="MODULE_NOT_FOUND",f}var l=n[o]={exports:{}};t[o][0].call(l.exports,function(e){var n=t[o][1][e];return s(n?n:e)},l,l.exports,e,t,n,r)}return n[o].exports}var i=typeof require=="function"&&require;for(var o=0;o<r.length;o++)s(r[o]);return s})({1:[function(require,module,exports){
-(function (global){
-(function(global, f){
+/**
+ * Fluture bundled; version 7.1.1 (dirty)
+ */
+
+var Fluture = (function () {
+'use strict';
+
+var commonjsGlobal = typeof window !== 'undefined' ? window : typeof global !== 'undefined' ? global : typeof self !== 'undefined' ? self : {};
+
+
+
+
+
+function createCommonjsModule(fn, module) {
+  return module = { exports: {} }, fn(module, module.exports), module.exports;
+}
+
+var index$3 = createCommonjsModule(function (module) {
+/*
+        @@@@@@@            @@@@@@@         @@
+      @@       @@        @@       @@      @@@
+    @@   @@@ @@  @@    @@   @@@ @@  @@   @@@@@@ @@   @@@  @@ @@@      @@@@
+   @@  @@   @@@   @@  @@  @@   @@@   @@   @@@   @@   @@@  @@@   @@  @@@   @@
+   @@  @@   @@@   @@  @@  @@   @@@   @@   @@@   @@   @@@  @@@   @@  @@@@@@@@
+   @@  @@   @@@  @@   @@  @@   @@@  @@    @@@   @@   @@@  @@@   @@  @@@
+    @@   @@@ @@@@@     @@   @@@ @@@@@      @@@    @@@ @@  @@@@@@      @@@@@
+      @@                 @@                           @@  @@
+        @@@@@@@            @@@@@@@               @@@@@    @@
+                                                          */
+//. # sanctuary-type-identifiers
+//.
+//. A type is a set of values. Boolean, for example, is the type comprising
+//. `true` and `false`. A value may be a member of multiple types (`42` is a
+//. member of Number, PositiveNumber, Integer, and many other types).
+//.
+//. In certain situations it is useful to divide JavaScript values into
+//. non-overlapping types. The language provides two constructs for this
+//. purpose: the [`typeof`][1] operator and [`Object.prototype.toString`][2].
+//. Each has pros and cons, but neither supports user-defined types.
+//.
+//. This package specifies an [algorithm][3] for deriving a _type identifier_
+//. from any JavaScript value, and exports an implementation of the algorithm.
+//. Authors of algebraic data types may follow this specification in order to
+//. make their data types compatible with the algorithm.
+//.
+//. ### Algorithm
+//.
+//. 1.  Take any JavaScript value `x`.
+//.
+//. 2.  If `x` is `null` or `undefined`, go to step 6.
+//.
+//. 3.  If `x.constructor` evaluates to `null` or `undefined`, go to step 6.
+//.
+//. 4.  If `x.constructor.prototype === x`, go to step 6. This check prevents a
+//.     prototype object from being considered a member of its associated type.
+//.
+//. 5.  If `typeof x.constructor['@@type']` evaluates to `'string'`, return
+//.     the value of `x.constructor['@@type']`.
+//.
+//. 6.  Return the [`Object.prototype.toString`][2] representation of `x`
+//.     without the leading `'[object '` and trailing `']'`.
+//.
+//. ### Compatibility
+//.
+//. For an algebraic data type to be compatible with the [algorithm][3]:
+//.
+//.   - every member of the type must have a `constructor` property pointing
+//.     to an object known as the _type representative_;
+//.
+//.   - the type representative must have a `@@type` property; and
+//.
+//.   - the type representative's `@@type` property (the _type identifier_)
+//.     must be a string primitive, ideally `'<npm-package-name>/<type-name>'`.
+//.
+//. For example:
+//.
+//. ```javascript
+//. //  Identity :: a -> Identity a
+//. function Identity(x) {
+//.   if (!(this instanceof Identity)) return new Identity(x);
+//.   this.value = x;
+//. }
+//.
+//. Identity['@@type'] = 'my-package/Identity';
+//. ```
+//.
+//. Note that by using a constructor function the `constructor` property is set
+//. implicitly for each value created. Constructor functions are convenient for
+//. this reason, but are not required. This definition is also valid:
+//.
+//. ```javascript
+//. //  IdentityTypeRep :: TypeRep Identity
+//. var IdentityTypeRep = {
+//.   '@@type': 'my-package/Identity'
+//. };
+//.
+//. //  Identity :: a -> Identity a
+//. function Identity(x) {
+//.   return {constructor: IdentityTypeRep, value: x};
+//. }
+//. ```
+//.
+//. ### Usage
+//.
+//. ```javascript
+//. var Identity = require('my-package').Identity;
+//. var type = require('sanctuary-type-identifiers');
+//.
+//. type(null);         // => 'Null'
+//. type(true);         // => 'Boolean'
+//. type([1, 2, 3]);    // => 'Array'
+//. type(Identity);     // => 'Function'
+//. type(Identity(0));  // => 'my-package/Identity'
+//. ```
+//.
+//.
+//. [1]: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Operators/typeof
+//. [2]: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Object/toString
+//. [3]: #algorithm
+
+(function(f) {
 
   'use strict';
 
-  /*istanbul ignore next*/
-  if(module && typeof module.exports !== 'undefined'){
-    module.exports = f(require('sanctuary-type-classes'), require('sanctuary-type-identifiers'));
-  }else{
-    global.concurrify = f(global.sanctuaryTypeClasses, global.sanctuaryTypeIdentifiers);
+  {
+    module.exports = f();
   }
 
-}(/*istanbul ignore next*/(global || window || this), function(Z, type){
+}(function() {
 
   'use strict';
 
-  var $alt = 'fantasy-land/alt';
-  var $ap = 'fantasy-land/ap';
-  var $map = 'fantasy-land/map';
-  var $of = 'fantasy-land/of';
-  var $zero = 'fantasy-land/zero';
+  //  $$type :: String
   var $$type = '@@type';
 
-  var ordinal = ['first', 'second', 'third', 'fourth', 'fifth'];
-
-  function isFunction(f){
-    return typeof f === 'function';
+  //  type :: Any -> String
+  function type(x) {
+    return x != null &&
+           x.constructor != null &&
+           x.constructor.prototype !== x &&
+           typeof x.constructor[$$type] === 'string' ?
+      x.constructor[$$type] :
+      Object.prototype.toString.call(x).slice('[object '.length, -']'.length);
   }
 
-  function isBinary(f){
-    return f.length >= 2;
+  return type;
+
+}));
+});
+
+var index$2 = createCommonjsModule(function (module) {
+/*
+             ############                  #
+            ############                  ###
+                  #####                  #####
+                #####      ####################
+              #####       ######################
+            #####                     ###########
+          #####         ######################
+        #####          ####################
+      #####                        #####
+     ############                 ###
+    ############                 */
+
+//. # sanctuary-type-classes
+//.
+//. The [Fantasy Land Specification][FL] "specifies interoperability of common
+//. algebraic structures" by defining a number of type classes. For each type
+//. class, it states laws which every member of a type must obey in order for
+//. the type to be a member of the type class. In order for the Maybe type to
+//. be considered a [Functor][], for example, every `Maybe a` value must have
+//. a `fantasy-land/map` method which obeys the identity and composition laws.
+//.
+//. This project provides:
+//.
+//.   - [`TypeClass`](#TypeClass), a function for defining type classes;
+//.   - one `TypeClass` value for each Fantasy Land type class;
+//.   - lawful Fantasy Land methods for JavaScript's built-in types;
+//.   - one function for each Fantasy Land method; and
+//.   - several functions derived from these functions.
+//.
+//. ## Type-class hierarchy
+//.
+//. <pre>
+//:  Setoid   Semigroupoid  Semigroup   Foldable        Functor      Contravariant
+//: (equals)    (compose)    (concat)   (reduce)         (map)        (contramap)
+//:     |           |           |           \         / | | | | \
+//:     |           |           |            \       /  | | | |  \
+//:     |           |           |             \     /   | | | |   \
+//:     |           |           |              \   /    | | | |    \
+//:     |           |           |               \ /     | | | |     \
+//:    Ord      Category     Monoid         Traversable | | | |      \
+//:   (lte)       (id)       (empty)        (traverse)  / | | \       \
+//:                                                    /  | |  \       \
+//:                                                   /   / \   \       \
+//:                                           Profunctor /   \ Bifunctor \
+//:                                            (promap) /     \ (bimap)   \
+//:                                                    /       \           \
+//:                                                   /         \           \
+//:                                                 Alt        Apply      Extend
+//:                                                (alt)        (ap)     (extend)
+//:                                                 /           / \           \
+//:                                                /           /   \           \
+//:                                               /           /     \           \
+//:                                              /           /       \           \
+//:                                             /           /         \           \
+//:                                           Plus    Applicative    Chain      Comonad
+//:                                          (zero)       (of)      (chain)    (extract)
+//:                                             \         / \         / \
+//:                                              \       /   \       /   \
+//:                                               \     /     \     /     \
+//:                                                \   /       \   /       \
+//:                                                 \ /         \ /         \
+//:                                             Alternative    Monad     ChainRec
+//:                                                                     (chainRec)
+//. </pre>
+//.
+//. ## API
+
+(function(f) {
+
+  'use strict';
+
+  /* istanbul ignore else */
+  {
+    module.exports = f(index$3);
   }
 
-  function isApplicativeRepr(Repr){
-    try{
-      return Z.Applicative.test(Z.of(Repr));
-    }catch(_){
-      return false;
+}(function(type) {
+
+  'use strict';
+
+  //  concat_ :: Array a -> Array a -> Array a
+  function concat_(xs) {
+    return function(ys) {
+      return xs.concat(ys);
+    };
+  }
+
+  //  constant :: a -> b -> a
+  function constant(x) {
+    return function(y) {
+      return x;
+    };
+  }
+
+  //  has :: (String, Object) -> Boolean
+  function has(k, o) {
+    return Object.prototype.hasOwnProperty.call(o, k);
+  }
+
+  //  identity :: a -> a
+  function identity(x) { return x; }
+
+  //  pair :: a -> b -> Pair a b
+  function pair(x) {
+    return function(y) {
+      return [x, y];
+    };
+  }
+
+  //  sameType :: (a, b) -> Boolean
+  function sameType(x, y) {
+    return typeof x === typeof y && type(x) === type(y);
+  }
+
+  //  type Iteration a = { value :: a, done :: Boolean }
+
+  //  iterationNext :: a -> Iteration a
+  function iterationNext(x) { return {value: x, done: false}; }
+
+  //  iterationDone :: a -> Iteration a
+  function iterationDone(x) { return {value: x, done: true}; }
+
+  //# TypeClass :: (String, String, Array TypeClass, a -> Boolean) -> TypeClass
+  //.
+  //. The arguments are:
+  //.
+  //.   - the name of the type class, prefixed by its npm package name;
+  //.   - the documentation URL of the type class;
+  //.   - an array of dependencies; and
+  //.   - a predicate which accepts any JavaScript value and returns `true`
+  //.     if the value satisfies the requirements of the type class; `false`
+  //.     otherwise.
+  //.
+  //. Example:
+  //.
+  //. ```javascript
+  //. //    hasMethod :: String -> a -> Boolean
+  //. const hasMethod = name => x => x != null && typeof x[name] == 'function';
+  //.
+  //. //    Foo :: TypeClass
+  //. const Foo = Z.TypeClass(
+  //.   'my-package/Foo',
+  //.   'http://example.com/my-package#Foo',
+  //.   [],
+  //.   hasMethod('foo')
+  //. );
+  //.
+  //. //    Bar :: TypeClass
+  //. const Bar = Z.TypeClass(
+  //.   'my-package/Bar',
+  //.   'http://example.com/my-package#Bar',
+  //.   [Foo],
+  //.   hasMethod('bar')
+  //. );
+  //. ```
+  //.
+  //. Types whose values have a `foo` method are members of the Foo type class.
+  //. Members of the Foo type class whose values have a `bar` method are also
+  //. members of the Bar type class.
+  //.
+  //. Each `TypeClass` value has a `test` field: a function which accepts
+  //. any JavaScript value and returns `true` if the value satisfies the
+  //. type class's predicate and the predicates of all the type class's
+  //. dependencies; `false` otherwise.
+  //.
+  //. `TypeClass` values may be used with [sanctuary-def][type-classes]
+  //. to define parametrically polymorphic functions which verify their
+  //. type-class constraints at run time.
+  function TypeClass(name, url, dependencies, test) {
+    if (!(this instanceof TypeClass)) {
+      return new TypeClass(name, url, dependencies, test);
     }
+    this.name = name;
+    this.url = url;
+    this.test = function(x) {
+      return dependencies.every(function(d) { return d.test(x); }) && test(x);
+    };
   }
 
-  function invalidArgument(it, at, expected, actual){
-    throw new TypeError(
-      it
-      + ' expects its '
-      + ordinal[at]
-      + ' argument to '
-      + expected
-      + '\n  Actual: '
-      + Z.toString(actual)
+  TypeClass['@@type'] = 'sanctuary-type-classes/TypeClass';
+
+  //  data Location = Constructor | Value
+
+  //  Constructor :: Location
+  var Constructor = 'Constructor';
+
+  //  Value :: Location
+  var Value = 'Value';
+
+  //  _funcPath :: (Boolean, Array String, a) -> Nullable Function
+  function _funcPath(allowInheritedProps, path, _x) {
+    var x = _x;
+    for (var idx = 0; idx < path.length; idx += 1) {
+      var k = path[idx];
+      if (x == null || !(allowInheritedProps || has(k, x))) { return null; }
+      x = x[k];
+    }
+    return typeof x === 'function' ? x : null;
+  }
+
+  //  funcPath :: (Array String, a) -> Nullable Function
+  function funcPath(path, x) {
+    return _funcPath(true, path, x);
+  }
+
+  //  implPath :: Array String -> Nullable Function
+  function implPath(path) {
+    return _funcPath(false, path, implementations);
+  }
+
+  //  functionName :: Function -> String
+  var functionName = 'name' in function f() {} ?
+    function functionName(f) { return f.name; } :
+    /* istanbul ignore next */
+    function functionName(f) {
+      var match = /function (\w*)/.exec(f);
+      return match == null ? '' : match[1];
+    };
+
+  //  $ :: (String, Array TypeClass, StrMap (Array Location)) -> TypeClass
+  function $(_name, dependencies, requirements) {
+    function getBoundMethod(_name) {
+      var name = 'fantasy-land/' + _name;
+      return requirements[_name] === Constructor ?
+        function(typeRep) {
+          var f = funcPath([name], typeRep);
+          return f == null && typeof typeRep === 'function' ?
+            implPath([functionName(typeRep), name]) :
+            f;
+        } :
+        function(x) {
+          var isPrototype = x != null &&
+                            x.constructor != null &&
+                            x.constructor.prototype === x;
+          var m = null;
+          if (!isPrototype) { m = funcPath([name], x); }
+          if (m == null)    { m = implPath([type(x), 'prototype', name]); }
+          return m && m.bind(x);
+        };
+    }
+
+    var version = '6.0.0';  // updated programmatically
+    var keys = Object.keys(requirements);
+
+    var typeClass = TypeClass(
+      'sanctuary-type-classes/' + _name,
+      'https://github.com/sanctuary-js/sanctuary-type-classes/tree/v' + version
+        + '#' + _name,
+      dependencies,
+      function(x) {
+        return keys.every(function(_name) {
+          var arg = requirements[_name] === Constructor ? x.constructor : x;
+          return getBoundMethod(_name)(arg) != null;
+        });
+      }
     );
+
+    typeClass.methods = keys.reduce(function(methods, _name) {
+      methods[_name] = getBoundMethod(_name);
+      return methods;
+    }, {});
+
+    return typeClass;
   }
 
-  function invalidContext(it, actual, an){
-    throw new TypeError(
-      it + ' was invoked outside the context of a ' + an + '. \n  Called on: ' + Z.toString(actual)
-    );
+  //# Setoid :: TypeClass
+  //.
+  //. `TypeClass` value for [Setoid][].
+  //.
+  //. ```javascript
+  //. > Setoid.test(null)
+  //. true
+  //. ```
+  var Setoid = $('Setoid', [], {equals: Value});
+
+  //# Ord :: TypeClass
+  //.
+  //. `TypeClass` value for [Ord][].
+  //.
+  //. ```javascript
+  //. > Ord.test(0)
+  //. true
+  //.
+  //. > Ord.test(Math.sqrt)
+  //. false
+  //. ```
+  var Ord = $('Ord', [Setoid], {lte: Value});
+
+  //# Semigroupoid :: TypeClass
+  //.
+  //. `TypeClass` value for [Semigroupoid][].
+  //.
+  //. ```javascript
+  //. > Semigroupoid.test(Math.sqrt)
+  //. true
+  //.
+  //. > Semigroupoid.test(0)
+  //. false
+  //. ```
+  var Semigroupoid = $('Semigroupoid', [], {compose: Value});
+
+  //# Category :: TypeClass
+  //.
+  //. `TypeClass` value for [Category][].
+  //.
+  //. ```javascript
+  //. > Category.test(Math.sqrt)
+  //. true
+  //.
+  //. > Category.test(0)
+  //. false
+  //. ```
+  var Category = $('Category', [Semigroupoid], {id: Constructor});
+
+  //# Semigroup :: TypeClass
+  //.
+  //. `TypeClass` value for [Semigroup][].
+  //.
+  //. ```javascript
+  //. > Semigroup.test('')
+  //. true
+  //.
+  //. > Semigroup.test(0)
+  //. false
+  //. ```
+  var Semigroup = $('Semigroup', [], {concat: Value});
+
+  //# Monoid :: TypeClass
+  //.
+  //. `TypeClass` value for [Monoid][].
+  //.
+  //. ```javascript
+  //. > Monoid.test('')
+  //. true
+  //.
+  //. > Monoid.test(0)
+  //. false
+  //. ```
+  var Monoid = $('Monoid', [Semigroup], {empty: Constructor});
+
+  //# Functor :: TypeClass
+  //.
+  //. `TypeClass` value for [Functor][].
+  //.
+  //. ```javascript
+  //. > Functor.test([])
+  //. true
+  //.
+  //. > Functor.test('')
+  //. false
+  //. ```
+  var Functor = $('Functor', [], {map: Value});
+
+  //# Bifunctor :: TypeClass
+  //.
+  //. `TypeClass` value for [Bifunctor][].
+  //.
+  //. ```javascript
+  //. > Bifunctor.test(Tuple('foo', 64))
+  //. true
+  //.
+  //. > Bifunctor.test([])
+  //. false
+  //. ```
+  var Bifunctor = $('Bifunctor', [Functor], {bimap: Value});
+
+  //# Profunctor :: TypeClass
+  //.
+  //. `TypeClass` value for [Profunctor][].
+  //.
+  //. ```javascript
+  //. > Profunctor.test(Math.sqrt)
+  //. true
+  //.
+  //. > Profunctor.test([])
+  //. false
+  //. ```
+  var Profunctor = $('Profunctor', [Functor], {promap: Value});
+
+  //# Apply :: TypeClass
+  //.
+  //. `TypeClass` value for [Apply][].
+  //.
+  //. ```javascript
+  //. > Apply.test([])
+  //. true
+  //.
+  //. > Apply.test('')
+  //. false
+  //. ```
+  var Apply = $('Apply', [Functor], {ap: Value});
+
+  //# Applicative :: TypeClass
+  //.
+  //. `TypeClass` value for [Applicative][].
+  //.
+  //. ```javascript
+  //. > Applicative.test([])
+  //. true
+  //.
+  //. > Applicative.test({})
+  //. false
+  //. ```
+  var Applicative = $('Applicative', [Apply], {of: Constructor});
+
+  //# Chain :: TypeClass
+  //.
+  //. `TypeClass` value for [Chain][].
+  //.
+  //. ```javascript
+  //. > Chain.test([])
+  //. true
+  //.
+  //. > Chain.test({})
+  //. false
+  //. ```
+  var Chain = $('Chain', [Apply], {chain: Value});
+
+  //# ChainRec :: TypeClass
+  //.
+  //. `TypeClass` value for [ChainRec][].
+  //.
+  //. ```javascript
+  //. > ChainRec.test([])
+  //. true
+  //.
+  //. > ChainRec.test({})
+  //. false
+  //. ```
+  var ChainRec = $('ChainRec', [Chain], {chainRec: Constructor});
+
+  //# Monad :: TypeClass
+  //.
+  //. `TypeClass` value for [Monad][].
+  //.
+  //. ```javascript
+  //. > Monad.test([])
+  //. true
+  //.
+  //. > Monad.test({})
+  //. false
+  //. ```
+  var Monad = $('Monad', [Applicative, Chain], {});
+
+  //# Alt :: TypeClass
+  //.
+  //. `TypeClass` value for [Alt][].
+  //.
+  //. ```javascript
+  //. > Alt.test({})
+  //. true
+  //.
+  //. > Alt.test('')
+  //. false
+  //. ```
+  var Alt = $('Alt', [Functor], {alt: Value});
+
+  //# Plus :: TypeClass
+  //.
+  //. `TypeClass` value for [Plus][].
+  //.
+  //. ```javascript
+  //. > Plus.test({})
+  //. true
+  //.
+  //. > Plus.test('')
+  //. false
+  //. ```
+  var Plus = $('Plus', [Alt], {zero: Constructor});
+
+  //# Alternative :: TypeClass
+  //.
+  //. `TypeClass` value for [Alternative][].
+  //.
+  //. ```javascript
+  //. > Alternative.test([])
+  //. true
+  //.
+  //. > Alternative.test({})
+  //. false
+  //. ```
+  var Alternative = $('Alternative', [Applicative, Plus], {});
+
+  //# Foldable :: TypeClass
+  //.
+  //. `TypeClass` value for [Foldable][].
+  //.
+  //. ```javascript
+  //. > Foldable.test({})
+  //. true
+  //.
+  //. > Foldable.test('')
+  //. false
+  //. ```
+  var Foldable = $('Foldable', [], {reduce: Value});
+
+  //# Traversable :: TypeClass
+  //.
+  //. `TypeClass` value for [Traversable][].
+  //.
+  //. ```javascript
+  //. > Traversable.test([])
+  //. true
+  //.
+  //. > Traversable.test('')
+  //. false
+  //. ```
+  var Traversable = $('Traversable', [Functor, Foldable], {traverse: Value});
+
+  //# Extend :: TypeClass
+  //.
+  //. `TypeClass` value for [Extend][].
+  //.
+  //. ```javascript
+  //. > Extend.test([])
+  //. true
+  //.
+  //. > Extend.test({})
+  //. false
+  //. ```
+  var Extend = $('Extend', [Functor], {extend: Value});
+
+  //# Comonad :: TypeClass
+  //.
+  //. `TypeClass` value for [Comonad][].
+  //.
+  //. ```javascript
+  //. > Comonad.test(Identity(0))
+  //. true
+  //.
+  //. > Comonad.test([])
+  //. false
+  //. ```
+  var Comonad = $('Comonad', [Extend], {extract: Value});
+
+  //# Contravariant :: TypeClass
+  //.
+  //. `TypeClass` value for [Contravariant][].
+  //.
+  //. ```javascript
+  //. > Contravariant.test(Math.sqrt)
+  //. true
+  //.
+  //. > Contravariant.test([])
+  //. false
+  //. ```
+  var Contravariant = $('Contravariant', [], {contramap: Value});
+
+  //  Null$prototype$toString :: Null ~> () -> String
+  function Null$prototype$toString() {
+    return 'null';
   }
 
-  //       getTypeIdentifier :: TypeRepresentative -> TypeIdentifier
-  function getTypeIdentifier(Repr){
-    return Repr[$$type] || Repr.name || 'Anonymous';
+  //  Null$prototype$equals :: Null ~> Null -> Boolean
+  function Null$prototype$equals(other) {
+    return true;
   }
 
-  //       generateTypeIdentifier :: TypeIdentifier -> TypeIdentifier
-  function generateTypeIdentifier(identifier){
-    var o = type.parse(identifier);
-    return (o.namespace || 'concurrify') + '/Concurrent' + o.name + '@' + o.version;
+  //  Null$prototype$lte :: Null ~> Null -> Boolean
+  function Null$prototype$lte(other) {
+    return true;
   }
 
-  //concurrify :: Applicative m
-  //           => (TypeRep m, m a, (m a, m a) -> m a, (m a, m (a -> b)) -> m b)
-  //           -> Concurrently m
-  return function concurrify(Repr, zero, alt, ap){
+  //  Undefined$prototype$toString :: Undefined ~> () -> String
+  function Undefined$prototype$toString() {
+    return 'undefined';
+  }
 
-    var INNERTYPE = getTypeIdentifier(Repr);
-    var OUTERTYPE = generateTypeIdentifier(INNERTYPE);
+  //  Undefined$prototype$equals :: Undefined ~> Undefined -> Boolean
+  function Undefined$prototype$equals(other) {
+    return true;
+  }
 
-    var INNERNAME = type.parse(INNERTYPE).name;
-    var OUTERNAME = type.parse(OUTERTYPE).name;
+  //  Undefined$prototype$lte :: Undefined ~> Undefined -> Boolean
+  function Undefined$prototype$lte(other) {
+    return true;
+  }
 
-    function Concurrently(sequential){
-      this.sequential = sequential;
+  //  Boolean$prototype$toString :: Boolean ~> () -> String
+  function Boolean$prototype$toString() {
+    return typeof this === 'object' ?
+      'new Boolean(' + toString(this.valueOf()) + ')' :
+      this.toString();
+  }
+
+  //  Boolean$prototype$equals :: Boolean ~> Boolean -> Boolean
+  function Boolean$prototype$equals(other) {
+    return typeof this === 'object' ?
+      equals(this.valueOf(), other.valueOf()) :
+      this === other;
+  }
+
+  //  Boolean$prototype$lte :: Boolean ~> Boolean -> Boolean
+  function Boolean$prototype$lte(other) {
+    return typeof this === 'object' ?
+      lte(this.valueOf(), other.valueOf()) :
+      this === false || other === true;
+  }
+
+  //  Number$prototype$toString :: Number ~> () -> String
+  function Number$prototype$toString() {
+    return typeof this === 'object' ?
+      'new Number(' + toString(this.valueOf()) + ')' :
+      1 / this === -Infinity ? '-0' : this.toString(10);
+  }
+
+  //  Number$prototype$equals :: Number ~> Number -> Boolean
+  function Number$prototype$equals(other) {
+    return typeof this === 'object' ?
+      equals(this.valueOf(), other.valueOf()) :
+      isNaN(this) && isNaN(other) || this === other;
+  }
+
+  //  Number$prototype$lte :: Number ~> Number -> Boolean
+  function Number$prototype$lte(other) {
+    return typeof this === 'object' ?
+      lte(this.valueOf(), other.valueOf()) :
+      isNaN(this) && isNaN(other) || this <= other;
+  }
+
+  //  Date$prototype$toString :: Date ~> () -> String
+  function Date$prototype$toString() {
+    var x = isNaN(this.valueOf()) ? NaN : this.toISOString();
+    return 'new Date(' + toString(x) + ')';
+  }
+
+  //  Date$prototype$equals :: Date ~> Date -> Boolean
+  function Date$prototype$equals(other) {
+    return equals(this.valueOf(), other.valueOf());
+  }
+
+  //  Date$prototype$lte :: Date ~> Date -> Boolean
+  function Date$prototype$lte(other) {
+    return lte(this.valueOf(), other.valueOf());
+  }
+
+  //  RegExp$prototype$equals :: RegExp ~> RegExp -> Boolean
+  function RegExp$prototype$equals(other) {
+    return other.source === this.source &&
+           other.global === this.global &&
+           other.ignoreCase === this.ignoreCase &&
+           other.multiline === this.multiline &&
+           other.sticky === this.sticky &&
+           other.unicode === this.unicode;
+  }
+
+  //  String$empty :: () -> String
+  function String$empty() {
+    return '';
+  }
+
+  //  String$prototype$toString :: String ~> () -> String
+  function String$prototype$toString() {
+    return typeof this === 'object' ?
+      'new String(' + toString(this.valueOf()) + ')' :
+      JSON.stringify(this);
+  }
+
+  //  String$prototype$equals :: String ~> String -> Boolean
+  function String$prototype$equals(other) {
+    return typeof this === 'object' ?
+      equals(this.valueOf(), other.valueOf()) :
+      this === other;
+  }
+
+  //  String$prototype$lte :: String ~> String -> Boolean
+  function String$prototype$lte(other) {
+    return typeof this === 'object' ?
+      lte(this.valueOf(), other.valueOf()) :
+      this <= other;
+  }
+
+  //  String$prototype$concat :: String ~> String -> String
+  function String$prototype$concat(other) {
+    return this + other;
+  }
+
+  //  Array$empty :: () -> Array a
+  function Array$empty() {
+    return [];
+  }
+
+  //  Array$of :: a -> Array a
+  function Array$of(x) {
+    return [x];
+  }
+
+  //  Array$chainRec :: ((a -> c, b -> c, a) -> Array c, a) -> Array b
+  function Array$chainRec(f, x) {
+    var $todo = [x];
+    var $done = [];
+    while ($todo.length > 0) {
+      var xs = f(iterationNext, iterationDone, $todo.shift());
+      var $more = [];
+      for (var idx = 0; idx < xs.length; idx += 1) {
+        (xs[idx].done ? $done : $more).push(xs[idx].value);
+      }
+      Array.prototype.unshift.apply($todo, $more);
+    }
+    return $done;
+  }
+
+  //  Array$zero :: () -> Array a
+  function Array$zero() {
+    return [];
+  }
+
+  //  Array$prototype$toString :: Array a ~> () -> String
+  function Array$prototype$toString() {
+    var this$1 = this;
+
+    var reprs = this.map(toString);
+    var keys = Object.keys(this).sort();
+    for (var idx = 0; idx < keys.length; idx += 1) {
+      var k = keys[idx];
+      if (!/^\d+$/.test(k)) {
+        reprs.push(toString(k) + ': ' + toString(this$1[k]));
+      }
+    }
+    return '[' + reprs.join(', ') + ']';
+  }
+
+  //  Array$prototype$equals :: Array a ~> Array a -> Boolean
+  function Array$prototype$equals(other) {
+    var this$1 = this;
+
+    if (other.length !== this.length) { return false; }
+    for (var idx = 0; idx < this.length; idx += 1) {
+      if (!equals(this$1[idx], other[idx])) { return false; }
+    }
+    return true;
+  }
+
+  //  Array$prototype$lte :: Array a ~> Array a -> Boolean
+  function Array$prototype$lte(other) {
+    var this$1 = this;
+
+    for (var idx = 0; true; idx += 1) {
+      if (idx === this$1.length) { return true; }
+      if (idx === other.length) { return false; }
+      if (!equals(this$1[idx], other[idx])) { return lte(this$1[idx], other[idx]); }
+    }
+  }
+
+  //  Array$prototype$concat :: Array a ~> Array a -> Array a
+  function Array$prototype$concat(other) {
+    return this.concat(other);
+  }
+
+  //  Array$prototype$map :: Array a ~> (a -> b) -> Array b
+  function Array$prototype$map(f) {
+    return this.map(function(x) { return f(x); });
+  }
+
+  //  Array$prototype$ap :: Array a ~> Array (a -> b) -> Array b
+  function Array$prototype$ap(fs) {
+    var this$1 = this;
+
+    var result = [];
+    for (var idx = 0; idx < fs.length; idx += 1) {
+      for (var idx2 = 0; idx2 < this.length; idx2 += 1) {
+        result.push(fs[idx](this$1[idx2]));
+      }
+    }
+    return result;
+  }
+
+  //  Array$prototype$chain :: Array a ~> (a -> Array b) -> Array b
+  function Array$prototype$chain(f) {
+    var result = [];
+    this.forEach(function(x) { Array.prototype.push.apply(result, f(x)); });
+    return result;
+  }
+
+  //  Array$prototype$alt :: Array a ~> Array a -> Array a
+  var Array$prototype$alt = Array$prototype$concat;
+
+  //  Array$prototype$reduce :: Array a ~> ((b, a) -> b, b) -> b
+  function Array$prototype$reduce(f, initial) {
+    return this.reduce(function(acc, x) { return f(acc, x); }, initial);
+  }
+
+  //  Array$prototype$traverse :: Applicative f => Array a ~> (TypeRep f, a -> f b) -> f (Array b)
+  function Array$prototype$traverse(typeRep, f) {
+    var xs = this;
+    function go(idx, n) {
+      switch (n) {
+        case 0: return of(typeRep, []);
+        case 2: return lift2(pair, f(xs[idx]), f(xs[idx + 1]));
+        default:
+          var m = Math.floor(n / 4) * 2;
+          return lift2(concat_, go(idx, m), go(idx + m, n - m));
+      }
+    }
+    return this.length % 2 === 1 ?
+      lift2(concat_, map(Array$of, f(this[0])), go(1, this.length - 1)) :
+      go(0, this.length);
+  }
+
+  //  Array$prototype$extend :: Array a ~> (Array a -> b) -> Array b
+  function Array$prototype$extend(f) {
+    return this.map(function(_, idx, xs) { return f(xs.slice(idx)); });
+  }
+
+  //  Arguments$prototype$toString :: Arguments ~> String
+  function Arguments$prototype$toString() {
+    var args = Array.prototype.map.call(this, toString).join(', ');
+    return '(function () { return arguments; }(' + args + '))';
+  }
+
+  //  Arguments$prototype$equals :: Arguments ~> Arguments -> Boolean
+  function Arguments$prototype$equals(other) {
+    return Array$prototype$equals.call(this, other);
+  }
+
+  //  Arguments$prototype$lte :: Arguments ~> Arguments -> Boolean
+  function Arguments$prototype$lte(other) {
+    return Array$prototype$lte.call(this, other);
+  }
+
+  //  Error$prototype$toString :: Error ~> () -> String
+  function Error$prototype$toString() {
+    return 'new ' + this.name + '(' + toString(this.message) + ')';
+  }
+
+  //  Error$prototype$equals :: Error ~> Error -> Boolean
+  function Error$prototype$equals(other) {
+    return equals(this.name, other.name) &&
+           equals(this.message, other.message);
+  }
+
+  //  Object$empty :: () -> StrMap a
+  function Object$empty() {
+    return {};
+  }
+
+  //  Object$zero :: () -> StrMap a
+  function Object$zero() {
+    return {};
+  }
+
+  //  Object$prototype$toString :: StrMap a ~> () -> String
+  function Object$prototype$toString() {
+    var this$1 = this;
+
+    var reprs = [];
+    var keys = Object.keys(this).sort();
+    for (var idx = 0; idx < keys.length; idx += 1) {
+      var k = keys[idx];
+      reprs.push(toString(k) + ': ' + toString(this$1[k]));
+    }
+    return '{' + reprs.join(', ') + '}';
+  }
+
+  //  Object$prototype$equals :: StrMap a ~> StrMap a -> Boolean
+  function Object$prototype$equals(other) {
+    var self = this;
+    var keys = Object.keys(this).sort();
+    return equals(keys, Object.keys(other).sort()) &&
+           keys.every(function(k) { return equals(self[k], other[k]); });
+  }
+
+  //  Object$prototype$lte :: StrMap a ~> StrMap a -> Boolean
+  function Object$prototype$lte(other) {
+    var this$1 = this;
+
+    var theseKeys = Object.keys(this).sort();
+    var otherKeys = Object.keys(other).sort();
+    while (true) {
+      if (theseKeys.length === 0) { return true; }
+      if (otherKeys.length === 0) { return false; }
+      var k = theseKeys.shift();
+      var z = otherKeys.shift();
+      if (k < z) { return true; }
+      if (k > z) { return false; }
+      if (!equals(this$1[k], other[k])) { return lte(this$1[k], other[k]); }
+    }
+  }
+
+  //  Object$prototype$concat :: StrMap a ~> StrMap a -> StrMap a
+  function Object$prototype$concat(other) {
+    var this$1 = this;
+
+    var result = {};
+    for (var k in this$1) { result[k] = this$1[k]; }
+    for (k in other) { result[k] = other[k]; }
+    return result;
+  }
+
+  //  Object$prototype$map :: StrMap a ~> (a -> b) -> StrMap b
+  function Object$prototype$map(f) {
+    var this$1 = this;
+
+    var result = {};
+    for (var k in this$1) { result[k] = f(this$1[k]); }
+    return result;
+  }
+
+  //  Object$prototype$ap :: StrMap a ~> StrMap (a -> b) -> StrMap b
+  function Object$prototype$ap(other) {
+    var this$1 = this;
+
+    var result = {};
+    for (var k in this$1) { if (k in other) { result[k] = other[k](this$1[k]); } }
+    return result;
+  }
+
+  //  Object$prototype$alt :: StrMap a ~> StrMap a -> StrMap a
+  var Object$prototype$alt = Object$prototype$concat;
+
+  //  Object$prototype$reduce :: StrMap a ~> ((b, a) -> b, b) -> b
+  function Object$prototype$reduce(f, initial) {
+    var self = this;
+    function reducer(acc, k) { return f(acc, self[k]); }
+    return Object.keys(this).sort().reduce(reducer, initial);
+  }
+
+  //  Object$prototype$traverse :: Applicative f => StrMap a ~> (TypeRep f, a -> f b) -> f (StrMap b)
+  function Object$prototype$traverse(typeRep, f) {
+    var self = this;
+    return Object.keys(this).reduce(function(applicative, k) {
+      function set(o) { return function(v) { o[k] = v; return o; }; }
+      return lift2(set, applicative, f(self[k]));
+    }, of(typeRep, {}));
+  }
+
+  //  Function$id :: () -> a -> a
+  function Function$id() {
+    return identity;
+  }
+
+  //  Function$of :: b -> (a -> b)
+  function Function$of(x) {
+    return function(_) { return x; };
+  }
+
+  //  Function$chainRec :: ((a -> c, b -> c, a) -> (z -> c), a) -> (z -> b)
+  function Function$chainRec(f, x) {
+    return function(a) {
+      var step = iterationNext(x);
+      while (!step.done) {
+        step = f(iterationNext, iterationDone, step.value)(a);
+      }
+      return step.value;
+    };
+  }
+
+  //  Function$prototype$equals :: Function ~> Function -> Boolean
+  function Function$prototype$equals(other) {
+    return other === this;
+  }
+
+  //  Function$prototype$compose :: (a -> b) ~> (b -> c) -> (a -> c)
+  function Function$prototype$compose(other) {
+    var semigroupoid = this;
+    return function(x) { return other(semigroupoid(x)); };
+  }
+
+  //  Function$prototype$map :: (a -> b) ~> (b -> c) -> (a -> c)
+  function Function$prototype$map(f) {
+    var functor = this;
+    return function(x) { return f(functor(x)); };
+  }
+
+  //  Function$prototype$promap :: (b -> c) ~> (a -> b, c -> d) -> (a -> d)
+  function Function$prototype$promap(f, g) {
+    var profunctor = this;
+    return function(x) { return g(profunctor(f(x))); };
+  }
+
+  //  Function$prototype$ap :: (a -> b) ~> (a -> b -> c) -> (a -> c)
+  function Function$prototype$ap(f) {
+    var apply = this;
+    return function(x) { return f(x)(apply(x)); };
+  }
+
+  //  Function$prototype$chain :: (a -> b) ~> (b -> a -> c) -> (a -> c)
+  function Function$prototype$chain(f) {
+    var chain = this;
+    return function(x) { return f(chain(x))(x); };
+  }
+
+  //  Function$prototype$contramap :: (b -> c) ~> (a -> b) -> (a -> c)
+  function Function$prototype$contramap(f) {
+    var contravariant = this;
+    return function(x) { return contravariant(f(x)); };
+  }
+
+  /* eslint-disable key-spacing */
+  var implementations = {
+    Null: {
+      prototype: {
+        toString:                   Null$prototype$toString,
+        'fantasy-land/equals':      Null$prototype$equals,
+        'fantasy-land/lte':         Null$prototype$lte
+      }
+    },
+    Undefined: {
+      prototype: {
+        toString:                   Undefined$prototype$toString,
+        'fantasy-land/equals':      Undefined$prototype$equals,
+        'fantasy-land/lte':         Undefined$prototype$lte
+      }
+    },
+    Boolean: {
+      prototype: {
+        toString:                   Boolean$prototype$toString,
+        'fantasy-land/equals':      Boolean$prototype$equals,
+        'fantasy-land/lte':         Boolean$prototype$lte
+      }
+    },
+    Number: {
+      prototype: {
+        toString:                   Number$prototype$toString,
+        'fantasy-land/equals':      Number$prototype$equals,
+        'fantasy-land/lte':         Number$prototype$lte
+      }
+    },
+    Date: {
+      prototype: {
+        toString:                   Date$prototype$toString,
+        'fantasy-land/equals':      Date$prototype$equals,
+        'fantasy-land/lte':         Date$prototype$lte
+      }
+    },
+    RegExp: {
+      prototype: {
+        'fantasy-land/equals':      RegExp$prototype$equals
+      }
+    },
+    String: {
+      'fantasy-land/empty':         String$empty,
+      prototype: {
+        toString:                   String$prototype$toString,
+        'fantasy-land/equals':      String$prototype$equals,
+        'fantasy-land/lte':         String$prototype$lte,
+        'fantasy-land/concat':      String$prototype$concat
+      }
+    },
+    Array: {
+      'fantasy-land/empty':         Array$empty,
+      'fantasy-land/of':            Array$of,
+      'fantasy-land/chainRec':      Array$chainRec,
+      'fantasy-land/zero':          Array$zero,
+      prototype: {
+        toString:                   Array$prototype$toString,
+        'fantasy-land/equals':      Array$prototype$equals,
+        'fantasy-land/lte':         Array$prototype$lte,
+        'fantasy-land/concat':      Array$prototype$concat,
+        'fantasy-land/map':         Array$prototype$map,
+        'fantasy-land/ap':          Array$prototype$ap,
+        'fantasy-land/chain':       Array$prototype$chain,
+        'fantasy-land/alt':         Array$prototype$alt,
+        'fantasy-land/reduce':      Array$prototype$reduce,
+        'fantasy-land/traverse':    Array$prototype$traverse,
+        'fantasy-land/extend':      Array$prototype$extend
+      }
+    },
+    Arguments: {
+      prototype: {
+        toString:                   Arguments$prototype$toString,
+        'fantasy-land/equals':      Arguments$prototype$equals,
+        'fantasy-land/lte':         Arguments$prototype$lte
+      }
+    },
+    Error: {
+      prototype: {
+        toString:                   Error$prototype$toString,
+        'fantasy-land/equals':      Error$prototype$equals
+      }
+    },
+    Object: {
+      'fantasy-land/empty':         Object$empty,
+      'fantasy-land/zero':          Object$zero,
+      prototype: {
+        toString:                   Object$prototype$toString,
+        'fantasy-land/equals':      Object$prototype$equals,
+        'fantasy-land/lte':         Object$prototype$lte,
+        'fantasy-land/concat':      Object$prototype$concat,
+        'fantasy-land/map':         Object$prototype$map,
+        'fantasy-land/ap':          Object$prototype$ap,
+        'fantasy-land/alt':         Object$prototype$alt,
+        'fantasy-land/reduce':      Object$prototype$reduce,
+        'fantasy-land/traverse':    Object$prototype$traverse
+      }
+    },
+    Function: {
+      'fantasy-land/id':            Function$id,
+      'fantasy-land/of':            Function$of,
+      'fantasy-land/chainRec':      Function$chainRec,
+      prototype: {
+        'fantasy-land/equals':      Function$prototype$equals,
+        'fantasy-land/compose':     Function$prototype$compose,
+        'fantasy-land/map':         Function$prototype$map,
+        'fantasy-land/promap':      Function$prototype$promap,
+        'fantasy-land/ap':          Function$prototype$ap,
+        'fantasy-land/chain':       Function$prototype$chain,
+        'fantasy-land/contramap':   Function$prototype$contramap
+      }
+    }
+  };
+  /* eslint-enable key-spacing */
+
+  //# toString :: a -> String
+  //.
+  //. Returns a useful string representation of its argument.
+  //.
+  //. Dispatches to the argument's `toString` method if appropriate.
+  //.
+  //. Where practical, `equals(eval(toString(x)), x) = true`.
+  //.
+  //. `toString` implementations are provided for the following built-in types:
+  //. Null, Undefined, Boolean, Number, Date, String, Array, Arguments, Error,
+  //. and Object.
+  //.
+  //. ```javascript
+  //. > toString(-0)
+  //. '-0'
+  //.
+  //. > toString(['foo', 'bar', 'baz'])
+  //. '["foo", "bar", "baz"]'
+  //.
+  //. > toString({x: 1, y: 2, z: 3})
+  //. '{"x": 1, "y": 2, "z": 3}'
+  //.
+  //. > toString(Cons(1, Cons(2, Cons(3, Nil))))
+  //. 'Cons(1, Cons(2, Cons(3, Nil)))'
+  //. ```
+  var toString = (function() {
+    //  $seen :: Array Any
+    var $seen = [];
+
+    function call(method, x) {
+      $seen.push(x);
+      try { return method.call(x); } finally { $seen.pop(); }
     }
 
-    function isInner(x){
-      return x instanceof Repr
-      || (Boolean(x) && x.constructor === Repr)
-      || type(x) === Repr[$$type];
-    }
+    return function toString(x) {
+      if ($seen.indexOf(x) >= 0) { return '<Circular>'; }
 
-    function isOuter(x){
-      return x instanceof Concurrently
-      || (Boolean(x) && x.constructor === Concurrently)
-      || type(x) === OUTERTYPE;
-    }
+      var xType = type(x);
+      if (xType === 'Object') {
+        var result;
+        try { result = call(x.toString, x); } catch (err) {}
+        if (result != null && result !== '[object Object]') { return result; }
+      }
 
-    function construct(x){
-      if(!isInner(x)) invalidArgument(OUTERNAME, 0, 'be of type "' + INNERNAME + '"', x);
-      return new Concurrently(x);
-    }
-
-    if(!isApplicativeRepr(Repr)) invalidArgument('concurrify', 0, 'represent an Applicative', Repr);
-    if(!isInner(zero)) invalidArgument('concurrify', 1, 'be of type "' + INNERNAME + '"', zero);
-    if(!isFunction(alt)) invalidArgument('concurrify', 2, 'be a function', alt);
-    if(!isBinary(alt)) invalidArgument('concurrify', 2, 'be binary', alt);
-    if(!isFunction(ap)) invalidArgument('concurrify', 3, 'be a function', ap);
-    if(!isBinary(ap)) invalidArgument('concurrify', 3, 'be binary', ap);
-
-    var proto = Concurrently.prototype = construct.prototype = {constructor: construct};
-
-    construct[$$type] = OUTERTYPE;
-
-    var mzero = new Concurrently(zero);
-    construct[$zero] = function Concurrently$zero(){
-      return mzero;
+      return call(implPath([xType, 'prototype', 'toString']) || x.toString, x);
     };
+  }());
 
-    construct[$of] = function Concurrently$of(value){
-      return new Concurrently(Z.of(Repr, value));
+  //# equals :: (a, b) -> Boolean
+  //.
+  //. Returns `true` if its arguments are of the same type and equal according
+  //. to the type's [`fantasy-land/equals`][] method; `false` otherwise.
+  //.
+  //. `fantasy-land/equals` implementations are provided for the following
+  //. built-in types: Null, Undefined, Boolean, Number, Date, RegExp, String,
+  //. Array, Arguments, Error, Object, and Function.
+  //.
+  //. The algorithm supports circular data structures. Two arrays are equal
+  //. if they have the same index paths and for each path have equal values.
+  //. Two arrays which represent `[1, [1, [1, [1, [1, ...]]]]]`, for example,
+  //. are equal even if their internal structures differ. Two objects are equal
+  //. if they have the same property paths and for each path have equal values.
+  //.
+  //. ```javascript
+  //. > equals(0, -0)
+  //. true
+  //.
+  //. > equals(NaN, NaN)
+  //. true
+  //.
+  //. > equals(Cons('foo', Cons('bar', Nil)), Cons('foo', Cons('bar', Nil)))
+  //. true
+  //.
+  //. > equals(Cons('foo', Cons('bar', Nil)), Cons('bar', Cons('foo', Nil)))
+  //. false
+  //. ```
+  var equals = (function() {
+    //  $pairs :: Array (Pair Any Any)
+    var $pairs = [];
+
+    return function equals(x, y) {
+      if (!sameType(x, y)) { return false; }
+
+      //  This algorithm for comparing circular data structures was
+      //  suggested in <http://stackoverflow.com/a/40622794/312785>.
+      if ($pairs.some(function(p) { return p[0] === x && p[1] === y; })) {
+        return true;
+      }
+
+      $pairs.push([x, y]);
+      try {
+        return Setoid.test(x) && Setoid.test(y) && Setoid.methods.equals(x)(y);
+      } finally {
+        $pairs.pop();
+      }
     };
+  }());
 
-    proto[$map] = function Concurrently$map(mapper){
-      if(!isOuter(this)) invalidContext(OUTERNAME + '#map', this, OUTERNAME);
-      if(!isFunction(mapper)) invalidArgument(OUTERNAME + '#map', 0, 'be a function', mapper);
-      return new Concurrently(Z.map(mapper, this.sequential));
+  //# lt :: (a, b) -> Boolean
+  //.
+  //. Returns `true` if its arguments are of the same type and the first is
+  //. less than the second according to the type's [`fantasy-land/lte`][]
+  //. method; `false` otherwise.
+  //.
+  //. This function is derived from [`lte`](#lte).
+  //.
+  //. See also [`gt`](#gt) and [`gte`](#gte).
+  //.
+  //. ```javascript
+  //. > lt(0, 0)
+  //. false
+  //.
+  //. > lt(0, 1)
+  //. true
+  //.
+  //. > lt(1, 0)
+  //. false
+  //. ```
+  function lt(x, y) {
+    return sameType(x, y) && !lte(y, x);
+  }
+
+  //# lte :: (a, b) -> Boolean
+  //.
+  //. Returns `true` if its arguments are of the same type and the first
+  //. is less than or equal to the second according to the type's
+  //. [`fantasy-land/lte`][] method; `false` otherwise.
+  //.
+  //. `fantasy-land/lte` implementations are provided for the following
+  //. built-in types: Null, Undefined, Boolean, Number, Date, String, Array,
+  //. Arguments, and Object.
+  //.
+  //. The algorithm supports circular data structures in the same manner as
+  //. [`equals`](#equals).
+  //.
+  //. See also [`lt`](#lt), [`gt`](#gt), and [`gte`](#gte).
+  //.
+  //. ```javascript
+  //. > lte(0, 0)
+  //. true
+  //.
+  //. > lte(0, 1)
+  //. true
+  //.
+  //. > lte(1, 0)
+  //. false
+  //. ```
+  var lte = (function() {
+    //  $pairs :: Array (Pair Any Any)
+    var $pairs = [];
+
+    return function lte(x, y) {
+      if (!sameType(x, y)) { return false; }
+
+      //  This algorithm for comparing circular data structures was
+      //  suggested in <http://stackoverflow.com/a/40622794/312785>.
+      if ($pairs.some(function(p) { return p[0] === x && p[1] === y; })) {
+        return equals(x, y);
+      }
+
+      $pairs.push([x, y]);
+      try {
+        return Ord.test(x) && Ord.test(y) && Ord.methods.lte(x)(y);
+      } finally {
+        $pairs.pop();
+      }
     };
+  }());
 
-    proto[$ap] = function Concurrently$ap(m){
-      if(!isOuter(this)) invalidContext(OUTERNAME + '#ap', this, OUTERNAME);
-      if(!isOuter(m)) invalidArgument(OUTERNAME + '#ap', 0, 'be a ' + OUTERNAME, m);
-      return new Concurrently(ap(this.sequential, m.sequential));
-    };
+  //# gt :: (a, b) -> Boolean
+  //.
+  //. Returns `true` if its arguments are of the same type and the first is
+  //. greater than the second according to the type's [`fantasy-land/lte`][]
+  //. method; `false` otherwise.
+  //.
+  //. This function is derived from [`lte`](#lte).
+  //.
+  //. See also [`lt`](#lt) and [`gte`](#gte).
+  //.
+  //. ```javascript
+  //. > gt(0, 0)
+  //. false
+  //.
+  //. > gt(0, 1)
+  //. false
+  //.
+  //. > gt(1, 0)
+  //. true
+  //. ```
+  function gt(x, y) {
+    return lt(y, x);
+  }
 
-    proto[$alt] = function Concurrently$alt(m){
-      if(!isOuter(this)) invalidContext(OUTERNAME + '#alt', this, OUTERNAME);
-      if(!isOuter(m)) invalidArgument(OUTERNAME + '#alt', 0, 'be a ' + OUTERNAME, m);
-      return new Concurrently(alt(this.sequential, m.sequential));
-    };
+  //# gte :: (a, b) -> Boolean
+  //.
+  //. Returns `true` if its arguments are of the same type and the first
+  //. is greater than or equal to the second according to the type's
+  //. [`fantasy-land/lte`][] method; `false` otherwise.
+  //.
+  //. This function is derived from [`lte`](#lte).
+  //.
+  //. See also [`lt`](#lt) and [`gt`](#gt).
+  //.
+  //. ```javascript
+  //. > gte(0, 0)
+  //. true
+  //.
+  //. > gte(0, 1)
+  //. false
+  //.
+  //. > gte(1, 0)
+  //. true
+  //. ```
+  function gte(x, y) {
+    return lte(y, x);
+  }
 
-    proto.toString = function Concurrently$toString(){
-      if(!isOuter(this)) invalidContext(OUTERNAME + '#toString', this, OUTERNAME);
-      return OUTERNAME + '(' + Z.toString(this.sequential) + ')';
-    };
+  //# compose :: Semigroupoid c => (c j k, c i j) -> c i k
+  //.
+  //. Function wrapper for [`fantasy-land/compose`][].
+  //.
+  //. `fantasy-land/compose` implementations are provided for the following
+  //. built-in types: Function.
+  //.
+  //. ```javascript
+  //. > compose(Math.sqrt, x => x + 1)(99)
+  //. 10
+  //. ```
+  function compose(x, y) {
+    return Semigroupoid.methods.compose(y)(x);
+  }
 
-    return construct;
+  //# id :: Category c => TypeRep c -> c
+  //.
+  //. Function wrapper for [`fantasy-land/id`][].
+  //.
+  //. `fantasy-land/id` implementations are provided for the following
+  //. built-in types: Function.
+  //.
+  //. ```javascript
+  //. > id(Function)('foo')
+  //. 'foo'
+  //. ```
+  function id(typeRep) {
+    return Category.methods.id(typeRep)();
+  }
 
+  //# concat :: Semigroup a => (a, a) -> a
+  //.
+  //. Function wrapper for [`fantasy-land/concat`][].
+  //.
+  //. `fantasy-land/concat` implementations are provided for the following
+  //. built-in types: String, Array, and Object.
+  //.
+  //. ```javascript
+  //. > concat('abc', 'def')
+  //. 'abcdef'
+  //.
+  //. > concat([1, 2, 3], [4, 5, 6])
+  //. [1, 2, 3, 4, 5, 6]
+  //.
+  //. > concat({x: 1, y: 2}, {y: 3, z: 4})
+  //. {x: 1, y: 3, z: 4}
+  //.
+  //. > concat(Cons('foo', Cons('bar', Cons('baz', Nil))), Cons('quux', Nil))
+  //. Cons('foo', Cons('bar', Cons('baz', Cons('quux', Nil))))
+  //. ```
+  function concat(x, y) {
+    return Semigroup.methods.concat(x)(y);
+  }
+
+  //# empty :: Monoid m => TypeRep m -> m
+  //.
+  //. Function wrapper for [`fantasy-land/empty`][].
+  //.
+  //. `fantasy-land/empty` implementations are provided for the following
+  //. built-in types: String, Array, and Object.
+  //.
+  //. ```javascript
+  //. > empty(String)
+  //. ''
+  //.
+  //. > empty(Array)
+  //. []
+  //.
+  //. > empty(Object)
+  //. {}
+  //.
+  //. > empty(List)
+  //. Nil
+  //. ```
+  function empty(typeRep) {
+    return Monoid.methods.empty(typeRep)();
+  }
+
+  //# map :: Functor f => (a -> b, f a) -> f b
+  //.
+  //. Function wrapper for [`fantasy-land/map`][].
+  //.
+  //. `fantasy-land/map` implementations are provided for the following
+  //. built-in types: Array, Object, and Function.
+  //.
+  //. ```javascript
+  //. > map(Math.sqrt, [1, 4, 9])
+  //. [1, 2, 3]
+  //.
+  //. > map(Math.sqrt, {x: 1, y: 4, z: 9})
+  //. {x: 1, y: 2, z: 3}
+  //.
+  //. > map(Math.sqrt, s => s.length)('Sanctuary')
+  //. 3
+  //.
+  //. > map(Math.sqrt, Tuple('foo', 64))
+  //. Tuple('foo', 8)
+  //.
+  //. > map(Math.sqrt, Nil)
+  //. Nil
+  //.
+  //. > map(Math.sqrt, Cons(1, Cons(4, Cons(9, Nil))))
+  //. Cons(1, Cons(2, Cons(3, Nil)))
+  //. ```
+  function map(f, functor) {
+    return Functor.methods.map(functor)(f);
+  }
+
+  //# bimap :: Bifunctor f => (a -> b, c -> d, f a c) -> f b d
+  //.
+  //. Function wrapper for [`fantasy-land/bimap`][].
+  //.
+  //. ```javascript
+  //. > bimap(s => s.toUpperCase(), Math.sqrt, Tuple('foo', 64))
+  //. Tuple('FOO', 8)
+  //. ```
+  function bimap(f, g, bifunctor) {
+    return Bifunctor.methods.bimap(bifunctor)(f, g);
+  }
+
+  //# promap :: Profunctor p => (a -> b, c -> d, p b c) -> p a d
+  //.
+  //. Function wrapper for [`fantasy-land/promap`][].
+  //.
+  //. `fantasy-land/promap` implementations are provided for the following
+  //. built-in types: Function.
+  //.
+  //. ```javascript
+  //. > promap(Math.abs, x => x + 1, Math.sqrt)(-100)
+  //. 11
+  //. ```
+  function promap(f, g, profunctor) {
+    return Profunctor.methods.promap(profunctor)(f, g);
+  }
+
+  //# ap :: Apply f => (f (a -> b), f a) -> f b
+  //.
+  //. Function wrapper for [`fantasy-land/ap`][].
+  //.
+  //. `fantasy-land/ap` implementations are provided for the following
+  //. built-in types: Array, Object, and Function.
+  //.
+  //. ```javascript
+  //. > ap([Math.sqrt, x => x * x], [1, 4, 9, 16, 25])
+  //. [1, 2, 3, 4, 5, 1, 16, 81, 256, 625]
+  //.
+  //. > ap({a: Math.sqrt, b: x => x * x}, {a: 16, b: 10, c: 1})
+  //. {a: 4, b: 100}
+  //.
+  //. > ap(s => n => s.slice(0, n), s => Math.ceil(s.length / 2))('Haskell')
+  //. 'Hask'
+  //.
+  //. > ap(Identity(Math.sqrt), Identity(64))
+  //. Identity(8)
+  //.
+  //. > ap(Cons(Math.sqrt, Cons(x => x * x, Nil)), Cons(16, Cons(100, Nil)))
+  //. Cons(4, Cons(10, Cons(256, Cons(10000, Nil))))
+  //. ```
+  function ap(applyF, applyX) {
+    return Apply.methods.ap(applyX)(applyF);
+  }
+
+  //# lift2 :: Apply f => (a -> b -> c, f a, f b) -> f c
+  //.
+  //. Lifts `a -> b -> c` to `Apply f => f a -> f b -> f c` and returns the
+  //. result of applying this to the given arguments.
+  //.
+  //. This function is derived from [`map`](#map) and [`ap`](#ap).
+  //.
+  //. See also [`lift3`](#lift3).
+  //.
+  //. ```javascript
+  //. > lift2(x => y => Math.pow(x, y), [10], [1, 2, 3])
+  //. [10, 100, 1000]
+  //.
+  //. > lift2(x => y => Math.pow(x, y), Identity(10), Identity(3))
+  //. Identity(1000)
+  //. ```
+  function lift2(f, x, y) {
+    return ap(map(f, x), y);
+  }
+
+  //# lift3 :: Apply f => (a -> b -> c -> d, f a, f b, f c) -> f d
+  //.
+  //. Lifts `a -> b -> c -> d` to `Apply f => f a -> f b -> f c -> f d` and
+  //. returns the result of applying this to the given arguments.
+  //.
+  //. This function is derived from [`map`](#map) and [`ap`](#ap).
+  //.
+  //. See also [`lift2`](#lift2).
+  //.
+  //. ```javascript
+  //. > lift3(x => y => z => x + z + y, ['<'], ['>'], ['foo', 'bar', 'baz'])
+  //. ['<foo>', '<bar>', '<baz>']
+  //.
+  //. > lift3(x => y => z => x + z + y, Identity('<'), Identity('>'), Identity('baz'))
+  //. Identity('<baz>')
+  //. ```
+  function lift3(f, x, y, z) {
+    return ap(ap(map(f, x), y), z);
+  }
+
+  //# apFirst :: Apply f => (f a, f b) -> f a
+  //.
+  //. Combines two effectful actions, keeping only the result of the first.
+  //. Equivalent to Haskell's `(<*)` function.
+  //.
+  //. This function is derived from [`lift2`](#lift2).
+  //.
+  //. See also [`apSecond`](#apSecond).
+  //.
+  //. ```javascript
+  //. > apFirst([1, 2], [3, 4])
+  //. [1, 1, 2, 2]
+  //.
+  //. > apFirst(Identity(1), Identity(2))
+  //. Identity(1)
+  //. ```
+  function apFirst(x, y) {
+    return lift2(constant, x, y);
+  }
+
+  //# apSecond :: Apply f => (f a, f b) -> f b
+  //.
+  //. Combines two effectful actions, keeping only the result of the second.
+  //. Equivalent to Haskell's `(*>)` function.
+  //.
+  //. This function is derived from [`lift2`](#lift2).
+  //.
+  //. See also [`apFirst`](#apFirst).
+  //.
+  //. ```javascript
+  //. > apSecond([1, 2], [3, 4])
+  //. [3, 4, 3, 4]
+  //.
+  //. > apSecond(Identity(1), Identity(2))
+  //. Identity(2)
+  //. ```
+  function apSecond(x, y) {
+    return lift2(constant(identity), x, y);
+  }
+
+  //# of :: Applicative f => (TypeRep f, a) -> f a
+  //.
+  //. Function wrapper for [`fantasy-land/of`][].
+  //.
+  //. `fantasy-land/of` implementations are provided for the following
+  //. built-in types: Array and Function.
+  //.
+  //. ```javascript
+  //. > of(Array, 42)
+  //. [42]
+  //.
+  //. > of(Function, 42)(null)
+  //. 42
+  //.
+  //. > of(List, 42)
+  //. Cons(42, Nil)
+  //. ```
+  function of(typeRep, x) {
+    return Applicative.methods.of(typeRep)(x);
+  }
+
+  //# chain :: Chain m => (a -> m b, m a) -> m b
+  //.
+  //. Function wrapper for [`fantasy-land/chain`][].
+  //.
+  //. `fantasy-land/chain` implementations are provided for the following
+  //. built-in types: Array and Function.
+  //.
+  //. ```javascript
+  //. > chain(x => [x, x], [1, 2, 3])
+  //. [1, 1, 2, 2, 3, 3]
+  //.
+  //. > chain(x => x % 2 == 1 ? of(List, x) : Nil, Cons(1, Cons(2, Cons(3, Nil))))
+  //. Cons(1, Cons(3, Nil))
+  //.
+  //. > chain(n => s => s.slice(0, n), s => Math.ceil(s.length / 2))('Haskell')
+  //. 'Hask'
+  //. ```
+  function chain(f, chain_) {
+    return Chain.methods.chain(chain_)(f);
+  }
+
+  //# join :: Chain m => m (m a) -> m a
+  //.
+  //. Removes one level of nesting from a nested monadic structure.
+  //.
+  //. This function is derived from [`chain`](#chain).
+  //.
+  //. ```javascript
+  //. > join([[1], [2], [3]])
+  //. [1, 2, 3]
+  //.
+  //. > join([[[1, 2, 3]]])
+  //. [[1, 2, 3]]
+  //.
+  //. > join(Identity(Identity(1)))
+  //. Identity(1)
+  //. ```
+  function join(chain_) {
+    return chain(identity, chain_);
+  }
+
+  //# chainRec :: ChainRec m => (TypeRep m, (a -> c, b -> c, a) -> m c, a) -> m b
+  //.
+  //. Function wrapper for [`fantasy-land/chainRec`][].
+  //.
+  //. `fantasy-land/chainRec` implementations are provided for the following
+  //. built-in types: Array.
+  //.
+  //. ```javascript
+  //. > chainRec(
+  //. .   Array,
+  //. .   (next, done, s) => s.length == 2 ? [s + '!', s + '?'].map(done)
+  //. .                                    : [s + 'o', s + 'n'].map(next),
+  //. .   ''
+  //. . )
+  //. ['oo!', 'oo?', 'on!', 'on?', 'no!', 'no?', 'nn!', 'nn?']
+  //. ```
+  function chainRec(typeRep, f, x) {
+    return ChainRec.methods.chainRec(typeRep)(f, x);
+  }
+
+  //# filter :: (Applicative f, Foldable f, Monoid (f a)) => (a -> Boolean, f a) -> f a
+  //.
+  //. Filters its second argument in accordance with the given predicate.
+  //.
+  //. This function is derived from [`concat`](#concat), [`empty`](#empty),
+  //. [`of`](#of), and [`reduce`](#reduce).
+  //.
+  //. See also [`filterM`](#filterM).
+  //.
+  //. ```javascript
+  //. > filter(x => x % 2 == 1, [1, 2, 3])
+  //. [1, 3]
+  //.
+  //. > filter(x => x % 2 == 1, Cons(1, Cons(2, Cons(3, Nil))))
+  //. Cons(1, Cons(3, Nil))
+  //. ```
+  function filter(pred, m) {
+    var M = m.constructor;
+    return reduce(function(m, x) { return pred(x) ? concat(m, of(M, x)) : m; },
+                  empty(M),
+                  m);
+  }
+
+  //# filterM :: (Alternative m, Monad m) => (a -> Boolean, m a) -> m a
+  //.
+  //. Filters its second argument in accordance with the given predicate.
+  //.
+  //. This function is derived from [`of`](#of), [`chain`](#chain), and
+  //. [`zero`](#zero).
+  //.
+  //. See also [`filter`](#filter).
+  //.
+  //. ```javascript
+  //. > filterM(x => x % 2 == 1, [1, 2, 3])
+  //. [1, 3]
+  //.
+  //. > filterM(x => x % 2 == 1, Cons(1, Cons(2, Cons(3, Nil))))
+  //. Cons(1, Cons(3, Nil))
+  //.
+  //. > filterM(x => x % 2 == 1, Nothing)
+  //. Nothing
+  //.
+  //. > filterM(x => x % 2 == 1, Just(0))
+  //. Nothing
+  //.
+  //. > filterM(x => x % 2 == 1, Just(1))
+  //. Just(1)
+  //. ```
+  function filterM(pred, m) {
+    var M = m.constructor;
+    var z = zero(M);
+    return chain(function(x) { return pred(x) ? of(M, x) : z; }, m);
+  }
+
+  //# alt :: Alt f => (f a, f a) -> f a
+  //.
+  //. Function wrapper for [`fantasy-land/alt`][].
+  //.
+  //. `fantasy-land/alt` implementations are provided for the following
+  //. built-in types: Array and Object.
+  //.
+  //. ```javascript
+  //. > alt([1, 2, 3], [4, 5, 6])
+  //. [1, 2, 3, 4, 5, 6]
+  //.
+  //. > alt(Nothing, Nothing)
+  //. Nothing
+  //.
+  //. > alt(Nothing, Just(1))
+  //. Just(1)
+  //.
+  //. > alt(Just(2), Just(3))
+  //. Just(2)
+  //. ```
+  function alt(x, y) {
+    return Alt.methods.alt(x)(y);
+  }
+
+  //# zero :: Plus f => TypeRep f -> f a
+  //.
+  //. Function wrapper for [`fantasy-land/zero`][].
+  //.
+  //. `fantasy-land/zero` implementations are provided for the following
+  //. built-in types: Array and Object.
+  //.
+  //. ```javascript
+  //. > zero(Array)
+  //. []
+  //.
+  //. > zero(Object)
+  //. {}
+  //.
+  //. > zero(Maybe)
+  //. Nothing
+  //. ```
+  function zero(typeRep) {
+    return Plus.methods.zero(typeRep)();
+  }
+
+  //# reduce :: Foldable f => ((b, a) -> b, b, f a) -> b
+  //.
+  //. Function wrapper for [`fantasy-land/reduce`][].
+  //.
+  //. `fantasy-land/reduce` implementations are provided for the following
+  //. built-in types: Array and Object.
+  //.
+  //. ```javascript
+  //. > reduce((xs, x) => [x].concat(xs), [], [1, 2, 3])
+  //. [3, 2, 1]
+  //.
+  //. > reduce(concat, '', Cons('foo', Cons('bar', Cons('baz', Nil))))
+  //. 'foobarbaz'
+  //. ```
+  function reduce(f, x, foldable) {
+    return Foldable.methods.reduce(foldable)(f, x);
+  }
+
+  //# traverse :: (Applicative f, Traversable t) => (TypeRep f, a -> f b, t a) -> f (t b)
+  //.
+  //. Function wrapper for [`fantasy-land/traverse`][].
+  //.
+  //. `fantasy-land/traverse` implementations are provided for the following
+  //. built-in types: Array and Object.
+  //.
+  //. See also [`sequence`](#sequence).
+  //.
+  //. ```javascript
+  //. > traverse(Array, x => x, [[1, 2, 3], [4, 5]])
+  //. [[1, 4], [1, 5], [2, 4], [2, 5], [3, 4], [3, 5]]
+  //.
+  //. > traverse(Identity, x => Identity(x + 1), [1, 2, 3])
+  //. Identity([2, 3, 4])
+  //. ```
+  function traverse(typeRep, f, traversable) {
+    return Traversable.methods.traverse(traversable)(typeRep, f);
+  }
+
+  //# sequence :: (Applicative f, Traversable t) => (TypeRep f, t (f a)) -> f (t a)
+  //.
+  //. Inverts the given `t (f a)` to produce an `f (t a)`.
+  //.
+  //. This function is derived from [`traverse`](#traverse).
+  //.
+  //. ```javascript
+  //. > sequence(Array, Identity([1, 2, 3]))
+  //. [Identity(1), Identity(2), Identity(3)]
+  //.
+  //. > sequence(Identity, [Identity(1), Identity(2), Identity(3)])
+  //. Identity([1, 2, 3])
+  //. ```
+  function sequence(typeRep, traversable) {
+    return traverse(typeRep, identity, traversable);
+  }
+
+  //# extend :: Extend w => (w a -> b, w a) -> w b
+  //.
+  //. Function wrapper for [`fantasy-land/extend`][].
+  //.
+  //. `fantasy-land/extend` implementations are provided for the following
+  //. built-in types: Array.
+  //.
+  //. ```javascript
+  //. > extend(ss => ss.join(''), ['x', 'y', 'z'])
+  //. ['xyz', 'yz', 'z']
+  //. ```
+  function extend(f, extend_) {
+    return Extend.methods.extend(extend_)(f);
+  }
+
+  //# extract :: Comonad w => w a -> a
+  //.
+  //. Function wrapper for [`fantasy-land/extract`][].
+  //.
+  //. ```javascript
+  //. > extract(Identity(42))
+  //. 42
+  //. ```
+  function extract(comonad) {
+    return Comonad.methods.extract(comonad)();
+  }
+
+  //# contramap :: Contravariant f => (b -> a, f a) -> f b
+  //.
+  //. Function wrapper for [`fantasy-land/contramap`][].
+  //.
+  //. `fantasy-land/contramap` implementations are provided for the following
+  //. built-in types: Function.
+  //.
+  //. ```javascript
+  //. > contramap(s => s.length, Math.sqrt)('Sanctuary')
+  //. 3
+  //. ```
+  function contramap(f, contravariant) {
+    return Contravariant.methods.contramap(contravariant)(f);
+  }
+
+  return {
+    TypeClass: TypeClass,
+    Setoid: Setoid,
+    Ord: Ord,
+    Semigroupoid: Semigroupoid,
+    Category: Category,
+    Semigroup: Semigroup,
+    Monoid: Monoid,
+    Functor: Functor,
+    Bifunctor: Bifunctor,
+    Profunctor: Profunctor,
+    Apply: Apply,
+    Applicative: Applicative,
+    Chain: Chain,
+    ChainRec: ChainRec,
+    Monad: Monad,
+    Alt: Alt,
+    Plus: Plus,
+    Alternative: Alternative,
+    Foldable: Foldable,
+    Traversable: Traversable,
+    Extend: Extend,
+    Comonad: Comonad,
+    Contravariant: Contravariant,
+    toString: toString,
+    equals: equals,
+    lt: lt,
+    lte: lte,
+    gt: gt,
+    gte: gte,
+    compose: compose,
+    id: id,
+    concat: concat,
+    empty: empty,
+    map: map,
+    bimap: bimap,
+    promap: promap,
+    ap: ap,
+    lift2: lift2,
+    lift3: lift3,
+    apFirst: apFirst,
+    apSecond: apSecond,
+    of: of,
+    chain: chain,
+    join: join,
+    chainRec: chainRec,
+    filter: filter,
+    filterM: filterM,
+    alt: alt,
+    zero: zero,
+    reduce: reduce,
+    traverse: traverse,
+    sequence: sequence,
+    extend: extend,
+    extract: extract,
+    contramap: contramap
   };
 
 }));
 
-}).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{"sanctuary-type-classes":5,"sanctuary-type-identifiers":7}],2:[function(require,module,exports){
-'use strict';
-
-/**
- * Custom implementation of a double ended queue.
- */
-function Denque(array) {
-  // circular buffer
-  this._list = new Array(4);
-  // bit mask
-  this._capacityMask = 0x3;
-  // next unread item
-  this._head = 0;
-  // next empty slot
-  this._tail = 0;
-
-  if (Array.isArray(array)) {
-    this._fromArray(array);
-  }
-}
-
-/**
- * -------------
- *  PUBLIC API
- * -------------
- */
-
-/**
- * Returns the item at the specified index from the list.
- * 0 is the first element, 1 is the second, and so on...
- * Elements at negative values are that many from the end: -1 is one before the end
- * (the last element), -2 is two before the end (one before last), etc.
- * @param index
- * @returns {*}
- */
-Denque.prototype.peekAt = function peekAt(index) {
-  var i = index;
-  // expect a number or return undefined
-  if ((i !== (i | 0))) {
-    return void 0;
-  }
-  var len = this.size();
-  if (i >= len || i < -len) return undefined;
-  if (i < 0) i += len;
-  i = (this._head + i) & this._capacityMask;
-  return this._list[i];
-};
-
-/**
- * Alias for peakAt()
- * @param i
- * @returns {*}
- */
-Denque.prototype.get = function get(i) {
-  return this.peekAt(i);
-};
-
-/**
- * Returns the first item in the list without removing it.
- * @returns {*}
- */
-Denque.prototype.peek = function peek() {
-  if (this._head === this._tail) return undefined;
-  return this._list[this._head];
-};
-
-/**
- * Alias for peek()
- * @returns {*}
- */
-Denque.prototype.peekFront = function peekFront() {
-  return this.peek();
-};
-
-/**
- * Returns the item that is at the back of the queue without removing it.
- * Uses peekAt(-1)
- */
-Denque.prototype.peekBack = function peekBack() {
-  return this.peekAt(-1);
-};
-
-/**
- * Returns the current length of the queue
- * @return {Number}
- */
-Object.defineProperty(Denque.prototype, 'length', {
-  get: function length() {
-    return this.size();
-  }
+//. [Alt]:                      https://github.com/fantasyland/fantasy-land#alt
+//. [Alternative]:              https://github.com/fantasyland/fantasy-land#alternative
+//. [Applicative]:              https://github.com/fantasyland/fantasy-land#applicative
+//. [Apply]:                    https://github.com/fantasyland/fantasy-land#apply
+//. [Bifunctor]:                https://github.com/fantasyland/fantasy-land#bifunctor
+//. [Category]:                 https://github.com/fantasyland/fantasy-land#category
+//. [Chain]:                    https://github.com/fantasyland/fantasy-land#chain
+//. [ChainRec]:                 https://github.com/fantasyland/fantasy-land#chainrec
+//. [Comonad]:                  https://github.com/fantasyland/fantasy-land#comonad
+//. [Contravariant]:            https://github.com/fantasyland/fantasy-land#contravariant
+//. [Extend]:                   https://github.com/fantasyland/fantasy-land#extend
+//. [FL]:                       https://github.com/fantasyland/fantasy-land
+//. [Foldable]:                 https://github.com/fantasyland/fantasy-land#foldable
+//. [Functor]:                  https://github.com/fantasyland/fantasy-land#functor
+//. [Monad]:                    https://github.com/fantasyland/fantasy-land#monad
+//. [Monoid]:                   https://github.com/fantasyland/fantasy-land#monoid
+//. [Ord]:                      https://github.com/fantasyland/fantasy-land#ord
+//. [Plus]:                     https://github.com/fantasyland/fantasy-land#plus
+//. [Profunctor]:               https://github.com/fantasyland/fantasy-land#profunctor
+//. [Semigroup]:                https://github.com/fantasyland/fantasy-land#semigroup
+//. [Semigroupoid]:             https://github.com/fantasyland/fantasy-land#semigroupoid
+//. [Setoid]:                   https://github.com/fantasyland/fantasy-land#setoid
+//. [Traversable]:              https://github.com/fantasyland/fantasy-land#traversable
+//. [`fantasy-land/alt`]:       https://github.com/fantasyland/fantasy-land#alt-method
+//. [`fantasy-land/ap`]:        https://github.com/fantasyland/fantasy-land#ap-method
+//. [`fantasy-land/bimap`]:     https://github.com/fantasyland/fantasy-land#bimap-method
+//. [`fantasy-land/chain`]:     https://github.com/fantasyland/fantasy-land#chain-method
+//. [`fantasy-land/chainRec`]:  https://github.com/fantasyland/fantasy-land#chainrec-method
+//. [`fantasy-land/compose`]:   https://github.com/fantasyland/fantasy-land#compose-method
+//. [`fantasy-land/concat`]:    https://github.com/fantasyland/fantasy-land#concat-method
+//. [`fantasy-land/contramap`]: https://github.com/fantasyland/fantasy-land#contramap-method
+//. [`fantasy-land/empty`]:     https://github.com/fantasyland/fantasy-land#empty-method
+//. [`fantasy-land/equals`]:    https://github.com/fantasyland/fantasy-land#equals-method
+//. [`fantasy-land/extend`]:    https://github.com/fantasyland/fantasy-land#extend-method
+//. [`fantasy-land/extract`]:   https://github.com/fantasyland/fantasy-land#extract-method
+//. [`fantasy-land/id`]:        https://github.com/fantasyland/fantasy-land#id-method
+//. [`fantasy-land/lte`]:       https://github.com/fantasyland/fantasy-land#lte-method
+//. [`fantasy-land/map`]:       https://github.com/fantasyland/fantasy-land#map-method
+//. [`fantasy-land/of`]:        https://github.com/fantasyland/fantasy-land#of-method
+//. [`fantasy-land/promap`]:    https://github.com/fantasyland/fantasy-land#promap-method
+//. [`fantasy-land/reduce`]:    https://github.com/fantasyland/fantasy-land#reduce-method
+//. [`fantasy-land/traverse`]:  https://github.com/fantasyland/fantasy-land#traverse-method
+//. [`fantasy-land/zero`]:      https://github.com/fantasyland/fantasy-land#zero-method
+//. [type-classes]:             https://github.com/sanctuary-js/sanctuary-def#type-classes
 });
 
-/**
- * Return the number of items on the list, or 0 if empty.
- * @returns {number}
- */
-Denque.prototype.size = function size() {
-  if (this._head === this._tail) return 0;
-  if (this._head < this._tail) return this._tail - this._head;
-  else return this._capacityMask + 1 - (this._head - this._tail);
-};
+var inspectF = createCommonjsModule(function (module) {
+(function(global, f) {
 
-/**
- * Add an item at the beginning of the list.
- * @param item
- */
-Denque.prototype.unshift = function unshift(item) {
-  if (item === undefined) return this.length;
-  var len = this._list.length;
-  this._head = (this._head - 1 + len) & this._capacityMask;
-  this._list[this._head] = item;
-  if (this._tail === this._head) this._growArray();
-  if (this._head < this._tail) return this._tail - this._head;
-  else return this._capacityMask + 1 - (this._head - this._tail);
-};
+  'use strict';
 
-/**
- * Remove and return the first item on the list,
- * Returns undefined if the list is empty.
- * @returns {*}
- */
-Denque.prototype.shift = function shift() {
-  var head = this._head;
-  if (head === this._tail) return undefined;
-  var item = this._list[head];
-  this._list[head] = undefined;
-  this._head = (head + 1) & this._capacityMask;
-  if (head < 2 && this._tail > 10000 && this._tail <= this._list.length >>> 2) this._shrinkArray();
-  return item;
-};
-
-/**
- * Add an item to the bottom of the list.
- * @param item
- */
-Denque.prototype.push = function push(item) {
-  if (item === undefined) return this.length;
-  var tail = this._tail;
-  this._list[tail] = item;
-  this._tail = (tail + 1) & this._capacityMask;
-  if (this._tail === this._head) {
-    this._growArray();
+  /*istanbul ignore next*/
+  {
+    module.exports = f();
   }
 
-  if (this._head < this._tail) return this._tail - this._head;
-  else return this._capacityMask + 1 - (this._head - this._tail);
-};
+}(/*istanbul ignore next*/(commonjsGlobal || window || commonjsGlobal), function() {
 
-/**
- * Remove and return the last item on the list.
- * Returns undefined if the list is empty.
- * @returns {*}
- */
-Denque.prototype.pop = function pop() {
-  var tail = this._tail;
-  if (tail === this._head) return undefined;
-  var len = this._list.length;
-  this._tail = (tail - 1 + len) & this._capacityMask;
-  var item = this._list[this._tail];
-  this._list[this._tail] = undefined;
-  if (this._head < 2 && tail > 10000 && tail <= len >>> 2) this._shrinkArray();
-  return item;
-};
+  'use strict';
 
-/**
- * Remove and return the item at the specified index from the list.
- * Returns undefined if the list is empty.
- * @param index
- * @returns {*}
- */
-Denque.prototype.removeOne = function removeOne(index) {
-  var i = index;
-  // expect a number or return undefined
-  if ((i !== (i | 0))) {
-    return void 0;
-  }
-  if (this._head === this._tail) return void 0;
-  var size = this.size();
-  var len = this._list.length;
-  if (i >= size || i < -size) return void 0;
-  if (i < 0) i += size;
-  i = (this._head + i) & this._capacityMask;
-  var item = this._list[i];
-  var k;
-  if (index < size / 2) {
-    for (k = index; k > 0; k--) {
-      this._list[i] = this._list[i = (i - 1 + len) & this._capacityMask];
-    }
-    this._list[i] = void 0;
-    this._head = (this._head + 1 + len) & this._capacityMask;
-  } else {
-    for (k = size - 1 - index; k > 0; k--) {
-      this._list[i] = this._list[i = ( i + 1 + len) & this._capacityMask];
-    }
-    this._list[i] = void 0;
-    this._tail = (this._tail - 1 + len) & this._capacityMask;
-  }
-  return item;
-};
-
-/**
- * Remove number of items from the specified index from the list.
- * Returns array of removed items.
- * Returns undefined if the list is empty.
- * @param index
- * @param count
- * @returns {array}
- */
-Denque.prototype.remove = function remove(index, count) {
-  var i = index;
-  var removed;
-  var del_count = count;
-  // expect a number or return undefined
-  if ((i !== (i | 0))) {
-    return void 0;
-  }
-  if (this._head === this._tail) return void 0;
-  var size = this.size();
-  var len = this._list.length;
-  if (i >= size || i < -size || count < 1) return void 0;
-  if (i < 0) i += size;
-  if (count === 1 || !count) {
-    removed = new Array(1);
-    removed[0] = this.removeOne(i);
-    return removed;
-  }
-  if (i === 0 && i + count >= size) {
-    removed = this.toArray();
-    this.clear();
-    return removed;
-  }
-  if (i + count > size) count = size - i;
-  var k;
-  removed = new Array(count);
-  for (k = 0; k < count; k++) {
-    removed[k] = this._list[(this._head + i + k) & this._capacityMask];
-  }
-  i = (this._head + i) & this._capacityMask;
-  if (index + count === size) {
-    this._tail = (this._tail - count + len) & this._capacityMask;
-    for (k = count; k > 0; k--) {
-      this._list[i = (i + 1 + len) & this._capacityMask] = void 0;
-    }
-    return removed;
-  }
-  if (index === 0) {
-    this._head = (this._head + count + len) & this._capacityMask;
-    for (k = count - 1; k > 0; k--) {
-      this._list[i = (i + 1 + len) & this._capacityMask] = void 0;
-    }
-    return removed;
-  }
-  if (index < size / 2) {
-    this._head = (this._head + index + count + len) & this._capacityMask;
-    for (k = index; k > 0; k--) {
-      this.unshift(this._list[i = (i - 1 + len) & this._capacityMask]);
-    }
-    i = (this._head - 1 + len) & this._capacityMask;
-    while (del_count > 0) {
-      this._list[i = (i - 1 + len) & this._capacityMask] = void 0;
-      del_count--;
-    }
-  } else {
-    this._tail = i;
-    i = (i + count + len) & this._capacityMask;
-    for (k = size - (count + index); k > 0; k--) {
-      this.push(this._list[i++]);
-    }
-    i = this._tail;
-    while (del_count > 0) {
-      this._list[i = (i + 1 + len) & this._capacityMask] = void 0;
-      del_count--;
+  function checkn(n) {
+    if(typeof n !== 'number') {
+      throw new TypeError(
+        'inspectf expects its first argument to be a number'
+      );
     }
   }
-  if (this._head < 2 && this._tail > 10000 && this._tail <= len >>> 2) this._shrinkArray();
-  return removed;
-};
 
-/**
- * Native splice implementation.
- * Remove number of items from the specified index from the list and/or add new elements.
- * Returns array of removed items or empty array if count == 0.
- * Returns undefined if the list is empty.
- *
- * @param index
- * @param count
- * @param {...*} [elements]
- * @returns {array}
- */
-Denque.prototype.splice = function splice(index, count) {
-  var i = index;
-  var size = this.size();
-  // expect a number or return undefined
-  if ((i !== (i | 0))) {
-    return void 0;
-  }
-  if (this._head === this._tail) return void 0;
-  if (i > size || i < -size) return void 0;
-  if (i === size && count != 0) return void 0;
-  if (i < 0) i += size;
-  if (arguments.length > 2) {
-    var k;
-    var temp;
-    var removed;
-    var arg_len = arguments.length;
-    var len = this._list.length;
-    var arguments_index = 2;
-    if (i < size / 2) {
-      temp = new Array(i);
-      for (k = 0; k < i; k++) {
-        temp[k] = this._list[(this._head + k) & this._capacityMask];
-      }
-      if (count === 0) {
-        removed = [];
-        if (i > 0) {
-          this._head = (this._head + i + len) & this._capacityMask;
-        }
-      } else {
-        removed = this.remove(i, count);
-        this._head = (this._head + i + len) & this._capacityMask;
-      }
-      while (arg_len > arguments_index) {
-        this.unshift(arguments[--arg_len]);
-      }
-      for (k = i; k > 0; k--) {
-        this.unshift(temp[k - 1]);
-      }
-    } else {
-      temp = new Array(size - (i + count));
-      var leng = temp.length;
-      for (k = 0; k < leng; k++) {
-        temp[k] = this._list[(this._head + i + count + k) & this._capacityMask];
-      }
-      if (count === 0) {
-        removed = [];
-        if (i != size) {
-          this._tail = (this._head + i + len) & this._capacityMask;
-        }
-      } else {
-        removed = this.remove(i, count);
-        this._tail = (this._tail - leng + len) & this._capacityMask;
-      }
-      while (arguments_index < arg_len) {
-        this.push(arguments[arguments_index++]);
-      }
-      for (k = 0; k < leng; k++) {
-        this.push(temp[k]);
-      }
+  function checkf(f) {
+    if(typeof f !== 'function') {
+      throw new TypeError(
+        'inspectf expects its second argument to be a function'
+      );
     }
-    return removed;
-  } else {
-    return this.remove(i, count);
-  }
-};
-
-/**
- * Soft clear - does not reset capacity.
- */
-Denque.prototype.clear = function clear() {
-  this._head = 0;
-  this._tail = 0;
-};
-
-/**
- * Returns true or false whether the list is empty.
- * @returns {boolean}
- */
-Denque.prototype.isEmpty = function isEmpty() {
-  return this._head === this._tail;
-};
-
-/**
- * Returns an array of all queue items.
- * @returns {Array}
- */
-Denque.prototype.toArray = function toArray() {
-  return this._copyArray(false);
-};
-
-/**
- * -------------
- *   INTERNALS
- * -------------
- */
-
-/**
- * Fills the queue with items from an array
- * For use in the constructor
- * @param array
- * @private
- */
-Denque.prototype._fromArray = function _fromArray(array) {
-  for (var i = 0; i < array.length; i++) this.push(array[i]);
-};
-
-/**
- *
- * @param fullCopy
- * @returns {Array}
- * @private
- */
-Denque.prototype._copyArray = function _copyArray(fullCopy) {
-  var newArray = [];
-  var list = this._list;
-  var len = list.length;
-  var i;
-  if (fullCopy || this._head > this._tail) {
-    for (i = this._head; i < len; i++) newArray.push(list[i]);
-    for (i = 0; i < this._tail; i++) newArray.push(list[i]);
-  } else {
-    for (i = this._head; i < this._tail; i++) newArray.push(list[i]);
-  }
-  return newArray;
-};
-
-/**
- * Grows the internal list array.
- * @private
- */
-Denque.prototype._growArray = function _growArray() {
-  if (this._head) {
-    // copy existing data, head to end, then beginning to tail.
-    this._list = this._copyArray(true);
-    this._head = 0;
   }
 
-  // head is at 0 and array is now full, safe to extend
-  this._tail = this._list.length;
+  var RSPACE = /^ */;
+  var RCODE = /\s*[^\s]/;
+  var RTABS = /\t/g;
+  var REOL = /\n\r?/;
 
-  this._list.length *= 2;
-  this._capacityMask = (this._capacityMask << 1) | 1;
-};
+  function isCode(line) {
+    return RCODE.test(line);
+  }
 
-/**
- * Shrinks the internal list array.
- * @private
- */
-Denque.prototype._shrinkArray = function _shrinkArray() {
-  this._list.length >>>= 1;
-  this._capacityMask >>>= 1;
-};
+  function getPadding(line) {
+    return line.match(RSPACE)[0].length;
+  }
 
+  function guessIndentation(lines) {
+    var filtered = lines.filter(isCode);
+    var paddings = filtered.map(getPadding);
+    var depth = paddings.reduce(Math.min, Infinity);
+    var tabsize = paddings
+    .map(function(x) { return x - depth; })
+    .find(function(x) { return x > 1; }) || 2;
+    return {depth: depth, tabsize: tabsize};
+  }
 
-module.exports = Denque;
+  function pad(n) {
+    return (new Array(n + 1)).join(' ');
+  }
 
-},{}],3:[function(require,module,exports){
-(function (global, factory) {
-  typeof exports === 'object' && typeof module !== 'undefined' ? module.exports = factory(require('sanctuary-type-classes'), require('inspect-f'), require('sanctuary-type-identifiers'), require('denque'), require('concurrify')) :
-  typeof define === 'function' && define.amd ? define(['sanctuary-type-classes', 'inspect-f', 'sanctuary-type-identifiers', 'denque', 'concurrify'], factory) :
-  (global.Fluture = factory(global.sanctuaryTypeClasses,global.inspectf,global.sanctuaryTypeIdentifiers,global.Denque,global.concurrify));
-}(this, (function (Z,inspectf,type,Denque,concurrify) { 'use strict';
+  function show(f, indentation) {
+    return f.toString().replace(RTABS, indentation);
+  }
 
-Z = Z && Z.hasOwnProperty('default') ? Z['default'] : Z;
-inspectf = inspectf && inspectf.hasOwnProperty('default') ? inspectf['default'] : inspectf;
-type = type && type.hasOwnProperty('default') ? type['default'] : type;
-Denque = Denque && Denque.hasOwnProperty('default') ? Denque['default'] : Denque;
-concurrify = concurrify && concurrify.hasOwnProperty('default') ? concurrify['default'] : concurrify;
+  function toLines(s) {
+    return s.split(REOL);
+  }
+
+  function fixIndentation(lines, indentation) {
+    var info = guessIndentation(lines.slice(1));
+    var RPAD = new RegExp(pad(info.tabsize), 'g');
+    return lines.map(function(line) {
+      return line.slice(Math.min(info.depth, getPadding(line)))
+      .replace(RPAD, '\t').replace(RTABS, indentation);
+    }).join('\n');
+  }
+
+  return function inspectf(n, f) {
+    checkn(n);
+    if(arguments.length < 2) {
+      return function inspectf$partial(f) { return inspectf(n, f); };
+    }
+    checkf(f);
+    if(f.toString !== Function.prototype.toString) {return f.toString();}
+    var i = pad(n), shown = show(f, i), lines = toLines(shown, i);
+    if(lines.length < 2) {return shown;}
+    return fixIndentation(lines, i);
+  };
+
+}));
+});
 
 var noop = function noop(){};
 var moop = function moop(){ return this };
-var show = Z.toString;
+var show = index$2.toString;
 var padf = function (sf, s) { return s.replace(/^/gm, sf).replace(sf, ''); };
-var showf = function (f) { return padf('  ', inspectf(2, f)); };
+var showf = function (f) { return padf('  ', inspectF(2, f)); };
 
 var mapArray = function (xs, f) {
   var l = xs.length, ys = new Array(l);
@@ -668,6 +2244,199 @@ var version = 3;
 
 var $$type = namespace + "/" + name + "@" + version;
 
+var index$5 = createCommonjsModule(function (module) {
+/*
+        @@@@@@@            @@@@@@@         @@
+      @@       @@        @@       @@      @@@
+    @@   @@@ @@  @@    @@   @@@ @@  @@   @@@@@@ @@   @@@  @@ @@@      @@@@
+   @@  @@   @@@   @@  @@  @@   @@@   @@   @@@   @@   @@@  @@@   @@  @@@   @@
+   @@  @@   @@@   @@  @@  @@   @@@   @@   @@@   @@   @@@  @@@   @@  @@@@@@@@
+   @@  @@   @@@  @@   @@  @@   @@@  @@    @@@   @@   @@@  @@@   @@  @@@
+    @@   @@@ @@@@@     @@   @@@ @@@@@      @@@    @@@ @@  @@@@@@      @@@@@
+      @@                 @@                           @@  @@
+        @@@@@@@            @@@@@@@               @@@@@    @@
+                                                          */
+//. # sanctuary-type-identifiers
+//.
+//. A type is a set of values. Boolean, for example, is the type comprising
+//. `true` and `false`. A value may be a member of multiple types (`42` is a
+//. member of Number, PositiveNumber, Integer, and many other types).
+//.
+//. In certain situations it is useful to divide JavaScript values into
+//. non-overlapping types. The language provides two constructs for this
+//. purpose: the [`typeof`][1] operator and [`Object.prototype.toString`][2].
+//. Each has pros and cons, but neither supports user-defined types.
+//.
+//. sanctuary-type-identifiers comprises:
+//.
+//.   - an npm and browser -compatible package for deriving the
+//.     _type identifier_ of a JavaScript value; and
+//.   - a specification which authors may follow to specify type
+//.     identifiers for their types.
+//.
+//. ### Specification
+//.
+//. For a type to be compatible with the algorithm:
+//.
+//.   - every member of the type MUST have a `constructor` property
+//.     pointing to an object known as the _type representative_;
+//.
+//.   - the type representative MUST have a `@@type` property
+//.     (the _type identifier_); and
+//.
+//.   - the type identifier MUST be a string primitive and SHOULD have
+//.     format `'<namespace>/<name>[@<version>]'`, where:
+//.
+//.       - `<namespace>` MUST consist of one or more characters, and
+//.         SHOULD equal the name of the npm package which defines the
+//.         type (including [scope][3] where appropriate);
+//.
+//.       - `<name>` MUST consist of one or more characters, and SHOULD
+//.         be the unique name of the type; and
+//.
+//.       - `<version>` MUST consist of one or more digits, and SHOULD
+//.         represent the version of the type.
+//.
+//. If the type identifier does not conform to the format specified above,
+//. it is assumed that the entire string represents the _name_ of the type;
+//. _namespace_ will be `null` and _version_ will be `0`.
+//.
+//. If the _version_ is not given, it is assumed to be `0`.
+//.
+//. For example:
+//.
+//. ```javascript
+//. //  Identity :: a -> Identity a
+//. function Identity(x) {
+//.   if (!(this instanceof Identity)) return new Identity(x);
+//.   this.value = x;
+//. }
+//.
+//. Identity['@@type'] = 'my-package/Identity';
+//. ```
+//.
+//. Note that by using a constructor function the `constructor` property is set
+//. implicitly for each value created. Constructor functions are convenient for
+//. this reason, but are not required. This definition is also valid:
+//.
+//. ```javascript
+//. //  IdentityTypeRep :: TypeRep Identity
+//. var IdentityTypeRep = {
+//.   '@@type': 'my-package/Identity'
+//. };
+//.
+//. //  Identity :: a -> Identity a
+//. function Identity(x) {
+//.   return {constructor: IdentityTypeRep, value: x};
+//. }
+//. ```
+
+(function(f) {
+
+  'use strict';
+
+  {
+    module.exports = f();
+  }
+
+}(function() {
+
+  'use strict';
+
+  //  $$type :: String
+  var $$type = '@@type';
+
+  //  pattern :: RegExp
+  var pattern = new RegExp(
+    '^'
+  + '([\\s\\S]+)'   //  <namespace>
+  + '/'             //  SOLIDUS (U+002F)
+  + '([\\s\\S]+?)'  //  <name>
+  + '(?:'           //  optional non-capturing group {
+  +   '@'           //    COMMERCIAL AT (U+0040)
+  +   '([0-9]+)'    //    <version>
+  + ')?'            //  }
+  + '$'
+  );
+
+  //. ### Usage
+  //.
+  //. ```javascript
+  //. const type = require('sanctuary-type-identifiers');
+  //. ```
+  //.
+  //. ```javascript
+  //. > function Identity(x) {
+  //. .   if (!(this instanceof Identity)) return new Identity(x);
+  //. .   this.value = x;
+  //. . }
+  //. . Identity['@@type'] = 'my-package/Identity@1';
+  //.
+  //. > type.parse(type(Identity(0)))
+  //. {namespace: 'my-package', name: 'Identity', version: 1}
+  //. ```
+  //.
+  //. ### API
+  //.
+  //# type :: Any -> String
+  //.
+  //. Takes any value and returns a string which identifies its type. If the
+  //. value conforms to the [specification][4], the custom type identifier is
+  //. returned.
+  //.
+  //. ```javascript
+  //. > type(null)
+  //. 'Null'
+  //.
+  //. > type(true)
+  //. 'Boolean'
+  //.
+  //. > type(Identity(0))
+  //. 'my-package/Identity@1'
+  //. ```
+  function type(x) {
+    return x != null &&
+           x.constructor != null &&
+           x.constructor.prototype !== x &&
+           typeof x.constructor[$$type] === 'string' ?
+      x.constructor[$$type] :
+      Object.prototype.toString.call(x).slice('[object '.length, -']'.length);
+  }
+
+  //# type.parse :: String -> { namespace :: Nullable String, name :: String, version :: Number }
+  //.
+  //. Takes any string and parses it according to the [specification][4],
+  //. returning an object with `namespace`, `name`, and `version` fields.
+  //.
+  //. ```javascript
+  //. > type.parse('my-package/List@2')
+  //. {namespace: 'my-package', name: 'List', version: 2}
+  //.
+  //. > type.parse('nonsense!')
+  //. {namespace: null, name: 'nonsense!', version: 0}
+  //.
+  //. > type.parse(Identity['@@type'])
+  //. {namespace: 'my-package', name: 'Identity', version: 1}
+  //. ```
+  type.parse = function parse(s) {
+    var groups = pattern.exec(s);
+    return {
+      namespace: groups == null || groups[1] == null ? null : groups[1],
+      name:      groups == null                      ? s    : groups[2],
+      version:   groups == null || groups[3] == null ? 0    : Number(groups[3])
+    };
+  };
+
+  return type;
+
+}));
+
+//. [1]: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Operators/typeof
+//. [2]: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Object/toString
+//. [3]: https://docs.npmjs.com/misc/scope
+//. [4]: #specification
+});
+
 var error = function (message) {
   throw new Error(message);
 };
@@ -702,7 +2471,7 @@ var invalidVersion = function (m, x) { return (
 var invalidFuture = function (it, at, m, s) {
   if ( s === void 0 ) s = '';
 
-  var id = type.parse(type(m));
+  var id = index$5.parse(index$5(m));
   var info = id.name === name ? '\n' + (
     id.namespace !== namespace ? invalidNamespace(m, id.namespace)
   : id.version !== version ? invalidVersion(m, id.version)
@@ -713,17 +2482,464 @@ var invalidFuture = function (it, at, m, s) {
   );
 };
 
+/**
+ * Custom implementation of a double ended queue.
+ */
+function Denque(array) {
+  // circular buffer
+  this._list = new Array(4);
+  // bit mask
+  this._capacityMask = 0x3;
+  // next unread item
+  this._head = 0;
+  // next empty slot
+  this._tail = 0;
+
+  if (Array.isArray(array)) {
+    this._fromArray(array);
+  }
+}
+
+/**
+ * -------------
+ *  PUBLIC API
+ * -------------
+ */
+
+/**
+ * Returns the item at the specified index from the list.
+ * 0 is the first element, 1 is the second, and so on...
+ * Elements at negative values are that many from the end: -1 is one before the end
+ * (the last element), -2 is two before the end (one before last), etc.
+ * @param index
+ * @returns {*}
+ */
+Denque.prototype.peekAt = function peekAt(index) {
+  var i = index;
+  // expect a number or return undefined
+  if ((i !== (i | 0))) {
+    return void 0;
+  }
+  var len = this.size();
+  if (i >= len || i < -len) { return undefined; }
+  if (i < 0) { i += len; }
+  i = (this._head + i) & this._capacityMask;
+  return this._list[i];
+};
+
+/**
+ * Alias for peakAt()
+ * @param i
+ * @returns {*}
+ */
+Denque.prototype.get = function get(i) {
+  return this.peekAt(i);
+};
+
+/**
+ * Returns the first item in the list without removing it.
+ * @returns {*}
+ */
+Denque.prototype.peek = function peek() {
+  if (this._head === this._tail) { return undefined; }
+  return this._list[this._head];
+};
+
+/**
+ * Alias for peek()
+ * @returns {*}
+ */
+Denque.prototype.peekFront = function peekFront() {
+  return this.peek();
+};
+
+/**
+ * Returns the item that is at the back of the queue without removing it.
+ * Uses peekAt(-1)
+ */
+Denque.prototype.peekBack = function peekBack() {
+  return this.peekAt(-1);
+};
+
+/**
+ * Returns the current length of the queue
+ * @return {Number}
+ */
+Object.defineProperty(Denque.prototype, 'length', {
+  get: function length() {
+    return this.size();
+  }
+});
+
+/**
+ * Return the number of items on the list, or 0 if empty.
+ * @returns {number}
+ */
+Denque.prototype.size = function size() {
+  if (this._head === this._tail) { return 0; }
+  if (this._head < this._tail) { return this._tail - this._head; }
+  else { return this._capacityMask + 1 - (this._head - this._tail); }
+};
+
+/**
+ * Add an item at the beginning of the list.
+ * @param item
+ */
+Denque.prototype.unshift = function unshift(item) {
+  if (item === undefined) { return this.length; }
+  var len = this._list.length;
+  this._head = (this._head - 1 + len) & this._capacityMask;
+  this._list[this._head] = item;
+  if (this._tail === this._head) { this._growArray(); }
+  if (this._head < this._tail) { return this._tail - this._head; }
+  else { return this._capacityMask + 1 - (this._head - this._tail); }
+};
+
+/**
+ * Remove and return the first item on the list,
+ * Returns undefined if the list is empty.
+ * @returns {*}
+ */
+Denque.prototype.shift = function shift() {
+  var head = this._head;
+  if (head === this._tail) { return undefined; }
+  var item = this._list[head];
+  this._list[head] = undefined;
+  this._head = (head + 1) & this._capacityMask;
+  if (head < 2 && this._tail > 10000 && this._tail <= this._list.length >>> 2) { this._shrinkArray(); }
+  return item;
+};
+
+/**
+ * Add an item to the bottom of the list.
+ * @param item
+ */
+Denque.prototype.push = function push(item) {
+  if (item === undefined) { return this.length; }
+  var tail = this._tail;
+  this._list[tail] = item;
+  this._tail = (tail + 1) & this._capacityMask;
+  if (this._tail === this._head) {
+    this._growArray();
+  }
+
+  if (this._head < this._tail) { return this._tail - this._head; }
+  else { return this._capacityMask + 1 - (this._head - this._tail); }
+};
+
+/**
+ * Remove and return the last item on the list.
+ * Returns undefined if the list is empty.
+ * @returns {*}
+ */
+Denque.prototype.pop = function pop() {
+  var tail = this._tail;
+  if (tail === this._head) { return undefined; }
+  var len = this._list.length;
+  this._tail = (tail - 1 + len) & this._capacityMask;
+  var item = this._list[this._tail];
+  this._list[this._tail] = undefined;
+  if (this._head < 2 && tail > 10000 && tail <= len >>> 2) { this._shrinkArray(); }
+  return item;
+};
+
+/**
+ * Remove and return the item at the specified index from the list.
+ * Returns undefined if the list is empty.
+ * @param index
+ * @returns {*}
+ */
+Denque.prototype.removeOne = function removeOne(index) {
+  var this$1 = this;
+
+  var i = index;
+  // expect a number or return undefined
+  if ((i !== (i | 0))) {
+    return void 0;
+  }
+  if (this._head === this._tail) { return void 0; }
+  var size = this.size();
+  var len = this._list.length;
+  if (i >= size || i < -size) { return void 0; }
+  if (i < 0) { i += size; }
+  i = (this._head + i) & this._capacityMask;
+  var item = this._list[i];
+  var k;
+  if (index < size / 2) {
+    for (k = index; k > 0; k--) {
+      this$1._list[i] = this$1._list[i = (i - 1 + len) & this$1._capacityMask];
+    }
+    this._list[i] = void 0;
+    this._head = (this._head + 1 + len) & this._capacityMask;
+  } else {
+    for (k = size - 1 - index; k > 0; k--) {
+      this$1._list[i] = this$1._list[i = ( i + 1 + len) & this$1._capacityMask];
+    }
+    this._list[i] = void 0;
+    this._tail = (this._tail - 1 + len) & this._capacityMask;
+  }
+  return item;
+};
+
+/**
+ * Remove number of items from the specified index from the list.
+ * Returns array of removed items.
+ * Returns undefined if the list is empty.
+ * @param index
+ * @param count
+ * @returns {array}
+ */
+Denque.prototype.remove = function remove(index, count) {
+  var this$1 = this;
+
+  var i = index;
+  var removed;
+  var del_count = count;
+  // expect a number or return undefined
+  if ((i !== (i | 0))) {
+    return void 0;
+  }
+  if (this._head === this._tail) { return void 0; }
+  var size = this.size();
+  var len = this._list.length;
+  if (i >= size || i < -size || count < 1) { return void 0; }
+  if (i < 0) { i += size; }
+  if (count === 1 || !count) {
+    removed = new Array(1);
+    removed[0] = this.removeOne(i);
+    return removed;
+  }
+  if (i === 0 && i + count >= size) { return this.clear(); }
+  if (i + count > size) { count = size - i; }
+  var k;
+  removed = new Array(count);
+  for (k = 0; k < count; k++) {
+    removed[k] = this$1._list[(this$1._head + i + k) & this$1._capacityMask];
+  }
+  i = (this._head + i) & this._capacityMask;
+  if (index + count === size) {
+    this._tail = (this._tail - count + len) & this._capacityMask;
+    for (k = count; k > 0; k--) {
+      this$1._list[i = (i + 1 + len) & this$1._capacityMask] = void 0;
+    }
+    return removed;
+  }
+  if (index === 0) {
+    this._head = (this._head + count + len) & this._capacityMask;
+    for (k = count - 1; k > 0; k--) {
+      this$1._list[i = (i + 1 + len) & this$1._capacityMask] = void 0;
+    }
+    return removed;
+  }
+  if (index < size / 2) {
+    this._head = (this._head + index + count + len) & this._capacityMask;
+    for (k = index; k > 0; k--) {
+      this$1.unshift(this$1._list[i = (i - 1 + len) & this$1._capacityMask]);
+    }
+    i = (this._head - 1 + len) & this._capacityMask;
+    while (del_count > 0) {
+      this$1._list[i = (i - 1 + len) & this$1._capacityMask] = void 0;
+      del_count--;
+    }
+  } else {
+    this._tail = i;
+    i = (i + count + len) & this._capacityMask;
+    for (k = size - (count + index); k > 0; k--) {
+      this$1.push(this$1._list[i++]);
+    }
+    i = this._tail;
+    while (del_count > 0) {
+      this$1._list[i = (i + 1 + len) & this$1._capacityMask] = void 0;
+      del_count--;
+    }
+  }
+  if (this._head < 2 && this._tail > 10000 && this._tail <= len >>> 2) { this._shrinkArray(); }
+  return removed;
+};
+
+/**
+ * Native splice implementation.
+ * Remove number of items from the specified index from the list and/or add new elements.
+ * Returns array of removed items or empty array if count == 0.
+ * Returns undefined if the list is empty.
+ *
+ * @param index
+ * @param count
+ * @param {...*} [elements]
+ * @returns {array}
+ */
+Denque.prototype.splice = function splice(index, count) {
+  var arguments$1 = arguments;
+  var this$1 = this;
+
+  var i = index;
+  var size = this.size();
+  // expect a number or return undefined
+  if ((i !== (i | 0))) {
+    return void 0;
+  }
+  if (this._head === this._tail) { return void 0; }
+  if (i > size || i < -size) { return void 0; }
+  if (i === size && count != 0) { return void 0; }
+  if (i < 0) { i += size; }
+  if (arguments.length > 2) {
+    var k;
+    var temp;
+    var removed;
+    var arg_len = arguments.length;
+    var len = this._list.length;
+    var arguments_index = 2;
+    if (i < size / 2) {
+      temp = new Array(i);
+      for (k = 0; k < i; k++) {
+        temp[k] = this$1._list[(this$1._head + k) & this$1._capacityMask];
+      }
+      if (count === 0) {
+        removed = [];
+        if (i > 0) {
+          this._head = (this._head + i + len) & this._capacityMask;
+        }
+      } else {
+        removed = this.remove(i, count);
+        this._head = (this._head + i + len) & this._capacityMask;
+      }
+      while (arg_len > arguments_index) {
+        this$1.unshift(arguments$1[--arg_len]);
+      }
+      for (k = i; k > 0; k--) {
+        this$1.unshift(temp[k - 1]);
+      }
+    } else {
+      temp = new Array(size - (i + count));
+      var leng = temp.length;
+      for (k = 0; k < leng; k++) {
+        temp[k] = this$1._list[(this$1._head + i + count + k) & this$1._capacityMask];
+      }
+      if (count === 0) {
+        removed = [];
+        if (i != size) {
+          this._tail = (this._head + i + len) & this._capacityMask;
+        }
+      } else {
+        removed = this.remove(i, count);
+        this._tail = (this._tail - leng + len) & this._capacityMask;
+      }
+      while (arguments_index < arg_len) {
+        this$1.push(arguments$1[arguments_index++]);
+      }
+      for (k = 0; k < leng; k++) {
+        this$1.push(temp[k]);
+      }
+    }
+    return removed;
+  } else {
+    return this.remove(i, count);
+  }
+};
+
+/**
+ * Soft clear - does not reset capacity.
+ */
+Denque.prototype.clear = function clear() {
+  this._head = 0;
+  this._tail = 0;
+};
+
+/**
+ * Returns true or false whether the list is empty.
+ * @returns {boolean}
+ */
+Denque.prototype.isEmpty = function isEmpty() {
+  return this._head === this._tail;
+};
+
+/**
+ * Returns an array of all queue items.
+ * @returns {Array}
+ */
+Denque.prototype.toArray = function toArray() {
+  return this._copyArray(false);
+};
+
+/**
+ * -------------
+ *   INTERNALS
+ * -------------
+ */
+
+/**
+ * Fills the queue with items from an array
+ * For use in the constructor
+ * @param array
+ * @private
+ */
+Denque.prototype._fromArray = function _fromArray(array) {
+  var this$1 = this;
+
+  for (var i = 0; i < array.length; i++) { this$1.push(array[i]); }
+};
+
+/**
+ *
+ * @param fullCopy
+ * @returns {Array}
+ * @private
+ */
+Denque.prototype._copyArray = function _copyArray(fullCopy) {
+  var newArray = [];
+  var list = this._list;
+  var len = list.length;
+  var i;
+  if (fullCopy || this._head > this._tail) {
+    for (i = this._head; i < len; i++) { newArray.push(list[i]); }
+    for (i = 0; i < this._tail; i++) { newArray.push(list[i]); }
+  } else {
+    for (i = this._head; i < this._tail; i++) { newArray.push(list[i]); }
+  }
+  return newArray;
+};
+
+/**
+ * Grows the internal list array.
+ * @private
+ */
+Denque.prototype._growArray = function _growArray() {
+  if (this._head) {
+    // copy existing data, head to end, then beginning to tail.
+    this._list = this._copyArray(true);
+    this._head = 0;
+  }
+
+  // head is at 0 and array is now full, safe to extend
+  this._tail = this._list.length;
+
+  this._list.length *= 2;
+  this._capacityMask = (this._capacityMask << 1) | 1;
+};
+
+/**
+ * Shrinks the internal list array.
+ * @private
+ */
+Denque.prototype._shrinkArray = function _shrinkArray() {
+  this._list.length >>>= 1;
+  this._capacityMask >>>= 1;
+};
+
+
+var index$6 = Denque;
+
 /*eslint no-cond-assign:0, no-constant-condition:0 */
 
 function interpreter(rej, res){
 
   //This is the primary queue of actions. All actions in here will be "cold",
   //meaning they haven't had the chance yet to run concurrent computations.
-  var cold = new Denque(this._actions.size);
+  var cold = new index$6(this._actions.size);
 
   //This is the secondary queue of actions. All actions in here will be "hot",
   //meaning they have already had a chance to run a concurrent computation.
-  var queue = new Denque(this._actions.size);
+  var queue = new index$6(this._actions.size);
 
   //These combined variables define our current state.
   // future  = the future we are currently forking
@@ -863,7 +3079,7 @@ function Future$1(computation){
 }
 
 function isFuture(x){
-  return x instanceof Future$1 || type(x) === $$type;
+  return x instanceof Future$1 || index$5(x) === $$type;
 }
 
 Future$1.prototype.ap = function Future$ap(other){
@@ -1584,30 +3800,30 @@ function chainRec(step, init){
 }
 
 function ap$mval(mval, mfunc){
-  if(!Z.Apply.test(mfunc)) { invalidArgument('Future.ap', 1, 'be an Apply', mfunc); }
-  return Z.ap(mval, mfunc);
+  if(!index$2.Apply.test(mfunc)) { invalidArgument('Future.ap', 1, 'be an Apply', mfunc); }
+  return index$2.ap(mval, mfunc);
 }
 
 function ap(mval, mfunc){
-  if(!Z.Apply.test(mval)) { invalidArgument('Future.ap', 0, 'be an Apply', mval); }
+  if(!index$2.Apply.test(mval)) { invalidArgument('Future.ap', 0, 'be an Apply', mval); }
   if(arguments.length === 1) { return partial1(ap$mval, mval); }
   return ap$mval(mval, mfunc);
 }
 
 function alt$left(left, right){
-  if(!Z.Alt.test(right)) { invalidArgument('alt', 1, 'be an Alt', right); }
-  return Z.alt(left, right);
+  if(!index$2.Alt.test(right)) { invalidArgument('alt', 1, 'be an Alt', right); }
+  return index$2.alt(left, right);
 }
 
 function alt(left, right){
-  if(!Z.Alt.test(left)) { invalidArgument('alt', 0, 'be an Alt', left); }
+  if(!index$2.Alt.test(left)) { invalidArgument('alt', 0, 'be an Alt', left); }
   if(arguments.length === 1) { return partial1(alt$left, left); }
   return alt$left(left, right);
 }
 
 function map$mapper(mapper, m){
-  if(!Z.Functor.test(m)) { invalidArgument('Future.map', 1, 'be a Functor', m); }
-  return Z.map(mapper, m);
+  if(!index$2.Functor.test(m)) { invalidArgument('Future.map', 1, 'be a Functor', m); }
+  return index$2.map(mapper, m);
 }
 
 function map(mapper, m){
@@ -1617,8 +3833,8 @@ function map(mapper, m){
 }
 
 function bimap$lmapper$rmapper(lmapper, rmapper, m){
-  if(!Z.Bifunctor.test(m)) { invalidArgument('Future.bimap', 2, 'be a Bifunctor', m); }
-  return Z.bimap(lmapper, rmapper, m);
+  if(!index$2.Bifunctor.test(m)) { invalidArgument('Future.bimap', 2, 'be a Bifunctor', m); }
+  return index$2.bimap(lmapper, rmapper, m);
 }
 
 function bimap$lmapper(lmapper, rmapper, m){
@@ -1635,8 +3851,8 @@ function bimap(lmapper, rmapper, m){
 }
 
 function chain$chainer(chainer, m){
-  if(!Z.Chain.test(m)) { invalidArgument('Future.chain', 1, 'be a Chain', m); }
-  return Z.chain(chainer, m);
+  if(!index$2.Chain.test(m)) { invalidArgument('Future.chain', 1, 'be a Chain', m); }
+  return index$2.chain(chainer, m);
 }
 
 function chain(chainer, m){
@@ -2615,6 +4831,158 @@ function node(f){
   return new Node(f);
 }
 
+var index$7 = createCommonjsModule(function (module) {
+(function(global, f){
+
+  'use strict';
+
+  /*istanbul ignore next*/
+  if(module && 'object' !== 'undefined'){
+    module.exports = f(index$2, index$5);
+  }else{
+    global.concurrify = f(global.sanctuaryTypeClasses, global.sanctuaryTypeIdentifiers);
+  }
+
+}(/*istanbul ignore next*/(commonjsGlobal || window || commonjsGlobal), function(Z, type){
+
+  'use strict';
+
+  var $alt = 'fantasy-land/alt';
+  var $ap = 'fantasy-land/ap';
+  var $map = 'fantasy-land/map';
+  var $of = 'fantasy-land/of';
+  var $zero = 'fantasy-land/zero';
+  var $$type = '@@type';
+
+  var ordinal = ['first', 'second', 'third', 'fourth', 'fifth'];
+
+  function isFunction(f){
+    return typeof f === 'function';
+  }
+
+  function isBinary(f){
+    return f.length >= 2;
+  }
+
+  function isApplicativeRepr(Repr){
+    try{
+      return Z.Applicative.test(Z.of(Repr));
+    }catch(_){
+      return false;
+    }
+  }
+
+  function invalidArgument(it, at, expected, actual){
+    throw new TypeError(
+      it
+      + ' expects its '
+      + ordinal[at]
+      + ' argument to '
+      + expected
+      + '\n  Actual: '
+      + Z.toString(actual)
+    );
+  }
+
+  function invalidContext(it, actual, an){
+    throw new TypeError(
+      it + ' was invoked outside the context of a ' + an + '. \n  Called on: ' + Z.toString(actual)
+    );
+  }
+
+  //       getTypeIdentifier :: TypeRepresentative -> TypeIdentifier
+  function getTypeIdentifier(Repr){
+    return Repr[$$type] || Repr.name || 'Anonymous';
+  }
+
+  //       generateTypeIdentifier :: TypeIdentifier -> TypeIdentifier
+  function generateTypeIdentifier(identifier){
+    var o = type.parse(identifier);
+    return (o.namespace || 'concurrify') + '/Concurrent' + o.name + '@' + o.version;
+  }
+
+  //concurrify :: Applicative m
+  //           => (TypeRep m, m a, (m a, m a) -> m a, (m a, m (a -> b)) -> m b)
+  //           -> Concurrently m
+  return function concurrify(Repr, zero, alt, ap){
+
+    var INNERTYPE = getTypeIdentifier(Repr);
+    var OUTERTYPE = generateTypeIdentifier(INNERTYPE);
+
+    var INNERNAME = type.parse(INNERTYPE).name;
+    var OUTERNAME = type.parse(OUTERTYPE).name;
+
+    function Concurrently(sequential){
+      this.sequential = sequential;
+    }
+
+    function isInner(x){
+      return x instanceof Repr
+      || (Boolean(x) && x.constructor === Repr)
+      || type(x) === Repr[$$type];
+    }
+
+    function isOuter(x){
+      return x instanceof Concurrently
+      || (Boolean(x) && x.constructor === Concurrently)
+      || type(x) === OUTERTYPE;
+    }
+
+    function construct(x){
+      if(!isInner(x)) { invalidArgument(OUTERNAME, 0, 'be of type "' + INNERNAME + '"', x); }
+      return new Concurrently(x);
+    }
+
+    if(!isApplicativeRepr(Repr)) { invalidArgument('concurrify', 0, 'represent an Applicative', Repr); }
+    if(!isInner(zero)) { invalidArgument('concurrify', 1, 'be of type "' + INNERNAME + '"', zero); }
+    if(!isFunction(alt)) { invalidArgument('concurrify', 2, 'be a function', alt); }
+    if(!isBinary(alt)) { invalidArgument('concurrify', 2, 'be binary', alt); }
+    if(!isFunction(ap)) { invalidArgument('concurrify', 3, 'be a function', ap); }
+    if(!isBinary(ap)) { invalidArgument('concurrify', 3, 'be binary', ap); }
+
+    var proto = Concurrently.prototype = construct.prototype = {constructor: construct};
+
+    construct[$$type] = OUTERTYPE;
+
+    var mzero = new Concurrently(zero);
+    construct[$zero] = function Concurrently$zero(){
+      return mzero;
+    };
+
+    construct[$of] = function Concurrently$of(value){
+      return new Concurrently(Z.of(Repr, value));
+    };
+
+    proto[$map] = function Concurrently$map(mapper){
+      if(!isOuter(this)) { invalidContext(OUTERNAME + '#map', this, OUTERNAME); }
+      if(!isFunction(mapper)) { invalidArgument(OUTERNAME + '#map', 0, 'be a function', mapper); }
+      return new Concurrently(Z.map(mapper, this.sequential));
+    };
+
+    proto[$ap] = function Concurrently$ap(m){
+      if(!isOuter(this)) { invalidContext(OUTERNAME + '#ap', this, OUTERNAME); }
+      if(!isOuter(m)) { invalidArgument(OUTERNAME + '#ap', 0, 'be a ' + OUTERNAME, m); }
+      return new Concurrently(ap(this.sequential, m.sequential));
+    };
+
+    proto[$alt] = function Concurrently$alt(m){
+      if(!isOuter(this)) { invalidContext(OUTERNAME + '#alt', this, OUTERNAME); }
+      if(!isOuter(m)) { invalidArgument(OUTERNAME + '#alt', 0, 'be a ' + OUTERNAME, m); }
+      return new Concurrently(alt(this.sequential, m.sequential));
+    };
+
+    proto.toString = function Concurrently$toString(){
+      if(!isOuter(this)) { invalidContext(OUTERNAME + '#toString', this, OUTERNAME); }
+      return OUTERNAME + '(' + Z.toString(this.sequential) + ')';
+    };
+
+    return construct;
+
+  };
+
+}));
+});
+
 function check$ap$f(f){
   if(!isFunction(f)) { typeError(
     'Future#ap expects its first argument to be a Future of a Function'
@@ -2661,7 +5029,7 @@ ParallelAp.prototype.toString = function ParallelAp$toString(){
   return ("new ParallelAp(" + (this._mval.toString()) + ", " + (this._mfunc.toString()) + ")");
 };
 
-var Par = concurrify(Future$1, never, race, function pap(mval, mfunc){
+var Par = index$7(Future$1, never, race, function pap(mval, mfunc){
   return new ParallelAp(mval, mfunc);
 });
 
@@ -2672,7 +5040,7 @@ Par.ap = ap;
 Par.alt = alt;
 
 function isParallel(x){
-  return x instanceof Par || type(x) === Par['@@type'];
+  return x instanceof Par || index$5(x) === Par['@@type'];
 }
 
 function seq(par){
@@ -2788,7 +5156,7 @@ if(typeof Object.create !== 'function') { error('Please polyfill Object.create t
 if(typeof Object.assign !== 'function') { error('Please polyfill Object.assign to use Fluture'); }
 if(typeof Array.isArray !== 'function') { error('Please polyfill Array.isArray to use Fluture'); }
 
-var index = Object.assign(Future$1, dispatchers, {
+var index$1 = Object.assign(Future$1, dispatchers, {
   Future: Future$1,
   after: after,
   attempt: attempt,
@@ -2819,2372 +5187,6 @@ var index = Object.assign(Future$1, dispatchers, {
   tryP: tryP,
 });
 
-return index;
+return index$1;
 
-})));
-
-},{"concurrify":1,"denque":2,"inspect-f":4,"sanctuary-type-classes":5,"sanctuary-type-identifiers":7}],4:[function(require,module,exports){
-(function (global){
-(function(global, f) {
-
-  'use strict';
-
-  /*istanbul ignore next*/
-  if(typeof module !== 'undefined') {
-    module.exports = f();
-  } else if(typeof global.define === 'function' && global.define.amd) {
-    global.define([], f);
-  } else{
-    global.inspectf = f();
-  }
-
-}(/*istanbul ignore next*/(global || window || this), function() {
-
-  'use strict';
-
-  function checkn(n) {
-    if(typeof n !== 'number') {
-      throw new TypeError(
-        'inspectf expects its first argument to be a number'
-      );
-    }
-  }
-
-  function checkf(f) {
-    if(typeof f !== 'function') {
-      throw new TypeError(
-        'inspectf expects its second argument to be a function'
-      );
-    }
-  }
-
-  var RSPACE = /^ */;
-  var RCODE = /\s*[^\s]/;
-  var RTABS = /\t/g;
-  var REOL = /\n\r?/;
-
-  function isCode(line) {
-    return RCODE.test(line);
-  }
-
-  function getPadding(line) {
-    return line.match(RSPACE)[0].length;
-  }
-
-  function guessIndentation(lines) {
-    var filtered = lines.filter(isCode);
-    var paddings = filtered.map(getPadding);
-    var depth = paddings.reduce(Math.min, Infinity);
-    var tabsize = paddings
-    .map(function(x) { return x - depth; })
-    .find(function(x) { return x > 1; }) || 2;
-    return {depth: depth, tabsize: tabsize};
-  }
-
-  function pad(n) {
-    return (new Array(n + 1)).join(' ');
-  }
-
-  function show(f, indentation) {
-    return f.toString().replace(RTABS, indentation);
-  }
-
-  function toLines(s) {
-    return s.split(REOL);
-  }
-
-  function fixIndentation(lines, indentation) {
-    var info = guessIndentation(lines.slice(1));
-    var RPAD = new RegExp(pad(info.tabsize), 'g');
-    return lines.map(function(line) {
-      return line.slice(Math.min(info.depth, getPadding(line)))
-      .replace(RPAD, '\t').replace(RTABS, indentation);
-    }).join('\n');
-  }
-
-  return function inspectf(n, f) {
-    checkn(n);
-    if(arguments.length < 2) {
-      return function inspectf$partial(f) { return inspectf(n, f); };
-    }
-    checkf(f);
-    if(f.toString !== Function.prototype.toString) {return f.toString();}
-    var i = pad(n), shown = show(f, i), lines = toLines(shown, i);
-    if(lines.length < 2) {return shown;}
-    return fixIndentation(lines, i);
-  };
-
-}));
-
-}).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{}],5:[function(require,module,exports){
-/*
-             ############                  #
-            ############                  ###
-                  #####                  #####
-                #####      ####################
-              #####       ######################
-            #####                     ###########
-          #####         ######################
-        #####          ####################
-      #####                        #####
-     ############                 ###
-    ############                 */
-
-//. # sanctuary-type-classes
-//.
-//. The [Fantasy Land Specification][FL] "specifies interoperability of common
-//. algebraic structures" by defining a number of type classes. For each type
-//. class, it states laws which every member of a type must obey in order for
-//. the type to be a member of the type class. In order for the Maybe type to
-//. be considered a [Functor][], for example, every `Maybe a` value must have
-//. a `fantasy-land/map` method which obeys the identity and composition laws.
-//.
-//. This project provides:
-//.
-//.   - [`TypeClass`](#TypeClass), a function for defining type classes;
-//.   - one `TypeClass` value for each Fantasy Land type class;
-//.   - lawful Fantasy Land methods for JavaScript's built-in types;
-//.   - one function for each Fantasy Land method; and
-//.   - several functions derived from these functions.
-//.
-//. ## Type-class hierarchy
-//.
-//. <pre>
-//:  Setoid   Semigroupoid  Semigroup   Foldable        Functor      Contravariant
-//: (equals)    (compose)    (concat)   (reduce)         (map)        (contramap)
-//:     |           |           |           \         / | | | | \
-//:     |           |           |            \       /  | | | |  \
-//:     |           |           |             \     /   | | | |   \
-//:     |           |           |              \   /    | | | |    \
-//:     |           |           |               \ /     | | | |     \
-//:    Ord      Category     Monoid         Traversable | | | |      \
-//:   (lte)       (id)       (empty)        (traverse)  / | | \       \
-//:                                                    /  | |  \       \
-//:                                                   /   / \   \       \
-//:                                           Profunctor /   \ Bifunctor \
-//:                                            (promap) /     \ (bimap)   \
-//:                                                    /       \           \
-//:                                                   /         \           \
-//:                                                 Alt        Apply      Extend
-//:                                                (alt)        (ap)     (extend)
-//:                                                 /           / \           \
-//:                                                /           /   \           \
-//:                                               /           /     \           \
-//:                                              /           /       \           \
-//:                                             /           /         \           \
-//:                                           Plus    Applicative    Chain      Comonad
-//:                                          (zero)       (of)      (chain)    (extract)
-//:                                             \         / \         / \
-//:                                              \       /   \       /   \
-//:                                               \     /     \     /     \
-//:                                                \   /       \   /       \
-//:                                                 \ /         \ /         \
-//:                                             Alternative    Monad     ChainRec
-//:                                                                     (chainRec)
-//. </pre>
-//.
-//. ## API
-
-(function(f) {
-
-  'use strict';
-
-  /* istanbul ignore else */
-  if (typeof module === 'object' && typeof module.exports === 'object') {
-    module.exports = f(require('sanctuary-type-identifiers'));
-  } else if (typeof define === 'function' && define.amd != null) {
-    define(['sanctuary-type-identifiers'], f);
-  } else {
-    self.sanctuaryTypeClasses = f(self.sanctuaryTypeIdentifiers);
-  }
-
-}(function(type) {
-
-  'use strict';
-
-  //  concat_ :: Array a -> Array a -> Array a
-  function concat_(xs) {
-    return function(ys) {
-      return xs.concat(ys);
-    };
-  }
-
-  //  constant :: a -> b -> a
-  function constant(x) {
-    return function(y) {
-      return x;
-    };
-  }
-
-  //  has :: (String, Object) -> Boolean
-  function has(k, o) {
-    return Object.prototype.hasOwnProperty.call(o, k);
-  }
-
-  //  identity :: a -> a
-  function identity(x) { return x; }
-
-  //  pair :: a -> b -> Pair a b
-  function pair(x) {
-    return function(y) {
-      return [x, y];
-    };
-  }
-
-  //  sameType :: (a, b) -> Boolean
-  function sameType(x, y) {
-    return typeof x === typeof y && type(x) === type(y);
-  }
-
-  //  type Iteration a = { value :: a, done :: Boolean }
-
-  //  iterationNext :: a -> Iteration a
-  function iterationNext(x) { return {value: x, done: false}; }
-
-  //  iterationDone :: a -> Iteration a
-  function iterationDone(x) { return {value: x, done: true}; }
-
-  //# TypeClass :: (String, String, Array TypeClass, a -> Boolean) -> TypeClass
-  //.
-  //. The arguments are:
-  //.
-  //.   - the name of the type class, prefixed by its npm package name;
-  //.   - the documentation URL of the type class;
-  //.   - an array of dependencies; and
-  //.   - a predicate which accepts any JavaScript value and returns `true`
-  //.     if the value satisfies the requirements of the type class; `false`
-  //.     otherwise.
-  //.
-  //. Example:
-  //.
-  //. ```javascript
-  //. //    hasMethod :: String -> a -> Boolean
-  //. const hasMethod = name => x => x != null && typeof x[name] == 'function';
-  //.
-  //. //    Foo :: TypeClass
-  //. const Foo = Z.TypeClass(
-  //.   'my-package/Foo',
-  //.   'http://example.com/my-package#Foo',
-  //.   [],
-  //.   hasMethod('foo')
-  //. );
-  //.
-  //. //    Bar :: TypeClass
-  //. const Bar = Z.TypeClass(
-  //.   'my-package/Bar',
-  //.   'http://example.com/my-package#Bar',
-  //.   [Foo],
-  //.   hasMethod('bar')
-  //. );
-  //. ```
-  //.
-  //. Types whose values have a `foo` method are members of the Foo type class.
-  //. Members of the Foo type class whose values have a `bar` method are also
-  //. members of the Bar type class.
-  //.
-  //. Each `TypeClass` value has a `test` field: a function which accepts
-  //. any JavaScript value and returns `true` if the value satisfies the
-  //. type class's predicate and the predicates of all the type class's
-  //. dependencies; `false` otherwise.
-  //.
-  //. `TypeClass` values may be used with [sanctuary-def][type-classes]
-  //. to define parametrically polymorphic functions which verify their
-  //. type-class constraints at run time.
-  function TypeClass(name, url, dependencies, test) {
-    if (!(this instanceof TypeClass)) {
-      return new TypeClass(name, url, dependencies, test);
-    }
-    this.name = name;
-    this.url = url;
-    this.test = function(x) {
-      return dependencies.every(function(d) { return d.test(x); }) && test(x);
-    };
-  }
-
-  TypeClass['@@type'] = 'sanctuary-type-classes/TypeClass';
-
-  //  data Location = Constructor | Value
-
-  //  Constructor :: Location
-  var Constructor = 'Constructor';
-
-  //  Value :: Location
-  var Value = 'Value';
-
-  //  _funcPath :: (Boolean, Array String, a) -> Nullable Function
-  function _funcPath(allowInheritedProps, path, _x) {
-    var x = _x;
-    for (var idx = 0; idx < path.length; idx += 1) {
-      var k = path[idx];
-      if (x == null || !(allowInheritedProps || has(k, x))) return null;
-      x = x[k];
-    }
-    return typeof x === 'function' ? x : null;
-  }
-
-  //  funcPath :: (Array String, a) -> Nullable Function
-  function funcPath(path, x) {
-    return _funcPath(true, path, x);
-  }
-
-  //  implPath :: Array String -> Nullable Function
-  function implPath(path) {
-    return _funcPath(false, path, implementations);
-  }
-
-  //  functionName :: Function -> String
-  var functionName = 'name' in function f() {} ?
-    function functionName(f) { return f.name; } :
-    /* istanbul ignore next */
-    function functionName(f) {
-      var match = /function (\w*)/.exec(f);
-      return match == null ? '' : match[1];
-    };
-
-  //  $ :: (String, Array TypeClass, StrMap (Array Location)) -> TypeClass
-  function $(_name, dependencies, requirements) {
-    function getBoundMethod(_name) {
-      var name = 'fantasy-land/' + _name;
-      return requirements[_name] === Constructor ?
-        function(typeRep) {
-          var f = funcPath([name], typeRep);
-          return f == null && typeof typeRep === 'function' ?
-            implPath([functionName(typeRep), name]) :
-            f;
-        } :
-        function(x) {
-          var isPrototype = x != null &&
-                            x.constructor != null &&
-                            x.constructor.prototype === x;
-          var m = null;
-          if (!isPrototype) m = funcPath([name], x);
-          if (m == null)    m = implPath([type(x), 'prototype', name]);
-          return m && m.bind(x);
-        };
-    }
-
-    var version = '6.0.0';  // updated programmatically
-    var keys = Object.keys(requirements);
-
-    var typeClass = TypeClass(
-      'sanctuary-type-classes/' + _name,
-      'https://github.com/sanctuary-js/sanctuary-type-classes/tree/v' + version
-        + '#' + _name,
-      dependencies,
-      function(x) {
-        return keys.every(function(_name) {
-          var arg = requirements[_name] === Constructor ? x.constructor : x;
-          return getBoundMethod(_name)(arg) != null;
-        });
-      }
-    );
-
-    typeClass.methods = keys.reduce(function(methods, _name) {
-      methods[_name] = getBoundMethod(_name);
-      return methods;
-    }, {});
-
-    return typeClass;
-  }
-
-  //# Setoid :: TypeClass
-  //.
-  //. `TypeClass` value for [Setoid][].
-  //.
-  //. ```javascript
-  //. > Setoid.test(null)
-  //. true
-  //. ```
-  var Setoid = $('Setoid', [], {equals: Value});
-
-  //# Ord :: TypeClass
-  //.
-  //. `TypeClass` value for [Ord][].
-  //.
-  //. ```javascript
-  //. > Ord.test(0)
-  //. true
-  //.
-  //. > Ord.test(Math.sqrt)
-  //. false
-  //. ```
-  var Ord = $('Ord', [Setoid], {lte: Value});
-
-  //# Semigroupoid :: TypeClass
-  //.
-  //. `TypeClass` value for [Semigroupoid][].
-  //.
-  //. ```javascript
-  //. > Semigroupoid.test(Math.sqrt)
-  //. true
-  //.
-  //. > Semigroupoid.test(0)
-  //. false
-  //. ```
-  var Semigroupoid = $('Semigroupoid', [], {compose: Value});
-
-  //# Category :: TypeClass
-  //.
-  //. `TypeClass` value for [Category][].
-  //.
-  //. ```javascript
-  //. > Category.test(Math.sqrt)
-  //. true
-  //.
-  //. > Category.test(0)
-  //. false
-  //. ```
-  var Category = $('Category', [Semigroupoid], {id: Constructor});
-
-  //# Semigroup :: TypeClass
-  //.
-  //. `TypeClass` value for [Semigroup][].
-  //.
-  //. ```javascript
-  //. > Semigroup.test('')
-  //. true
-  //.
-  //. > Semigroup.test(0)
-  //. false
-  //. ```
-  var Semigroup = $('Semigroup', [], {concat: Value});
-
-  //# Monoid :: TypeClass
-  //.
-  //. `TypeClass` value for [Monoid][].
-  //.
-  //. ```javascript
-  //. > Monoid.test('')
-  //. true
-  //.
-  //. > Monoid.test(0)
-  //. false
-  //. ```
-  var Monoid = $('Monoid', [Semigroup], {empty: Constructor});
-
-  //# Functor :: TypeClass
-  //.
-  //. `TypeClass` value for [Functor][].
-  //.
-  //. ```javascript
-  //. > Functor.test([])
-  //. true
-  //.
-  //. > Functor.test('')
-  //. false
-  //. ```
-  var Functor = $('Functor', [], {map: Value});
-
-  //# Bifunctor :: TypeClass
-  //.
-  //. `TypeClass` value for [Bifunctor][].
-  //.
-  //. ```javascript
-  //. > Bifunctor.test(Tuple('foo', 64))
-  //. true
-  //.
-  //. > Bifunctor.test([])
-  //. false
-  //. ```
-  var Bifunctor = $('Bifunctor', [Functor], {bimap: Value});
-
-  //# Profunctor :: TypeClass
-  //.
-  //. `TypeClass` value for [Profunctor][].
-  //.
-  //. ```javascript
-  //. > Profunctor.test(Math.sqrt)
-  //. true
-  //.
-  //. > Profunctor.test([])
-  //. false
-  //. ```
-  var Profunctor = $('Profunctor', [Functor], {promap: Value});
-
-  //# Apply :: TypeClass
-  //.
-  //. `TypeClass` value for [Apply][].
-  //.
-  //. ```javascript
-  //. > Apply.test([])
-  //. true
-  //.
-  //. > Apply.test('')
-  //. false
-  //. ```
-  var Apply = $('Apply', [Functor], {ap: Value});
-
-  //# Applicative :: TypeClass
-  //.
-  //. `TypeClass` value for [Applicative][].
-  //.
-  //. ```javascript
-  //. > Applicative.test([])
-  //. true
-  //.
-  //. > Applicative.test({})
-  //. false
-  //. ```
-  var Applicative = $('Applicative', [Apply], {of: Constructor});
-
-  //# Chain :: TypeClass
-  //.
-  //. `TypeClass` value for [Chain][].
-  //.
-  //. ```javascript
-  //. > Chain.test([])
-  //. true
-  //.
-  //. > Chain.test({})
-  //. false
-  //. ```
-  var Chain = $('Chain', [Apply], {chain: Value});
-
-  //# ChainRec :: TypeClass
-  //.
-  //. `TypeClass` value for [ChainRec][].
-  //.
-  //. ```javascript
-  //. > ChainRec.test([])
-  //. true
-  //.
-  //. > ChainRec.test({})
-  //. false
-  //. ```
-  var ChainRec = $('ChainRec', [Chain], {chainRec: Constructor});
-
-  //# Monad :: TypeClass
-  //.
-  //. `TypeClass` value for [Monad][].
-  //.
-  //. ```javascript
-  //. > Monad.test([])
-  //. true
-  //.
-  //. > Monad.test({})
-  //. false
-  //. ```
-  var Monad = $('Monad', [Applicative, Chain], {});
-
-  //# Alt :: TypeClass
-  //.
-  //. `TypeClass` value for [Alt][].
-  //.
-  //. ```javascript
-  //. > Alt.test({})
-  //. true
-  //.
-  //. > Alt.test('')
-  //. false
-  //. ```
-  var Alt = $('Alt', [Functor], {alt: Value});
-
-  //# Plus :: TypeClass
-  //.
-  //. `TypeClass` value for [Plus][].
-  //.
-  //. ```javascript
-  //. > Plus.test({})
-  //. true
-  //.
-  //. > Plus.test('')
-  //. false
-  //. ```
-  var Plus = $('Plus', [Alt], {zero: Constructor});
-
-  //# Alternative :: TypeClass
-  //.
-  //. `TypeClass` value for [Alternative][].
-  //.
-  //. ```javascript
-  //. > Alternative.test([])
-  //. true
-  //.
-  //. > Alternative.test({})
-  //. false
-  //. ```
-  var Alternative = $('Alternative', [Applicative, Plus], {});
-
-  //# Foldable :: TypeClass
-  //.
-  //. `TypeClass` value for [Foldable][].
-  //.
-  //. ```javascript
-  //. > Foldable.test({})
-  //. true
-  //.
-  //. > Foldable.test('')
-  //. false
-  //. ```
-  var Foldable = $('Foldable', [], {reduce: Value});
-
-  //# Traversable :: TypeClass
-  //.
-  //. `TypeClass` value for [Traversable][].
-  //.
-  //. ```javascript
-  //. > Traversable.test([])
-  //. true
-  //.
-  //. > Traversable.test('')
-  //. false
-  //. ```
-  var Traversable = $('Traversable', [Functor, Foldable], {traverse: Value});
-
-  //# Extend :: TypeClass
-  //.
-  //. `TypeClass` value for [Extend][].
-  //.
-  //. ```javascript
-  //. > Extend.test([])
-  //. true
-  //.
-  //. > Extend.test({})
-  //. false
-  //. ```
-  var Extend = $('Extend', [Functor], {extend: Value});
-
-  //# Comonad :: TypeClass
-  //.
-  //. `TypeClass` value for [Comonad][].
-  //.
-  //. ```javascript
-  //. > Comonad.test(Identity(0))
-  //. true
-  //.
-  //. > Comonad.test([])
-  //. false
-  //. ```
-  var Comonad = $('Comonad', [Extend], {extract: Value});
-
-  //# Contravariant :: TypeClass
-  //.
-  //. `TypeClass` value for [Contravariant][].
-  //.
-  //. ```javascript
-  //. > Contravariant.test(Math.sqrt)
-  //. true
-  //.
-  //. > Contravariant.test([])
-  //. false
-  //. ```
-  var Contravariant = $('Contravariant', [], {contramap: Value});
-
-  //  Null$prototype$toString :: Null ~> () -> String
-  function Null$prototype$toString() {
-    return 'null';
-  }
-
-  //  Null$prototype$equals :: Null ~> Null -> Boolean
-  function Null$prototype$equals(other) {
-    return true;
-  }
-
-  //  Null$prototype$lte :: Null ~> Null -> Boolean
-  function Null$prototype$lte(other) {
-    return true;
-  }
-
-  //  Undefined$prototype$toString :: Undefined ~> () -> String
-  function Undefined$prototype$toString() {
-    return 'undefined';
-  }
-
-  //  Undefined$prototype$equals :: Undefined ~> Undefined -> Boolean
-  function Undefined$prototype$equals(other) {
-    return true;
-  }
-
-  //  Undefined$prototype$lte :: Undefined ~> Undefined -> Boolean
-  function Undefined$prototype$lte(other) {
-    return true;
-  }
-
-  //  Boolean$prototype$toString :: Boolean ~> () -> String
-  function Boolean$prototype$toString() {
-    return typeof this === 'object' ?
-      'new Boolean(' + toString(this.valueOf()) + ')' :
-      this.toString();
-  }
-
-  //  Boolean$prototype$equals :: Boolean ~> Boolean -> Boolean
-  function Boolean$prototype$equals(other) {
-    return typeof this === 'object' ?
-      equals(this.valueOf(), other.valueOf()) :
-      this === other;
-  }
-
-  //  Boolean$prototype$lte :: Boolean ~> Boolean -> Boolean
-  function Boolean$prototype$lte(other) {
-    return typeof this === 'object' ?
-      lte(this.valueOf(), other.valueOf()) :
-      this === false || other === true;
-  }
-
-  //  Number$prototype$toString :: Number ~> () -> String
-  function Number$prototype$toString() {
-    return typeof this === 'object' ?
-      'new Number(' + toString(this.valueOf()) + ')' :
-      1 / this === -Infinity ? '-0' : this.toString(10);
-  }
-
-  //  Number$prototype$equals :: Number ~> Number -> Boolean
-  function Number$prototype$equals(other) {
-    return typeof this === 'object' ?
-      equals(this.valueOf(), other.valueOf()) :
-      isNaN(this) && isNaN(other) || this === other;
-  }
-
-  //  Number$prototype$lte :: Number ~> Number -> Boolean
-  function Number$prototype$lte(other) {
-    return typeof this === 'object' ?
-      lte(this.valueOf(), other.valueOf()) :
-      isNaN(this) && isNaN(other) || this <= other;
-  }
-
-  //  Date$prototype$toString :: Date ~> () -> String
-  function Date$prototype$toString() {
-    var x = isNaN(this.valueOf()) ? NaN : this.toISOString();
-    return 'new Date(' + toString(x) + ')';
-  }
-
-  //  Date$prototype$equals :: Date ~> Date -> Boolean
-  function Date$prototype$equals(other) {
-    return equals(this.valueOf(), other.valueOf());
-  }
-
-  //  Date$prototype$lte :: Date ~> Date -> Boolean
-  function Date$prototype$lte(other) {
-    return lte(this.valueOf(), other.valueOf());
-  }
-
-  //  RegExp$prototype$equals :: RegExp ~> RegExp -> Boolean
-  function RegExp$prototype$equals(other) {
-    return other.source === this.source &&
-           other.global === this.global &&
-           other.ignoreCase === this.ignoreCase &&
-           other.multiline === this.multiline &&
-           other.sticky === this.sticky &&
-           other.unicode === this.unicode;
-  }
-
-  //  String$empty :: () -> String
-  function String$empty() {
-    return '';
-  }
-
-  //  String$prototype$toString :: String ~> () -> String
-  function String$prototype$toString() {
-    return typeof this === 'object' ?
-      'new String(' + toString(this.valueOf()) + ')' :
-      JSON.stringify(this);
-  }
-
-  //  String$prototype$equals :: String ~> String -> Boolean
-  function String$prototype$equals(other) {
-    return typeof this === 'object' ?
-      equals(this.valueOf(), other.valueOf()) :
-      this === other;
-  }
-
-  //  String$prototype$lte :: String ~> String -> Boolean
-  function String$prototype$lte(other) {
-    return typeof this === 'object' ?
-      lte(this.valueOf(), other.valueOf()) :
-      this <= other;
-  }
-
-  //  String$prototype$concat :: String ~> String -> String
-  function String$prototype$concat(other) {
-    return this + other;
-  }
-
-  //  Array$empty :: () -> Array a
-  function Array$empty() {
-    return [];
-  }
-
-  //  Array$of :: a -> Array a
-  function Array$of(x) {
-    return [x];
-  }
-
-  //  Array$chainRec :: ((a -> c, b -> c, a) -> Array c, a) -> Array b
-  function Array$chainRec(f, x) {
-    var $todo = [x];
-    var $done = [];
-    while ($todo.length > 0) {
-      var xs = f(iterationNext, iterationDone, $todo.shift());
-      var $more = [];
-      for (var idx = 0; idx < xs.length; idx += 1) {
-        (xs[idx].done ? $done : $more).push(xs[idx].value);
-      }
-      Array.prototype.unshift.apply($todo, $more);
-    }
-    return $done;
-  }
-
-  //  Array$zero :: () -> Array a
-  function Array$zero() {
-    return [];
-  }
-
-  //  Array$prototype$toString :: Array a ~> () -> String
-  function Array$prototype$toString() {
-    var reprs = this.map(toString);
-    var keys = Object.keys(this).sort();
-    for (var idx = 0; idx < keys.length; idx += 1) {
-      var k = keys[idx];
-      if (!/^\d+$/.test(k)) {
-        reprs.push(toString(k) + ': ' + toString(this[k]));
-      }
-    }
-    return '[' + reprs.join(', ') + ']';
-  }
-
-  //  Array$prototype$equals :: Array a ~> Array a -> Boolean
-  function Array$prototype$equals(other) {
-    if (other.length !== this.length) return false;
-    for (var idx = 0; idx < this.length; idx += 1) {
-      if (!equals(this[idx], other[idx])) return false;
-    }
-    return true;
-  }
-
-  //  Array$prototype$lte :: Array a ~> Array a -> Boolean
-  function Array$prototype$lte(other) {
-    for (var idx = 0; true; idx += 1) {
-      if (idx === this.length) return true;
-      if (idx === other.length) return false;
-      if (!equals(this[idx], other[idx])) return lte(this[idx], other[idx]);
-    }
-  }
-
-  //  Array$prototype$concat :: Array a ~> Array a -> Array a
-  function Array$prototype$concat(other) {
-    return this.concat(other);
-  }
-
-  //  Array$prototype$map :: Array a ~> (a -> b) -> Array b
-  function Array$prototype$map(f) {
-    return this.map(function(x) { return f(x); });
-  }
-
-  //  Array$prototype$ap :: Array a ~> Array (a -> b) -> Array b
-  function Array$prototype$ap(fs) {
-    var result = [];
-    for (var idx = 0; idx < fs.length; idx += 1) {
-      for (var idx2 = 0; idx2 < this.length; idx2 += 1) {
-        result.push(fs[idx](this[idx2]));
-      }
-    }
-    return result;
-  }
-
-  //  Array$prototype$chain :: Array a ~> (a -> Array b) -> Array b
-  function Array$prototype$chain(f) {
-    var result = [];
-    this.forEach(function(x) { Array.prototype.push.apply(result, f(x)); });
-    return result;
-  }
-
-  //  Array$prototype$alt :: Array a ~> Array a -> Array a
-  var Array$prototype$alt = Array$prototype$concat;
-
-  //  Array$prototype$reduce :: Array a ~> ((b, a) -> b, b) -> b
-  function Array$prototype$reduce(f, initial) {
-    return this.reduce(function(acc, x) { return f(acc, x); }, initial);
-  }
-
-  //  Array$prototype$traverse :: Applicative f => Array a ~> (TypeRep f, a -> f b) -> f (Array b)
-  function Array$prototype$traverse(typeRep, f) {
-    var xs = this;
-    function go(idx, n) {
-      switch (n) {
-        case 0: return of(typeRep, []);
-        case 2: return lift2(pair, f(xs[idx]), f(xs[idx + 1]));
-        default:
-          var m = Math.floor(n / 4) * 2;
-          return lift2(concat_, go(idx, m), go(idx + m, n - m));
-      }
-    }
-    return this.length % 2 === 1 ?
-      lift2(concat_, map(Array$of, f(this[0])), go(1, this.length - 1)) :
-      go(0, this.length);
-  }
-
-  //  Array$prototype$extend :: Array a ~> (Array a -> b) -> Array b
-  function Array$prototype$extend(f) {
-    return this.map(function(_, idx, xs) { return f(xs.slice(idx)); });
-  }
-
-  //  Arguments$prototype$toString :: Arguments ~> String
-  function Arguments$prototype$toString() {
-    var args = Array.prototype.map.call(this, toString).join(', ');
-    return '(function () { return arguments; }(' + args + '))';
-  }
-
-  //  Arguments$prototype$equals :: Arguments ~> Arguments -> Boolean
-  function Arguments$prototype$equals(other) {
-    return Array$prototype$equals.call(this, other);
-  }
-
-  //  Arguments$prototype$lte :: Arguments ~> Arguments -> Boolean
-  function Arguments$prototype$lte(other) {
-    return Array$prototype$lte.call(this, other);
-  }
-
-  //  Error$prototype$toString :: Error ~> () -> String
-  function Error$prototype$toString() {
-    return 'new ' + this.name + '(' + toString(this.message) + ')';
-  }
-
-  //  Error$prototype$equals :: Error ~> Error -> Boolean
-  function Error$prototype$equals(other) {
-    return equals(this.name, other.name) &&
-           equals(this.message, other.message);
-  }
-
-  //  Object$empty :: () -> StrMap a
-  function Object$empty() {
-    return {};
-  }
-
-  //  Object$zero :: () -> StrMap a
-  function Object$zero() {
-    return {};
-  }
-
-  //  Object$prototype$toString :: StrMap a ~> () -> String
-  function Object$prototype$toString() {
-    var reprs = [];
-    var keys = Object.keys(this).sort();
-    for (var idx = 0; idx < keys.length; idx += 1) {
-      var k = keys[idx];
-      reprs.push(toString(k) + ': ' + toString(this[k]));
-    }
-    return '{' + reprs.join(', ') + '}';
-  }
-
-  //  Object$prototype$equals :: StrMap a ~> StrMap a -> Boolean
-  function Object$prototype$equals(other) {
-    var self = this;
-    var keys = Object.keys(this).sort();
-    return equals(keys, Object.keys(other).sort()) &&
-           keys.every(function(k) { return equals(self[k], other[k]); });
-  }
-
-  //  Object$prototype$lte :: StrMap a ~> StrMap a -> Boolean
-  function Object$prototype$lte(other) {
-    var theseKeys = Object.keys(this).sort();
-    var otherKeys = Object.keys(other).sort();
-    while (true) {
-      if (theseKeys.length === 0) return true;
-      if (otherKeys.length === 0) return false;
-      var k = theseKeys.shift();
-      var z = otherKeys.shift();
-      if (k < z) return true;
-      if (k > z) return false;
-      if (!equals(this[k], other[k])) return lte(this[k], other[k]);
-    }
-  }
-
-  //  Object$prototype$concat :: StrMap a ~> StrMap a -> StrMap a
-  function Object$prototype$concat(other) {
-    var result = {};
-    for (var k in this) result[k] = this[k];
-    for (k in other) result[k] = other[k];
-    return result;
-  }
-
-  //  Object$prototype$map :: StrMap a ~> (a -> b) -> StrMap b
-  function Object$prototype$map(f) {
-    var result = {};
-    for (var k in this) result[k] = f(this[k]);
-    return result;
-  }
-
-  //  Object$prototype$ap :: StrMap a ~> StrMap (a -> b) -> StrMap b
-  function Object$prototype$ap(other) {
-    var result = {};
-    for (var k in this) if (k in other) result[k] = other[k](this[k]);
-    return result;
-  }
-
-  //  Object$prototype$alt :: StrMap a ~> StrMap a -> StrMap a
-  var Object$prototype$alt = Object$prototype$concat;
-
-  //  Object$prototype$reduce :: StrMap a ~> ((b, a) -> b, b) -> b
-  function Object$prototype$reduce(f, initial) {
-    var self = this;
-    function reducer(acc, k) { return f(acc, self[k]); }
-    return Object.keys(this).sort().reduce(reducer, initial);
-  }
-
-  //  Object$prototype$traverse :: Applicative f => StrMap a ~> (TypeRep f, a -> f b) -> f (StrMap b)
-  function Object$prototype$traverse(typeRep, f) {
-    var self = this;
-    return Object.keys(this).reduce(function(applicative, k) {
-      function set(o) { return function(v) { o[k] = v; return o; }; }
-      return lift2(set, applicative, f(self[k]));
-    }, of(typeRep, {}));
-  }
-
-  //  Function$id :: () -> a -> a
-  function Function$id() {
-    return identity;
-  }
-
-  //  Function$of :: b -> (a -> b)
-  function Function$of(x) {
-    return function(_) { return x; };
-  }
-
-  //  Function$chainRec :: ((a -> c, b -> c, a) -> (z -> c), a) -> (z -> b)
-  function Function$chainRec(f, x) {
-    return function(a) {
-      var step = iterationNext(x);
-      while (!step.done) {
-        step = f(iterationNext, iterationDone, step.value)(a);
-      }
-      return step.value;
-    };
-  }
-
-  //  Function$prototype$equals :: Function ~> Function -> Boolean
-  function Function$prototype$equals(other) {
-    return other === this;
-  }
-
-  //  Function$prototype$compose :: (a -> b) ~> (b -> c) -> (a -> c)
-  function Function$prototype$compose(other) {
-    var semigroupoid = this;
-    return function(x) { return other(semigroupoid(x)); };
-  }
-
-  //  Function$prototype$map :: (a -> b) ~> (b -> c) -> (a -> c)
-  function Function$prototype$map(f) {
-    var functor = this;
-    return function(x) { return f(functor(x)); };
-  }
-
-  //  Function$prototype$promap :: (b -> c) ~> (a -> b, c -> d) -> (a -> d)
-  function Function$prototype$promap(f, g) {
-    var profunctor = this;
-    return function(x) { return g(profunctor(f(x))); };
-  }
-
-  //  Function$prototype$ap :: (a -> b) ~> (a -> b -> c) -> (a -> c)
-  function Function$prototype$ap(f) {
-    var apply = this;
-    return function(x) { return f(x)(apply(x)); };
-  }
-
-  //  Function$prototype$chain :: (a -> b) ~> (b -> a -> c) -> (a -> c)
-  function Function$prototype$chain(f) {
-    var chain = this;
-    return function(x) { return f(chain(x))(x); };
-  }
-
-  //  Function$prototype$contramap :: (b -> c) ~> (a -> b) -> (a -> c)
-  function Function$prototype$contramap(f) {
-    var contravariant = this;
-    return function(x) { return contravariant(f(x)); };
-  }
-
-  /* eslint-disable key-spacing */
-  var implementations = {
-    Null: {
-      prototype: {
-        toString:                   Null$prototype$toString,
-        'fantasy-land/equals':      Null$prototype$equals,
-        'fantasy-land/lte':         Null$prototype$lte
-      }
-    },
-    Undefined: {
-      prototype: {
-        toString:                   Undefined$prototype$toString,
-        'fantasy-land/equals':      Undefined$prototype$equals,
-        'fantasy-land/lte':         Undefined$prototype$lte
-      }
-    },
-    Boolean: {
-      prototype: {
-        toString:                   Boolean$prototype$toString,
-        'fantasy-land/equals':      Boolean$prototype$equals,
-        'fantasy-land/lte':         Boolean$prototype$lte
-      }
-    },
-    Number: {
-      prototype: {
-        toString:                   Number$prototype$toString,
-        'fantasy-land/equals':      Number$prototype$equals,
-        'fantasy-land/lte':         Number$prototype$lte
-      }
-    },
-    Date: {
-      prototype: {
-        toString:                   Date$prototype$toString,
-        'fantasy-land/equals':      Date$prototype$equals,
-        'fantasy-land/lte':         Date$prototype$lte
-      }
-    },
-    RegExp: {
-      prototype: {
-        'fantasy-land/equals':      RegExp$prototype$equals
-      }
-    },
-    String: {
-      'fantasy-land/empty':         String$empty,
-      prototype: {
-        toString:                   String$prototype$toString,
-        'fantasy-land/equals':      String$prototype$equals,
-        'fantasy-land/lte':         String$prototype$lte,
-        'fantasy-land/concat':      String$prototype$concat
-      }
-    },
-    Array: {
-      'fantasy-land/empty':         Array$empty,
-      'fantasy-land/of':            Array$of,
-      'fantasy-land/chainRec':      Array$chainRec,
-      'fantasy-land/zero':          Array$zero,
-      prototype: {
-        toString:                   Array$prototype$toString,
-        'fantasy-land/equals':      Array$prototype$equals,
-        'fantasy-land/lte':         Array$prototype$lte,
-        'fantasy-land/concat':      Array$prototype$concat,
-        'fantasy-land/map':         Array$prototype$map,
-        'fantasy-land/ap':          Array$prototype$ap,
-        'fantasy-land/chain':       Array$prototype$chain,
-        'fantasy-land/alt':         Array$prototype$alt,
-        'fantasy-land/reduce':      Array$prototype$reduce,
-        'fantasy-land/traverse':    Array$prototype$traverse,
-        'fantasy-land/extend':      Array$prototype$extend
-      }
-    },
-    Arguments: {
-      prototype: {
-        toString:                   Arguments$prototype$toString,
-        'fantasy-land/equals':      Arguments$prototype$equals,
-        'fantasy-land/lte':         Arguments$prototype$lte
-      }
-    },
-    Error: {
-      prototype: {
-        toString:                   Error$prototype$toString,
-        'fantasy-land/equals':      Error$prototype$equals
-      }
-    },
-    Object: {
-      'fantasy-land/empty':         Object$empty,
-      'fantasy-land/zero':          Object$zero,
-      prototype: {
-        toString:                   Object$prototype$toString,
-        'fantasy-land/equals':      Object$prototype$equals,
-        'fantasy-land/lte':         Object$prototype$lte,
-        'fantasy-land/concat':      Object$prototype$concat,
-        'fantasy-land/map':         Object$prototype$map,
-        'fantasy-land/ap':          Object$prototype$ap,
-        'fantasy-land/alt':         Object$prototype$alt,
-        'fantasy-land/reduce':      Object$prototype$reduce,
-        'fantasy-land/traverse':    Object$prototype$traverse
-      }
-    },
-    Function: {
-      'fantasy-land/id':            Function$id,
-      'fantasy-land/of':            Function$of,
-      'fantasy-land/chainRec':      Function$chainRec,
-      prototype: {
-        'fantasy-land/equals':      Function$prototype$equals,
-        'fantasy-land/compose':     Function$prototype$compose,
-        'fantasy-land/map':         Function$prototype$map,
-        'fantasy-land/promap':      Function$prototype$promap,
-        'fantasy-land/ap':          Function$prototype$ap,
-        'fantasy-land/chain':       Function$prototype$chain,
-        'fantasy-land/contramap':   Function$prototype$contramap
-      }
-    }
-  };
-  /* eslint-enable key-spacing */
-
-  //# toString :: a -> String
-  //.
-  //. Returns a useful string representation of its argument.
-  //.
-  //. Dispatches to the argument's `toString` method if appropriate.
-  //.
-  //. Where practical, `equals(eval(toString(x)), x) = true`.
-  //.
-  //. `toString` implementations are provided for the following built-in types:
-  //. Null, Undefined, Boolean, Number, Date, String, Array, Arguments, Error,
-  //. and Object.
-  //.
-  //. ```javascript
-  //. > toString(-0)
-  //. '-0'
-  //.
-  //. > toString(['foo', 'bar', 'baz'])
-  //. '["foo", "bar", "baz"]'
-  //.
-  //. > toString({x: 1, y: 2, z: 3})
-  //. '{"x": 1, "y": 2, "z": 3}'
-  //.
-  //. > toString(Cons(1, Cons(2, Cons(3, Nil))))
-  //. 'Cons(1, Cons(2, Cons(3, Nil)))'
-  //. ```
-  var toString = (function() {
-    //  $seen :: Array Any
-    var $seen = [];
-
-    function call(method, x) {
-      $seen.push(x);
-      try { return method.call(x); } finally { $seen.pop(); }
-    }
-
-    return function toString(x) {
-      if ($seen.indexOf(x) >= 0) return '<Circular>';
-
-      var xType = type(x);
-      if (xType === 'Object') {
-        var result;
-        try { result = call(x.toString, x); } catch (err) {}
-        if (result != null && result !== '[object Object]') return result;
-      }
-
-      return call(implPath([xType, 'prototype', 'toString']) || x.toString, x);
-    };
-  }());
-
-  //# equals :: (a, b) -> Boolean
-  //.
-  //. Returns `true` if its arguments are of the same type and equal according
-  //. to the type's [`fantasy-land/equals`][] method; `false` otherwise.
-  //.
-  //. `fantasy-land/equals` implementations are provided for the following
-  //. built-in types: Null, Undefined, Boolean, Number, Date, RegExp, String,
-  //. Array, Arguments, Error, Object, and Function.
-  //.
-  //. The algorithm supports circular data structures. Two arrays are equal
-  //. if they have the same index paths and for each path have equal values.
-  //. Two arrays which represent `[1, [1, [1, [1, [1, ...]]]]]`, for example,
-  //. are equal even if their internal structures differ. Two objects are equal
-  //. if they have the same property paths and for each path have equal values.
-  //.
-  //. ```javascript
-  //. > equals(0, -0)
-  //. true
-  //.
-  //. > equals(NaN, NaN)
-  //. true
-  //.
-  //. > equals(Cons('foo', Cons('bar', Nil)), Cons('foo', Cons('bar', Nil)))
-  //. true
-  //.
-  //. > equals(Cons('foo', Cons('bar', Nil)), Cons('bar', Cons('foo', Nil)))
-  //. false
-  //. ```
-  var equals = (function() {
-    //  $pairs :: Array (Pair Any Any)
-    var $pairs = [];
-
-    return function equals(x, y) {
-      if (!sameType(x, y)) return false;
-
-      //  This algorithm for comparing circular data structures was
-      //  suggested in <http://stackoverflow.com/a/40622794/312785>.
-      if ($pairs.some(function(p) { return p[0] === x && p[1] === y; })) {
-        return true;
-      }
-
-      $pairs.push([x, y]);
-      try {
-        return Setoid.test(x) && Setoid.test(y) && Setoid.methods.equals(x)(y);
-      } finally {
-        $pairs.pop();
-      }
-    };
-  }());
-
-  //# lt :: (a, b) -> Boolean
-  //.
-  //. Returns `true` if its arguments are of the same type and the first is
-  //. less than the second according to the type's [`fantasy-land/lte`][]
-  //. method; `false` otherwise.
-  //.
-  //. This function is derived from [`lte`](#lte).
-  //.
-  //. See also [`gt`](#gt) and [`gte`](#gte).
-  //.
-  //. ```javascript
-  //. > lt(0, 0)
-  //. false
-  //.
-  //. > lt(0, 1)
-  //. true
-  //.
-  //. > lt(1, 0)
-  //. false
-  //. ```
-  function lt(x, y) {
-    return sameType(x, y) && !lte(y, x);
-  }
-
-  //# lte :: (a, b) -> Boolean
-  //.
-  //. Returns `true` if its arguments are of the same type and the first
-  //. is less than or equal to the second according to the type's
-  //. [`fantasy-land/lte`][] method; `false` otherwise.
-  //.
-  //. `fantasy-land/lte` implementations are provided for the following
-  //. built-in types: Null, Undefined, Boolean, Number, Date, String, Array,
-  //. Arguments, and Object.
-  //.
-  //. The algorithm supports circular data structures in the same manner as
-  //. [`equals`](#equals).
-  //.
-  //. See also [`lt`](#lt), [`gt`](#gt), and [`gte`](#gte).
-  //.
-  //. ```javascript
-  //. > lte(0, 0)
-  //. true
-  //.
-  //. > lte(0, 1)
-  //. true
-  //.
-  //. > lte(1, 0)
-  //. false
-  //. ```
-  var lte = (function() {
-    //  $pairs :: Array (Pair Any Any)
-    var $pairs = [];
-
-    return function lte(x, y) {
-      if (!sameType(x, y)) return false;
-
-      //  This algorithm for comparing circular data structures was
-      //  suggested in <http://stackoverflow.com/a/40622794/312785>.
-      if ($pairs.some(function(p) { return p[0] === x && p[1] === y; })) {
-        return equals(x, y);
-      }
-
-      $pairs.push([x, y]);
-      try {
-        return Ord.test(x) && Ord.test(y) && Ord.methods.lte(x)(y);
-      } finally {
-        $pairs.pop();
-      }
-    };
-  }());
-
-  //# gt :: (a, b) -> Boolean
-  //.
-  //. Returns `true` if its arguments are of the same type and the first is
-  //. greater than the second according to the type's [`fantasy-land/lte`][]
-  //. method; `false` otherwise.
-  //.
-  //. This function is derived from [`lte`](#lte).
-  //.
-  //. See also [`lt`](#lt) and [`gte`](#gte).
-  //.
-  //. ```javascript
-  //. > gt(0, 0)
-  //. false
-  //.
-  //. > gt(0, 1)
-  //. false
-  //.
-  //. > gt(1, 0)
-  //. true
-  //. ```
-  function gt(x, y) {
-    return lt(y, x);
-  }
-
-  //# gte :: (a, b) -> Boolean
-  //.
-  //. Returns `true` if its arguments are of the same type and the first
-  //. is greater than or equal to the second according to the type's
-  //. [`fantasy-land/lte`][] method; `false` otherwise.
-  //.
-  //. This function is derived from [`lte`](#lte).
-  //.
-  //. See also [`lt`](#lt) and [`gt`](#gt).
-  //.
-  //. ```javascript
-  //. > gte(0, 0)
-  //. true
-  //.
-  //. > gte(0, 1)
-  //. false
-  //.
-  //. > gte(1, 0)
-  //. true
-  //. ```
-  function gte(x, y) {
-    return lte(y, x);
-  }
-
-  //# compose :: Semigroupoid c => (c j k, c i j) -> c i k
-  //.
-  //. Function wrapper for [`fantasy-land/compose`][].
-  //.
-  //. `fantasy-land/compose` implementations are provided for the following
-  //. built-in types: Function.
-  //.
-  //. ```javascript
-  //. > compose(Math.sqrt, x => x + 1)(99)
-  //. 10
-  //. ```
-  function compose(x, y) {
-    return Semigroupoid.methods.compose(y)(x);
-  }
-
-  //# id :: Category c => TypeRep c -> c
-  //.
-  //. Function wrapper for [`fantasy-land/id`][].
-  //.
-  //. `fantasy-land/id` implementations are provided for the following
-  //. built-in types: Function.
-  //.
-  //. ```javascript
-  //. > id(Function)('foo')
-  //. 'foo'
-  //. ```
-  function id(typeRep) {
-    return Category.methods.id(typeRep)();
-  }
-
-  //# concat :: Semigroup a => (a, a) -> a
-  //.
-  //. Function wrapper for [`fantasy-land/concat`][].
-  //.
-  //. `fantasy-land/concat` implementations are provided for the following
-  //. built-in types: String, Array, and Object.
-  //.
-  //. ```javascript
-  //. > concat('abc', 'def')
-  //. 'abcdef'
-  //.
-  //. > concat([1, 2, 3], [4, 5, 6])
-  //. [1, 2, 3, 4, 5, 6]
-  //.
-  //. > concat({x: 1, y: 2}, {y: 3, z: 4})
-  //. {x: 1, y: 3, z: 4}
-  //.
-  //. > concat(Cons('foo', Cons('bar', Cons('baz', Nil))), Cons('quux', Nil))
-  //. Cons('foo', Cons('bar', Cons('baz', Cons('quux', Nil))))
-  //. ```
-  function concat(x, y) {
-    return Semigroup.methods.concat(x)(y);
-  }
-
-  //# empty :: Monoid m => TypeRep m -> m
-  //.
-  //. Function wrapper for [`fantasy-land/empty`][].
-  //.
-  //. `fantasy-land/empty` implementations are provided for the following
-  //. built-in types: String, Array, and Object.
-  //.
-  //. ```javascript
-  //. > empty(String)
-  //. ''
-  //.
-  //. > empty(Array)
-  //. []
-  //.
-  //. > empty(Object)
-  //. {}
-  //.
-  //. > empty(List)
-  //. Nil
-  //. ```
-  function empty(typeRep) {
-    return Monoid.methods.empty(typeRep)();
-  }
-
-  //# map :: Functor f => (a -> b, f a) -> f b
-  //.
-  //. Function wrapper for [`fantasy-land/map`][].
-  //.
-  //. `fantasy-land/map` implementations are provided for the following
-  //. built-in types: Array, Object, and Function.
-  //.
-  //. ```javascript
-  //. > map(Math.sqrt, [1, 4, 9])
-  //. [1, 2, 3]
-  //.
-  //. > map(Math.sqrt, {x: 1, y: 4, z: 9})
-  //. {x: 1, y: 2, z: 3}
-  //.
-  //. > map(Math.sqrt, s => s.length)('Sanctuary')
-  //. 3
-  //.
-  //. > map(Math.sqrt, Tuple('foo', 64))
-  //. Tuple('foo', 8)
-  //.
-  //. > map(Math.sqrt, Nil)
-  //. Nil
-  //.
-  //. > map(Math.sqrt, Cons(1, Cons(4, Cons(9, Nil))))
-  //. Cons(1, Cons(2, Cons(3, Nil)))
-  //. ```
-  function map(f, functor) {
-    return Functor.methods.map(functor)(f);
-  }
-
-  //# bimap :: Bifunctor f => (a -> b, c -> d, f a c) -> f b d
-  //.
-  //. Function wrapper for [`fantasy-land/bimap`][].
-  //.
-  //. ```javascript
-  //. > bimap(s => s.toUpperCase(), Math.sqrt, Tuple('foo', 64))
-  //. Tuple('FOO', 8)
-  //. ```
-  function bimap(f, g, bifunctor) {
-    return Bifunctor.methods.bimap(bifunctor)(f, g);
-  }
-
-  //# promap :: Profunctor p => (a -> b, c -> d, p b c) -> p a d
-  //.
-  //. Function wrapper for [`fantasy-land/promap`][].
-  //.
-  //. `fantasy-land/promap` implementations are provided for the following
-  //. built-in types: Function.
-  //.
-  //. ```javascript
-  //. > promap(Math.abs, x => x + 1, Math.sqrt)(-100)
-  //. 11
-  //. ```
-  function promap(f, g, profunctor) {
-    return Profunctor.methods.promap(profunctor)(f, g);
-  }
-
-  //# ap :: Apply f => (f (a -> b), f a) -> f b
-  //.
-  //. Function wrapper for [`fantasy-land/ap`][].
-  //.
-  //. `fantasy-land/ap` implementations are provided for the following
-  //. built-in types: Array, Object, and Function.
-  //.
-  //. ```javascript
-  //. > ap([Math.sqrt, x => x * x], [1, 4, 9, 16, 25])
-  //. [1, 2, 3, 4, 5, 1, 16, 81, 256, 625]
-  //.
-  //. > ap({a: Math.sqrt, b: x => x * x}, {a: 16, b: 10, c: 1})
-  //. {a: 4, b: 100}
-  //.
-  //. > ap(s => n => s.slice(0, n), s => Math.ceil(s.length / 2))('Haskell')
-  //. 'Hask'
-  //.
-  //. > ap(Identity(Math.sqrt), Identity(64))
-  //. Identity(8)
-  //.
-  //. > ap(Cons(Math.sqrt, Cons(x => x * x, Nil)), Cons(16, Cons(100, Nil)))
-  //. Cons(4, Cons(10, Cons(256, Cons(10000, Nil))))
-  //. ```
-  function ap(applyF, applyX) {
-    return Apply.methods.ap(applyX)(applyF);
-  }
-
-  //# lift2 :: Apply f => (a -> b -> c, f a, f b) -> f c
-  //.
-  //. Lifts `a -> b -> c` to `Apply f => f a -> f b -> f c` and returns the
-  //. result of applying this to the given arguments.
-  //.
-  //. This function is derived from [`map`](#map) and [`ap`](#ap).
-  //.
-  //. See also [`lift3`](#lift3).
-  //.
-  //. ```javascript
-  //. > lift2(x => y => Math.pow(x, y), [10], [1, 2, 3])
-  //. [10, 100, 1000]
-  //.
-  //. > lift2(x => y => Math.pow(x, y), Identity(10), Identity(3))
-  //. Identity(1000)
-  //. ```
-  function lift2(f, x, y) {
-    return ap(map(f, x), y);
-  }
-
-  //# lift3 :: Apply f => (a -> b -> c -> d, f a, f b, f c) -> f d
-  //.
-  //. Lifts `a -> b -> c -> d` to `Apply f => f a -> f b -> f c -> f d` and
-  //. returns the result of applying this to the given arguments.
-  //.
-  //. This function is derived from [`map`](#map) and [`ap`](#ap).
-  //.
-  //. See also [`lift2`](#lift2).
-  //.
-  //. ```javascript
-  //. > lift3(x => y => z => x + z + y, ['<'], ['>'], ['foo', 'bar', 'baz'])
-  //. ['<foo>', '<bar>', '<baz>']
-  //.
-  //. > lift3(x => y => z => x + z + y, Identity('<'), Identity('>'), Identity('baz'))
-  //. Identity('<baz>')
-  //. ```
-  function lift3(f, x, y, z) {
-    return ap(ap(map(f, x), y), z);
-  }
-
-  //# apFirst :: Apply f => (f a, f b) -> f a
-  //.
-  //. Combines two effectful actions, keeping only the result of the first.
-  //. Equivalent to Haskell's `(<*)` function.
-  //.
-  //. This function is derived from [`lift2`](#lift2).
-  //.
-  //. See also [`apSecond`](#apSecond).
-  //.
-  //. ```javascript
-  //. > apFirst([1, 2], [3, 4])
-  //. [1, 1, 2, 2]
-  //.
-  //. > apFirst(Identity(1), Identity(2))
-  //. Identity(1)
-  //. ```
-  function apFirst(x, y) {
-    return lift2(constant, x, y);
-  }
-
-  //# apSecond :: Apply f => (f a, f b) -> f b
-  //.
-  //. Combines two effectful actions, keeping only the result of the second.
-  //. Equivalent to Haskell's `(*>)` function.
-  //.
-  //. This function is derived from [`lift2`](#lift2).
-  //.
-  //. See also [`apFirst`](#apFirst).
-  //.
-  //. ```javascript
-  //. > apSecond([1, 2], [3, 4])
-  //. [3, 4, 3, 4]
-  //.
-  //. > apSecond(Identity(1), Identity(2))
-  //. Identity(2)
-  //. ```
-  function apSecond(x, y) {
-    return lift2(constant(identity), x, y);
-  }
-
-  //# of :: Applicative f => (TypeRep f, a) -> f a
-  //.
-  //. Function wrapper for [`fantasy-land/of`][].
-  //.
-  //. `fantasy-land/of` implementations are provided for the following
-  //. built-in types: Array and Function.
-  //.
-  //. ```javascript
-  //. > of(Array, 42)
-  //. [42]
-  //.
-  //. > of(Function, 42)(null)
-  //. 42
-  //.
-  //. > of(List, 42)
-  //. Cons(42, Nil)
-  //. ```
-  function of(typeRep, x) {
-    return Applicative.methods.of(typeRep)(x);
-  }
-
-  //# chain :: Chain m => (a -> m b, m a) -> m b
-  //.
-  //. Function wrapper for [`fantasy-land/chain`][].
-  //.
-  //. `fantasy-land/chain` implementations are provided for the following
-  //. built-in types: Array and Function.
-  //.
-  //. ```javascript
-  //. > chain(x => [x, x], [1, 2, 3])
-  //. [1, 1, 2, 2, 3, 3]
-  //.
-  //. > chain(x => x % 2 == 1 ? of(List, x) : Nil, Cons(1, Cons(2, Cons(3, Nil))))
-  //. Cons(1, Cons(3, Nil))
-  //.
-  //. > chain(n => s => s.slice(0, n), s => Math.ceil(s.length / 2))('Haskell')
-  //. 'Hask'
-  //. ```
-  function chain(f, chain_) {
-    return Chain.methods.chain(chain_)(f);
-  }
-
-  //# join :: Chain m => m (m a) -> m a
-  //.
-  //. Removes one level of nesting from a nested monadic structure.
-  //.
-  //. This function is derived from [`chain`](#chain).
-  //.
-  //. ```javascript
-  //. > join([[1], [2], [3]])
-  //. [1, 2, 3]
-  //.
-  //. > join([[[1, 2, 3]]])
-  //. [[1, 2, 3]]
-  //.
-  //. > join(Identity(Identity(1)))
-  //. Identity(1)
-  //. ```
-  function join(chain_) {
-    return chain(identity, chain_);
-  }
-
-  //# chainRec :: ChainRec m => (TypeRep m, (a -> c, b -> c, a) -> m c, a) -> m b
-  //.
-  //. Function wrapper for [`fantasy-land/chainRec`][].
-  //.
-  //. `fantasy-land/chainRec` implementations are provided for the following
-  //. built-in types: Array.
-  //.
-  //. ```javascript
-  //. > chainRec(
-  //. .   Array,
-  //. .   (next, done, s) => s.length == 2 ? [s + '!', s + '?'].map(done)
-  //. .                                    : [s + 'o', s + 'n'].map(next),
-  //. .   ''
-  //. . )
-  //. ['oo!', 'oo?', 'on!', 'on?', 'no!', 'no?', 'nn!', 'nn?']
-  //. ```
-  function chainRec(typeRep, f, x) {
-    return ChainRec.methods.chainRec(typeRep)(f, x);
-  }
-
-  //# filter :: (Applicative f, Foldable f, Monoid (f a)) => (a -> Boolean, f a) -> f a
-  //.
-  //. Filters its second argument in accordance with the given predicate.
-  //.
-  //. This function is derived from [`concat`](#concat), [`empty`](#empty),
-  //. [`of`](#of), and [`reduce`](#reduce).
-  //.
-  //. See also [`filterM`](#filterM).
-  //.
-  //. ```javascript
-  //. > filter(x => x % 2 == 1, [1, 2, 3])
-  //. [1, 3]
-  //.
-  //. > filter(x => x % 2 == 1, Cons(1, Cons(2, Cons(3, Nil))))
-  //. Cons(1, Cons(3, Nil))
-  //. ```
-  function filter(pred, m) {
-    var M = m.constructor;
-    return reduce(function(m, x) { return pred(x) ? concat(m, of(M, x)) : m; },
-                  empty(M),
-                  m);
-  }
-
-  //# filterM :: (Alternative m, Monad m) => (a -> Boolean, m a) -> m a
-  //.
-  //. Filters its second argument in accordance with the given predicate.
-  //.
-  //. This function is derived from [`of`](#of), [`chain`](#chain), and
-  //. [`zero`](#zero).
-  //.
-  //. See also [`filter`](#filter).
-  //.
-  //. ```javascript
-  //. > filterM(x => x % 2 == 1, [1, 2, 3])
-  //. [1, 3]
-  //.
-  //. > filterM(x => x % 2 == 1, Cons(1, Cons(2, Cons(3, Nil))))
-  //. Cons(1, Cons(3, Nil))
-  //.
-  //. > filterM(x => x % 2 == 1, Nothing)
-  //. Nothing
-  //.
-  //. > filterM(x => x % 2 == 1, Just(0))
-  //. Nothing
-  //.
-  //. > filterM(x => x % 2 == 1, Just(1))
-  //. Just(1)
-  //. ```
-  function filterM(pred, m) {
-    var M = m.constructor;
-    var z = zero(M);
-    return chain(function(x) { return pred(x) ? of(M, x) : z; }, m);
-  }
-
-  //# alt :: Alt f => (f a, f a) -> f a
-  //.
-  //. Function wrapper for [`fantasy-land/alt`][].
-  //.
-  //. `fantasy-land/alt` implementations are provided for the following
-  //. built-in types: Array and Object.
-  //.
-  //. ```javascript
-  //. > alt([1, 2, 3], [4, 5, 6])
-  //. [1, 2, 3, 4, 5, 6]
-  //.
-  //. > alt(Nothing, Nothing)
-  //. Nothing
-  //.
-  //. > alt(Nothing, Just(1))
-  //. Just(1)
-  //.
-  //. > alt(Just(2), Just(3))
-  //. Just(2)
-  //. ```
-  function alt(x, y) {
-    return Alt.methods.alt(x)(y);
-  }
-
-  //# zero :: Plus f => TypeRep f -> f a
-  //.
-  //. Function wrapper for [`fantasy-land/zero`][].
-  //.
-  //. `fantasy-land/zero` implementations are provided for the following
-  //. built-in types: Array and Object.
-  //.
-  //. ```javascript
-  //. > zero(Array)
-  //. []
-  //.
-  //. > zero(Object)
-  //. {}
-  //.
-  //. > zero(Maybe)
-  //. Nothing
-  //. ```
-  function zero(typeRep) {
-    return Plus.methods.zero(typeRep)();
-  }
-
-  //# reduce :: Foldable f => ((b, a) -> b, b, f a) -> b
-  //.
-  //. Function wrapper for [`fantasy-land/reduce`][].
-  //.
-  //. `fantasy-land/reduce` implementations are provided for the following
-  //. built-in types: Array and Object.
-  //.
-  //. ```javascript
-  //. > reduce((xs, x) => [x].concat(xs), [], [1, 2, 3])
-  //. [3, 2, 1]
-  //.
-  //. > reduce(concat, '', Cons('foo', Cons('bar', Cons('baz', Nil))))
-  //. 'foobarbaz'
-  //. ```
-  function reduce(f, x, foldable) {
-    return Foldable.methods.reduce(foldable)(f, x);
-  }
-
-  //# traverse :: (Applicative f, Traversable t) => (TypeRep f, a -> f b, t a) -> f (t b)
-  //.
-  //. Function wrapper for [`fantasy-land/traverse`][].
-  //.
-  //. `fantasy-land/traverse` implementations are provided for the following
-  //. built-in types: Array and Object.
-  //.
-  //. See also [`sequence`](#sequence).
-  //.
-  //. ```javascript
-  //. > traverse(Array, x => x, [[1, 2, 3], [4, 5]])
-  //. [[1, 4], [1, 5], [2, 4], [2, 5], [3, 4], [3, 5]]
-  //.
-  //. > traverse(Identity, x => Identity(x + 1), [1, 2, 3])
-  //. Identity([2, 3, 4])
-  //. ```
-  function traverse(typeRep, f, traversable) {
-    return Traversable.methods.traverse(traversable)(typeRep, f);
-  }
-
-  //# sequence :: (Applicative f, Traversable t) => (TypeRep f, t (f a)) -> f (t a)
-  //.
-  //. Inverts the given `t (f a)` to produce an `f (t a)`.
-  //.
-  //. This function is derived from [`traverse`](#traverse).
-  //.
-  //. ```javascript
-  //. > sequence(Array, Identity([1, 2, 3]))
-  //. [Identity(1), Identity(2), Identity(3)]
-  //.
-  //. > sequence(Identity, [Identity(1), Identity(2), Identity(3)])
-  //. Identity([1, 2, 3])
-  //. ```
-  function sequence(typeRep, traversable) {
-    return traverse(typeRep, identity, traversable);
-  }
-
-  //# extend :: Extend w => (w a -> b, w a) -> w b
-  //.
-  //. Function wrapper for [`fantasy-land/extend`][].
-  //.
-  //. `fantasy-land/extend` implementations are provided for the following
-  //. built-in types: Array.
-  //.
-  //. ```javascript
-  //. > extend(ss => ss.join(''), ['x', 'y', 'z'])
-  //. ['xyz', 'yz', 'z']
-  //. ```
-  function extend(f, extend_) {
-    return Extend.methods.extend(extend_)(f);
-  }
-
-  //# extract :: Comonad w => w a -> a
-  //.
-  //. Function wrapper for [`fantasy-land/extract`][].
-  //.
-  //. ```javascript
-  //. > extract(Identity(42))
-  //. 42
-  //. ```
-  function extract(comonad) {
-    return Comonad.methods.extract(comonad)();
-  }
-
-  //# contramap :: Contravariant f => (b -> a, f a) -> f b
-  //.
-  //. Function wrapper for [`fantasy-land/contramap`][].
-  //.
-  //. `fantasy-land/contramap` implementations are provided for the following
-  //. built-in types: Function.
-  //.
-  //. ```javascript
-  //. > contramap(s => s.length, Math.sqrt)('Sanctuary')
-  //. 3
-  //. ```
-  function contramap(f, contravariant) {
-    return Contravariant.methods.contramap(contravariant)(f);
-  }
-
-  return {
-    TypeClass: TypeClass,
-    Setoid: Setoid,
-    Ord: Ord,
-    Semigroupoid: Semigroupoid,
-    Category: Category,
-    Semigroup: Semigroup,
-    Monoid: Monoid,
-    Functor: Functor,
-    Bifunctor: Bifunctor,
-    Profunctor: Profunctor,
-    Apply: Apply,
-    Applicative: Applicative,
-    Chain: Chain,
-    ChainRec: ChainRec,
-    Monad: Monad,
-    Alt: Alt,
-    Plus: Plus,
-    Alternative: Alternative,
-    Foldable: Foldable,
-    Traversable: Traversable,
-    Extend: Extend,
-    Comonad: Comonad,
-    Contravariant: Contravariant,
-    toString: toString,
-    equals: equals,
-    lt: lt,
-    lte: lte,
-    gt: gt,
-    gte: gte,
-    compose: compose,
-    id: id,
-    concat: concat,
-    empty: empty,
-    map: map,
-    bimap: bimap,
-    promap: promap,
-    ap: ap,
-    lift2: lift2,
-    lift3: lift3,
-    apFirst: apFirst,
-    apSecond: apSecond,
-    of: of,
-    chain: chain,
-    join: join,
-    chainRec: chainRec,
-    filter: filter,
-    filterM: filterM,
-    alt: alt,
-    zero: zero,
-    reduce: reduce,
-    traverse: traverse,
-    sequence: sequence,
-    extend: extend,
-    extract: extract,
-    contramap: contramap
-  };
-
-}));
-
-//. [Alt]:                      https://github.com/fantasyland/fantasy-land#alt
-//. [Alternative]:              https://github.com/fantasyland/fantasy-land#alternative
-//. [Applicative]:              https://github.com/fantasyland/fantasy-land#applicative
-//. [Apply]:                    https://github.com/fantasyland/fantasy-land#apply
-//. [Bifunctor]:                https://github.com/fantasyland/fantasy-land#bifunctor
-//. [Category]:                 https://github.com/fantasyland/fantasy-land#category
-//. [Chain]:                    https://github.com/fantasyland/fantasy-land#chain
-//. [ChainRec]:                 https://github.com/fantasyland/fantasy-land#chainrec
-//. [Comonad]:                  https://github.com/fantasyland/fantasy-land#comonad
-//. [Contravariant]:            https://github.com/fantasyland/fantasy-land#contravariant
-//. [Extend]:                   https://github.com/fantasyland/fantasy-land#extend
-//. [FL]:                       https://github.com/fantasyland/fantasy-land
-//. [Foldable]:                 https://github.com/fantasyland/fantasy-land#foldable
-//. [Functor]:                  https://github.com/fantasyland/fantasy-land#functor
-//. [Monad]:                    https://github.com/fantasyland/fantasy-land#monad
-//. [Monoid]:                   https://github.com/fantasyland/fantasy-land#monoid
-//. [Ord]:                      https://github.com/fantasyland/fantasy-land#ord
-//. [Plus]:                     https://github.com/fantasyland/fantasy-land#plus
-//. [Profunctor]:               https://github.com/fantasyland/fantasy-land#profunctor
-//. [Semigroup]:                https://github.com/fantasyland/fantasy-land#semigroup
-//. [Semigroupoid]:             https://github.com/fantasyland/fantasy-land#semigroupoid
-//. [Setoid]:                   https://github.com/fantasyland/fantasy-land#setoid
-//. [Traversable]:              https://github.com/fantasyland/fantasy-land#traversable
-//. [`fantasy-land/alt`]:       https://github.com/fantasyland/fantasy-land#alt-method
-//. [`fantasy-land/ap`]:        https://github.com/fantasyland/fantasy-land#ap-method
-//. [`fantasy-land/bimap`]:     https://github.com/fantasyland/fantasy-land#bimap-method
-//. [`fantasy-land/chain`]:     https://github.com/fantasyland/fantasy-land#chain-method
-//. [`fantasy-land/chainRec`]:  https://github.com/fantasyland/fantasy-land#chainrec-method
-//. [`fantasy-land/compose`]:   https://github.com/fantasyland/fantasy-land#compose-method
-//. [`fantasy-land/concat`]:    https://github.com/fantasyland/fantasy-land#concat-method
-//. [`fantasy-land/contramap`]: https://github.com/fantasyland/fantasy-land#contramap-method
-//. [`fantasy-land/empty`]:     https://github.com/fantasyland/fantasy-land#empty-method
-//. [`fantasy-land/equals`]:    https://github.com/fantasyland/fantasy-land#equals-method
-//. [`fantasy-land/extend`]:    https://github.com/fantasyland/fantasy-land#extend-method
-//. [`fantasy-land/extract`]:   https://github.com/fantasyland/fantasy-land#extract-method
-//. [`fantasy-land/id`]:        https://github.com/fantasyland/fantasy-land#id-method
-//. [`fantasy-land/lte`]:       https://github.com/fantasyland/fantasy-land#lte-method
-//. [`fantasy-land/map`]:       https://github.com/fantasyland/fantasy-land#map-method
-//. [`fantasy-land/of`]:        https://github.com/fantasyland/fantasy-land#of-method
-//. [`fantasy-land/promap`]:    https://github.com/fantasyland/fantasy-land#promap-method
-//. [`fantasy-land/reduce`]:    https://github.com/fantasyland/fantasy-land#reduce-method
-//. [`fantasy-land/traverse`]:  https://github.com/fantasyland/fantasy-land#traverse-method
-//. [`fantasy-land/zero`]:      https://github.com/fantasyland/fantasy-land#zero-method
-//. [type-classes]:             https://github.com/sanctuary-js/sanctuary-def#type-classes
-
-},{"sanctuary-type-identifiers":6}],6:[function(require,module,exports){
-/*
-        @@@@@@@            @@@@@@@         @@
-      @@       @@        @@       @@      @@@
-    @@   @@@ @@  @@    @@   @@@ @@  @@   @@@@@@ @@   @@@  @@ @@@      @@@@
-   @@  @@   @@@   @@  @@  @@   @@@   @@   @@@   @@   @@@  @@@   @@  @@@   @@
-   @@  @@   @@@   @@  @@  @@   @@@   @@   @@@   @@   @@@  @@@   @@  @@@@@@@@
-   @@  @@   @@@  @@   @@  @@   @@@  @@    @@@   @@   @@@  @@@   @@  @@@
-    @@   @@@ @@@@@     @@   @@@ @@@@@      @@@    @@@ @@  @@@@@@      @@@@@
-      @@                 @@                           @@  @@
-        @@@@@@@            @@@@@@@               @@@@@    @@
-                                                          */
-//. # sanctuary-type-identifiers
-//.
-//. A type is a set of values. Boolean, for example, is the type comprising
-//. `true` and `false`. A value may be a member of multiple types (`42` is a
-//. member of Number, PositiveNumber, Integer, and many other types).
-//.
-//. In certain situations it is useful to divide JavaScript values into
-//. non-overlapping types. The language provides two constructs for this
-//. purpose: the [`typeof`][1] operator and [`Object.prototype.toString`][2].
-//. Each has pros and cons, but neither supports user-defined types.
-//.
-//. This package specifies an [algorithm][3] for deriving a _type identifier_
-//. from any JavaScript value, and exports an implementation of the algorithm.
-//. Authors of algebraic data types may follow this specification in order to
-//. make their data types compatible with the algorithm.
-//.
-//. ### Algorithm
-//.
-//. 1.  Take any JavaScript value `x`.
-//.
-//. 2.  If `x` is `null` or `undefined`, go to step 6.
-//.
-//. 3.  If `x.constructor` evaluates to `null` or `undefined`, go to step 6.
-//.
-//. 4.  If `x.constructor.prototype === x`, go to step 6. This check prevents a
-//.     prototype object from being considered a member of its associated type.
-//.
-//. 5.  If `typeof x.constructor['@@type']` evaluates to `'string'`, return
-//.     the value of `x.constructor['@@type']`.
-//.
-//. 6.  Return the [`Object.prototype.toString`][2] representation of `x`
-//.     without the leading `'[object '` and trailing `']'`.
-//.
-//. ### Compatibility
-//.
-//. For an algebraic data type to be compatible with the [algorithm][3]:
-//.
-//.   - every member of the type must have a `constructor` property pointing
-//.     to an object known as the _type representative_;
-//.
-//.   - the type representative must have a `@@type` property; and
-//.
-//.   - the type representative's `@@type` property (the _type identifier_)
-//.     must be a string primitive, ideally `'<npm-package-name>/<type-name>'`.
-//.
-//. For example:
-//.
-//. ```javascript
-//. //  Identity :: a -> Identity a
-//. function Identity(x) {
-//.   if (!(this instanceof Identity)) return new Identity(x);
-//.   this.value = x;
-//. }
-//.
-//. Identity['@@type'] = 'my-package/Identity';
-//. ```
-//.
-//. Note that by using a constructor function the `constructor` property is set
-//. implicitly for each value created. Constructor functions are convenient for
-//. this reason, but are not required. This definition is also valid:
-//.
-//. ```javascript
-//. //  IdentityTypeRep :: TypeRep Identity
-//. var IdentityTypeRep = {
-//.   '@@type': 'my-package/Identity'
-//. };
-//.
-//. //  Identity :: a -> Identity a
-//. function Identity(x) {
-//.   return {constructor: IdentityTypeRep, value: x};
-//. }
-//. ```
-//.
-//. ### Usage
-//.
-//. ```javascript
-//. var Identity = require('my-package').Identity;
-//. var type = require('sanctuary-type-identifiers');
-//.
-//. type(null);         // => 'Null'
-//. type(true);         // => 'Boolean'
-//. type([1, 2, 3]);    // => 'Array'
-//. type(Identity);     // => 'Function'
-//. type(Identity(0));  // => 'my-package/Identity'
-//. ```
-//.
-//.
-//. [1]: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Operators/typeof
-//. [2]: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Object/toString
-//. [3]: #algorithm
-
-(function(f) {
-
-  'use strict';
-
-  if (typeof module === 'object' && typeof module.exports === 'object') {
-    module.exports = f();
-  } else if (typeof define === 'function' && define.amd != null) {
-    define([], f);
-  } else {
-    self.sanctuaryTypeIdentifiers = f();
-  }
-
-}(function() {
-
-  'use strict';
-
-  //  $$type :: String
-  var $$type = '@@type';
-
-  //  type :: Any -> String
-  function type(x) {
-    return x != null &&
-           x.constructor != null &&
-           x.constructor.prototype !== x &&
-           typeof x.constructor[$$type] === 'string' ?
-      x.constructor[$$type] :
-      Object.prototype.toString.call(x).slice('[object '.length, -']'.length);
-  }
-
-  return type;
-
-}));
-
-},{}],7:[function(require,module,exports){
-/*
-        @@@@@@@            @@@@@@@         @@
-      @@       @@        @@       @@      @@@
-    @@   @@@ @@  @@    @@   @@@ @@  @@   @@@@@@ @@   @@@  @@ @@@      @@@@
-   @@  @@   @@@   @@  @@  @@   @@@   @@   @@@   @@   @@@  @@@   @@  @@@   @@
-   @@  @@   @@@   @@  @@  @@   @@@   @@   @@@   @@   @@@  @@@   @@  @@@@@@@@
-   @@  @@   @@@  @@   @@  @@   @@@  @@    @@@   @@   @@@  @@@   @@  @@@
-    @@   @@@ @@@@@     @@   @@@ @@@@@      @@@    @@@ @@  @@@@@@      @@@@@
-      @@                 @@                           @@  @@
-        @@@@@@@            @@@@@@@               @@@@@    @@
-                                                          */
-//. # sanctuary-type-identifiers
-//.
-//. A type is a set of values. Boolean, for example, is the type comprising
-//. `true` and `false`. A value may be a member of multiple types (`42` is a
-//. member of Number, PositiveNumber, Integer, and many other types).
-//.
-//. In certain situations it is useful to divide JavaScript values into
-//. non-overlapping types. The language provides two constructs for this
-//. purpose: the [`typeof`][1] operator and [`Object.prototype.toString`][2].
-//. Each has pros and cons, but neither supports user-defined types.
-//.
-//. sanctuary-type-identifiers comprises:
-//.
-//.   - an npm and browser -compatible package for deriving the
-//.     _type identifier_ of a JavaScript value; and
-//.   - a specification which authors may follow to specify type
-//.     identifiers for their types.
-//.
-//. ### Specification
-//.
-//. For a type to be compatible with the algorithm:
-//.
-//.   - every member of the type MUST have a `constructor` property
-//.     pointing to an object known as the _type representative_;
-//.
-//.   - the type representative MUST have a `@@type` property
-//.     (the _type identifier_); and
-//.
-//.   - the type identifier MUST be a string primitive and SHOULD have
-//.     format `'<namespace>/<name>[@<version>]'`, where:
-//.
-//.       - `<namespace>` MUST consist of one or more characters, and
-//.         SHOULD equal the name of the npm package which defines the
-//.         type (including [scope][3] where appropriate);
-//.
-//.       - `<name>` MUST consist of one or more characters, and SHOULD
-//.         be the unique name of the type; and
-//.
-//.       - `<version>` MUST consist of one or more digits, and SHOULD
-//.         represent the version of the type.
-//.
-//. If the type identifier does not conform to the format specified above,
-//. it is assumed that the entire string represents the _name_ of the type;
-//. _namespace_ will be `null` and _version_ will be `0`.
-//.
-//. If the _version_ is not given, it is assumed to be `0`.
-//.
-//. For example:
-//.
-//. ```javascript
-//. //  Identity :: a -> Identity a
-//. function Identity(x) {
-//.   if (!(this instanceof Identity)) return new Identity(x);
-//.   this.value = x;
-//. }
-//.
-//. Identity['@@type'] = 'my-package/Identity';
-//. ```
-//.
-//. Note that by using a constructor function the `constructor` property is set
-//. implicitly for each value created. Constructor functions are convenient for
-//. this reason, but are not required. This definition is also valid:
-//.
-//. ```javascript
-//. //  IdentityTypeRep :: TypeRep Identity
-//. var IdentityTypeRep = {
-//.   '@@type': 'my-package/Identity'
-//. };
-//.
-//. //  Identity :: a -> Identity a
-//. function Identity(x) {
-//.   return {constructor: IdentityTypeRep, value: x};
-//. }
-//. ```
-
-(function(f) {
-
-  'use strict';
-
-  if (typeof module === 'object' && typeof module.exports === 'object') {
-    module.exports = f();
-  } else if (typeof define === 'function' && define.amd != null) {
-    define([], f);
-  } else {
-    self.sanctuaryTypeIdentifiers = f();
-  }
-
-}(function() {
-
-  'use strict';
-
-  //  $$type :: String
-  var $$type = '@@type';
-
-  //  pattern :: RegExp
-  var pattern = new RegExp(
-    '^'
-  + '([\\s\\S]+)'   //  <namespace>
-  + '/'             //  SOLIDUS (U+002F)
-  + '([\\s\\S]+?)'  //  <name>
-  + '(?:'           //  optional non-capturing group {
-  +   '@'           //    COMMERCIAL AT (U+0040)
-  +   '([0-9]+)'    //    <version>
-  + ')?'            //  }
-  + '$'
-  );
-
-  //. ### Usage
-  //.
-  //. ```javascript
-  //. const type = require('sanctuary-type-identifiers');
-  //. ```
-  //.
-  //. ```javascript
-  //. > function Identity(x) {
-  //. .   if (!(this instanceof Identity)) return new Identity(x);
-  //. .   this.value = x;
-  //. . }
-  //. . Identity['@@type'] = 'my-package/Identity@1';
-  //.
-  //. > type.parse(type(Identity(0)))
-  //. {namespace: 'my-package', name: 'Identity', version: 1}
-  //. ```
-  //.
-  //. ### API
-  //.
-  //# type :: Any -> String
-  //.
-  //. Takes any value and returns a string which identifies its type. If the
-  //. value conforms to the [specification][4], the custom type identifier is
-  //. returned.
-  //.
-  //. ```javascript
-  //. > type(null)
-  //. 'Null'
-  //.
-  //. > type(true)
-  //. 'Boolean'
-  //.
-  //. > type(Identity(0))
-  //. 'my-package/Identity@1'
-  //. ```
-  function type(x) {
-    return x != null &&
-           x.constructor != null &&
-           x.constructor.prototype !== x &&
-           typeof x.constructor[$$type] === 'string' ?
-      x.constructor[$$type] :
-      Object.prototype.toString.call(x).slice('[object '.length, -']'.length);
-  }
-
-  //# type.parse :: String -> { namespace :: Nullable String, name :: String, version :: Number }
-  //.
-  //. Takes any string and parses it according to the [specification][4],
-  //. returning an object with `namespace`, `name`, and `version` fields.
-  //.
-  //. ```javascript
-  //. > type.parse('my-package/List@2')
-  //. {namespace: 'my-package', name: 'List', version: 2}
-  //.
-  //. > type.parse('nonsense!')
-  //. {namespace: null, name: 'nonsense!', version: 0}
-  //.
-  //. > type.parse(Identity['@@type'])
-  //. {namespace: 'my-package', name: 'Identity', version: 1}
-  //. ```
-  type.parse = function parse(s) {
-    var groups = pattern.exec(s);
-    return {
-      namespace: groups == null || groups[1] == null ? null : groups[1],
-      name:      groups == null                      ? s    : groups[2],
-      version:   groups == null || groups[3] == null ? 0    : Number(groups[3])
-    };
-  };
-
-  return type;
-
-}));
-
-//. [1]: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Operators/typeof
-//. [2]: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Object/toString
-//. [3]: https://docs.npmjs.com/misc/scope
-//. [4]: #specification
-
-},{}],8:[function(require,module,exports){
-(function (global){
-global.Fluture = require('fluture')
-
-}).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{"fluture":3}]},{},[8]);
+}());

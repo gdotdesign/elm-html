@@ -3,6 +3,7 @@ import Plank exposing (Update, Html, node, text, on, mountControlled, mount, ret
 import Counter
 import NestedCounter
 import Rumble.Task as Task exposing (Task)
+import Rumble.Http as Http
 
 type alias Model =
   { incrementCount: Int
@@ -10,12 +11,15 @@ type alias Model =
   , counterChanged: Int
   , counterCount :Int
   , controlledCounter : Counter.Model
+  , result : String
   }
 
 type Msg
   = Counter Counter.Event
   | CounterList Counter.Event
   | ControlledCounter Counter.Msg
+  | Fetch
+  | Result String
 
 init : Model
 init =
@@ -24,11 +28,24 @@ init =
   , counterChanged = 0
   , counterCount = 0
   , controlledCounter = Counter.init
+  , result = ""
   }
+
+
+fetch : Task Msg
+fetch =
+  Http.fetch
+    { method = "get"
+    , headers = []
+    , url = "https://httpbin.org/get"
+    , withCredentials = False
+    , body = ""
+    }
+    |> Task.map Result
 
 update : Msg -> Model -> Update Model Msg a
 update msg model =
-  case msg of
+  case Debug.log "" msg of
     CounterList event ->
       case event of
         Counter.Incremented ->
@@ -58,6 +75,12 @@ update msg model =
         , List.map (Task.map ControlledCounter) effects
         , [])
 
+    Fetch ->
+      return model
+        |> Plank.andThen fetch
+
+    Result data ->
+      return { model | result = data }
 
 view : Model -> Html Msg
 view model =
@@ -84,6 +107,8 @@ view model =
           , node "hr" [] []
           , node "h1" [] [ text "Controlled Component" ]
           , mountControlled Counter.component model.controlledCounter ControlledCounter
+          , node "hr" [] []
+          , node "button" [on "click" (\_ -> Fetch)] [text "Fetch"]
           ]
         ]
       ]

@@ -174,7 +174,7 @@ class Program {
         switch (attribute.ctor) {
           case 'Event':
             // Wire in the event to the update.
-            result[attribute._0] = function (event) {
+            result["on" + attribute._0] = function (event) {
               // TODO: handle stopPropagation, stopImmediatePropagation,
               // preventDefault here
               this.update(attribute._1(event), id, tagger)
