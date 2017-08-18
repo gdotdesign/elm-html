@@ -97,8 +97,7 @@ view model =
   in
     node "div"
       []
-      [ text (toString model)
-      , node "div" []
+      [ node "div" []
         [ node "div" []
           [ node "h1" [] [ text "Normal Components" ]
           , mount Counter.component "counter" Counter
@@ -117,6 +116,7 @@ view model =
           , node "button" [on "click" (\_ -> Fetch)] [text "Fetch"]
           ]
         ]
+      , text (toString model)
       ]
 
 mod =

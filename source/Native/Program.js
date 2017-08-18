@@ -57,7 +57,7 @@ class Program {
             if (resultMsg instanceof Process) {
               // TODO:
               //   - save process ID,
-              //   - abort it them when component is removed
+              //   - abort it when component is removed
               //   - call the parent with the ID if requested
               //   - add "processes" to Component to start processes when injected
               resultMsg.call(function(processMsg) {
