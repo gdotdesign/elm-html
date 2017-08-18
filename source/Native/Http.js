@@ -1,15 +1,5 @@
 /* global F2, Fluture */
 
-class Process {
-  constructor (method) {
-    this.method = method
-  }
-
-  call (callback) {
-    this.method(callback)
-  }
-}
-
 var _gdotdesign$elm_html$Native_Http = (function () { // eslint-disable-line
   /*
     options:
@@ -40,27 +30,30 @@ var _gdotdesign$elm_html$Native_Http = (function () { // eslint-disable-line
       xhr.options = options
 
       resolve(new Process(function(update){
-        xhr.onloadend = function(event) {
-          if(xhr.status == 500) {
-            reject('Error 500')
-          } else if(xhr.status == 404) {
-            reject('Error 404')
-          } else if(xhr.status != 0) {
-            update(xhr.options.onFinish(event.target.responseText))
+        return Fluture(function(rej, res){
+          xhr.onloadend = function(event) {
+            if(xhr.status == 500) {
+            } else if(xhr.status == 404) {
+            } else if(xhr.status != 0) {
+              update(xhr.options.onFinish(event.target.responseText))
+            }
+            res("")
+          }.bind(this)
+
+          xhr.onprogress = function(event){
+            update(xhr.options.onProgress({loaded: event.loaded, total: event.total}))
+          }.bind(this)
+
+          xhr.onerror = function(event) {
+            res("")
           }
-        }.bind(this)
 
-        xhr.onprogress = function(event){
-          update(xhr.options.onProgress({loaded: event.loaded, total: event.total}))
-        }.bind(this)
+          xhr.upload.onerror = function(event) {
+            res("")
+          }
 
-        xhr.onerror = function(event) {
-          reject('Unknown Error')
-        }
-
-        xhr.upload.onerror = function(event) {
-          reject('Upload Error')
-        }
+          return () => { xhr.abort() }
+        })
       }))
     })
   }

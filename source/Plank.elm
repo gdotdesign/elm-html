@@ -4,6 +4,7 @@ import Native.Uid
 import Native.Inferno
 import Native.InfernoCreateElement
 import Native.Program
+import Native.Process
 import Native.Html
 
 import Json.Decode as Json

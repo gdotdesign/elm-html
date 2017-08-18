@@ -17,6 +17,7 @@ class Program {
     this.root = rootComponent
 
     this.listeners = new Map()
+    this.processes = new Set()
     this.ids = new Set()
     this.map = new Map()
 
@@ -55,14 +56,19 @@ class Program {
         .map(function (promise) {
           promise.fork(console.error, function (resultMsg) {
             if (resultMsg instanceof Process) {
+              var pid = _gdotdesign$elm_html$Native_Uid.uid()
               // TODO:
-              //   - save process ID,
               //   - abort it when component is removed
-              //   - call the parent with the ID if requested
               //   - add "processes" to Component to start processes when injected
-              resultMsg.call(function(processMsg) {
-                this.update(processMsg, id)
-              }.bind(this))
+              var cancel = resultMsg
+                .call(function(processMsg) {
+                  this.update(processMsg, id)
+                }.bind(this))
+                .value(function(){
+                  this.processes.delete(pid)
+                }.bind(this))
+              this.processes.add(pid, cancel)
+              // this.update(resultMsg.msg(resultMsg), id)
             } else {
               this.update(resultMsg, id)
             }
