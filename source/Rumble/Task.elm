@@ -9,8 +9,8 @@ type alias Defferred a = () -> Task a
 
 type Error = Error String
 
-timeout : Int -> Task ()
-timeout delay =
+delay : Int -> Task ()
+delay delay =
   Native.Task.timeout delay
 
 new : (() -> a) -> (() -> String) -> Task a
@@ -29,7 +29,11 @@ fail : String -> Task value
 fail value =
   Native.Task.reject value
 
-andThen : (a -> b) -> Task a -> Task b
+map : (a -> b) -> Task a -> Task b
+map function promise =
+  Native.Task.map function promise
+
+andThen : (a -> Task b) -> Task a -> Task b
 andThen function promise =
   Native.Task.andThen function promise
 

@@ -44,8 +44,12 @@ update msg model =
 
 delayedDecrement : Task Msg
 delayedDecrement =
-  Task.timeout 1000
-    |> Task.andThen (\() -> Debug.log "" Decrement)
+  Task.delay 1000
+    |> Task.andThen
+      ( \() ->
+        Task.delay 1000
+        |> Task.map (\() -> Debug.log "" Decrement)
+      )
 
 
 view : Model -> Html Msg

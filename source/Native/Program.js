@@ -51,9 +51,9 @@ class Program {
     _elm_lang$core$Native_List
         .toArray(data._1)
         .map(function (promise) {
-          promise.map(function (resultMsg) {
+          promise.fork(console.error, function (resultMsg) {
             this.update(resultMsg, id)
-          }.bind(this)).run({})
+          }.bind(this))
         }.bind(this))
 
     // Update the map with the new data
@@ -70,9 +70,9 @@ class Program {
       _elm_lang$core$Native_List
         .toArray(data._2)
         .map(function (promise) {
-          promise.map(function (msg) {
+          promise.fork(console.error, function (msg) {
             this.update(instance.component.listener(msg), listenerId)
-          }.bind(this)).run({})
+          }.bind(this))
         }.bind(this))
     }
 

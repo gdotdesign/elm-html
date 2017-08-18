@@ -55,7 +55,7 @@ update msg model =
         (updatedCounter, effects, _) = Counter.update msg model.controlledCounter
       in
         ( { model | controlledCounter = updatedCounter }
-        , List.map (Task.andThen ControlledCounter) effects
+        , List.map (Task.map ControlledCounter) effects
         , [])
 
 
