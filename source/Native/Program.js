@@ -51,9 +51,9 @@ class Program {
     _elm_lang$core$Native_List
         .toArray(data._1)
         .map(function (promise) {
-          promise.then(function (resultMsg) {
+          promise.map(function (resultMsg) {
             this.update(resultMsg, id)
-          }.bind(this))
+          }.bind(this)).run({})
         }.bind(this))
 
     // Update the map with the new data
@@ -70,9 +70,9 @@ class Program {
       _elm_lang$core$Native_List
         .toArray(data._2)
         .map(function (promise) {
-          promise.then(function (msg) {
+          promise.map(function (msg) {
             this.update(instance.component.listener(msg), listenerId)
-          }.bind(this))
+          }.bind(this)).run({})
         }.bind(this))
     }
 

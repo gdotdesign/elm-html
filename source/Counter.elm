@@ -1,7 +1,7 @@
 module Counter exposing (..)
 
 import Plank exposing (Component, Html, Update, node, text, on, return, emit, thenEmit, andThen)
-import Promise exposing (Promise)
+import Rumble.Task as Task exposing (Task)
 
 type alias Model =
   { count: Int
@@ -33,7 +33,7 @@ update msg model =
         { model | count = model.count - 1 }
           |> emit Decremented
           |> emit Changed
-          |> andThen (delayedDecrement ())
+          |> andThen delayedDecrement
 
     Increment ->
       return
@@ -42,10 +42,10 @@ update msg model =
           |> emit Changed
 
 
-delayedDecrement : () -> Promise Msg
-delayedDecrement _ =
-  Promise.timeout 1000
-    |> Promise.map (\() -> Debug.log "" Decrement)
+delayedDecrement : Task Msg
+delayedDecrement =
+  Task.timeout 1000
+    |> Task.andThen (\() -> Debug.log "" Decrement)
 
 
 view : Model -> Html Msg

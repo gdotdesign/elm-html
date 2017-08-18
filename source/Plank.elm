@@ -7,12 +7,12 @@ import Native.Program
 import Native.Html
 
 import Json.Decode as Json
-import Promise exposing (Promise)
+import Rumble.Task as Task exposing (Task)
 
 -- Hidden things
 type X = X
 
-type alias Update model msg parentMsg = (model, List (Promise msg), List (Promise parentMsg))
+type alias Update model msg parentMsg = (model, List (Task msg), List (Task parentMsg))
 
 type Attribute msg
   = Property String String
@@ -73,18 +73,18 @@ program : Html msg -> Program Never model msg
 program =
   Native.Html.program
 
-return : a -> (a, List (Promise b), List c)
+return : a -> (a, List (Task b), List c)
 return model =
   (model, [], [])
 
 emit : c -> Update a b c -> Update a b c
 emit msg (model, promises, emits) =
-  (model, promises, (Promise.succeed msg) :: emits)
+  (model, promises, (Task.succeed msg) :: emits)
 
-thenEmit : Promise c -> Update a b c -> Update a b c
+thenEmit : Task c -> Update a b c -> Update a b c
 thenEmit msg (model, promises, emits) =
   (model, promises, msg :: emits)
 
-andThen : Promise b -> Update a b c -> Update a b c
+andThen : Task b -> Update a b c -> Update a b c
 andThen promise (model, promises, emits) =
   (model, promise :: promises, emits)

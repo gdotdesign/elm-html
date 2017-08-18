@@ -2,7 +2,7 @@ import Plank exposing (Update, Html, node, text, on, mountControlled, mount, ret
 
 import Counter
 import NestedCounter
-import Promise exposing (Promise)
+import Rumble.Task as Task exposing (Task)
 
 type alias Model =
   { incrementCount: Int
@@ -55,7 +55,7 @@ update msg model =
         (updatedCounter, effects, _) = Counter.update msg model.controlledCounter
       in
         ( { model | controlledCounter = updatedCounter }
-        , List.map (Promise.map ControlledCounter) effects
+        , List.map (Task.andThen ControlledCounter) effects
         , [])
 
 

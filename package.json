@@ -21,6 +21,7 @@
       "browser"
     ],
     "ignore": [
+      "source/Native/FunTask.js",
       "source/Native/Inferno.js",
       "source/Native/InfernoCreateelement.js"
     ]

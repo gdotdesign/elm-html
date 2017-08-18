@@ -36,4 +36,4 @@ var _gdotdesign$elm_html$Native_Html = (function () { // eslint-disable-line
     component: F3(component),
     program: program
   }
-}())
+}()); // eslint-disable-line
