@@ -4,16 +4,13 @@ import Native.FunTask
 import Native.Task
 
 type Task a = Task a
+type Id = Id
 
 type Error = Error String
 
 delay : Int -> Task ()
 delay delay =
   Native.Task.timeout delay
-
-new : (() -> a) -> (() -> String) -> Task a
-new resolve reject =
-  Native.Task.new resolve reject
 
 all : List (Task a) -> Task (List a)
 all promises =
@@ -38,3 +35,11 @@ andThen function promise =
 catch : (Error -> b) -> Task a -> Task b
 catch function promise =
   Native.Task.catch function promise
+
+label : String -> Task msg -> Task msg
+label value task =
+  Native.Task.label value task
+
+cancel : String -> Task msg
+cancel id =
+  Native.Task.cancel id

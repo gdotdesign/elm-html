@@ -20,6 +20,7 @@ type Msg
   | ControlledCounter Counter.Msg
   | Fetch
   | Result String
+  | Abort
   | Progress Http.Progress
 
 init : Model
@@ -35,15 +36,18 @@ init =
 
 fetch : Task Msg
 fetch =
-  Http.fetch
+  Http.send
     { method = "get"
     , headers = []
-    , url = "https://httpbin.org/stream/100"
+    , url = "https://httpbin.org/stream-bytes/5000?chunk_size=1"
     , withCredentials = False
-    , body = ""
-    , onProgress = Progress
+    , body = Http.emptyBody
+
+    , onUploadProgress = Nothing
+    , onProgress = Just Progress
     , onFinish = Result
     }
+    |> Task.label "request"
 
 
 update : Msg -> Model -> Update Model Msg a
@@ -72,11 +76,16 @@ update msg model =
 
     ControlledCounter msg ->
       let
-        (updatedCounter, effects, _) = Counter.update msg model.controlledCounter
+        data =
+          Counter.update msg model.controlledCounter
+
+        updatedCounter = data.model
+        effects = data.effects
       in
-        ( { model | controlledCounter = updatedCounter }
-        , List.map (Task.map ControlledCounter) effects
-        , [])
+        { model = { model | controlledCounter = updatedCounter }
+        , effects = List.map (Task.map ControlledCounter) effects
+        , events = []
+        }
 
     Fetch ->
       return model
@@ -84,6 +93,10 @@ update msg model =
 
     Result data ->
       return { model | result = data }
+
+    Abort ->
+      return model
+        |> Plank.andThen (Task.cancel "request")
 
     _ ->
       return model
@@ -114,6 +127,7 @@ view model =
           , mountControlled Counter.component model.controlledCounter ControlledCounter
           , node "hr" [] []
           , node "button" [on "click" (\_ -> Fetch)] [text "Fetch"]
+          , node "button" [on "click" (\_ -> Abort)] [text "Abort"]
           ]
         ]
       , text (toString model)

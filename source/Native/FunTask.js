@@ -1,5192 +1,5903 @@
-/**
- * Fluture bundled; version 7.1.1 (dirty)
- */
+(function(f){if(typeof exports==="object"&&typeof module!=="undefined"){module.exports=f()}else if(typeof define==="function"&&define.amd){define([],f)}else{var g;if(typeof window!=="undefined"){g=window}else if(typeof global!=="undefined"){g=global}else if(typeof self!=="undefined"){g=self}else{g=this}g.folktale = f()}})(function(){var define,module,exports;return (function e(t,n,r){function s(o,u){if(!n[o]){if(!t[o]){var a=typeof require=="function"&&require;if(!u&&a)return a(o,!0);if(i)return i(o,!0);var f=new Error("Cannot find module '"+o+"'");throw f.code="MODULE_NOT_FOUND",f}var l=n[o]={exports:{}};t[o][0].call(l.exports,function(e){var n=t[o][1][e];return s(n?n:e)},l,l.exports,e,t,n,r)}return n[o].exports}var i=typeof require=="function"&&require;for(var o=0;o<r.length;o++)s(r[o]);return s})({1:[function(require,module,exports){
+// shim for using process in browser
+var process = module.exports = {};
 
-var Fluture = (function () {
+// cached from whatever global is present so that test runners that stub it
+// don't break things.  But we need to wrap it in a try catch in case it is
+// wrapped in strict mode code which doesn't define any globals.  It's inside a
+// function because try/catches deoptimize in certain engines.
+
+var cachedSetTimeout;
+var cachedClearTimeout;
+
+function defaultSetTimout() {
+    throw new Error('setTimeout has not been defined');
+}
+function defaultClearTimeout () {
+    throw new Error('clearTimeout has not been defined');
+}
+(function () {
+    try {
+        if (typeof setTimeout === 'function') {
+            cachedSetTimeout = setTimeout;
+        } else {
+            cachedSetTimeout = defaultSetTimout;
+        }
+    } catch (e) {
+        cachedSetTimeout = defaultSetTimout;
+    }
+    try {
+        if (typeof clearTimeout === 'function') {
+            cachedClearTimeout = clearTimeout;
+        } else {
+            cachedClearTimeout = defaultClearTimeout;
+        }
+    } catch (e) {
+        cachedClearTimeout = defaultClearTimeout;
+    }
+} ())
+function runTimeout(fun) {
+    if (cachedSetTimeout === setTimeout) {
+        //normal enviroments in sane situations
+        return setTimeout(fun, 0);
+    }
+    // if setTimeout wasn't available but was latter defined
+    if ((cachedSetTimeout === defaultSetTimout || !cachedSetTimeout) && setTimeout) {
+        cachedSetTimeout = setTimeout;
+        return setTimeout(fun, 0);
+    }
+    try {
+        // when when somebody has screwed with setTimeout but no I.E. maddness
+        return cachedSetTimeout(fun, 0);
+    } catch(e){
+        try {
+            // When we are in I.E. but the script has been evaled so I.E. doesn't trust the global object when called normally
+            return cachedSetTimeout.call(null, fun, 0);
+        } catch(e){
+            // same as above but when it's a version of I.E. that must have the global object for 'this', hopfully our context correct otherwise it will throw a global error
+            return cachedSetTimeout.call(this, fun, 0);
+        }
+    }
+
+
+}
+function runClearTimeout(marker) {
+    if (cachedClearTimeout === clearTimeout) {
+        //normal enviroments in sane situations
+        return clearTimeout(marker);
+    }
+    // if clearTimeout wasn't available but was latter defined
+    if ((cachedClearTimeout === defaultClearTimeout || !cachedClearTimeout) && clearTimeout) {
+        cachedClearTimeout = clearTimeout;
+        return clearTimeout(marker);
+    }
+    try {
+        // when when somebody has screwed with setTimeout but no I.E. maddness
+        return cachedClearTimeout(marker);
+    } catch (e){
+        try {
+            // When we are in I.E. but the script has been evaled so I.E. doesn't  trust the global object when called normally
+            return cachedClearTimeout.call(null, marker);
+        } catch (e){
+            // same as above but when it's a version of I.E. that must have the global object for 'this', hopfully our context correct otherwise it will throw a global error.
+            // Some versions of I.E. have different rules for clearTimeout vs setTimeout
+            return cachedClearTimeout.call(this, marker);
+        }
+    }
+
+
+
+}
+var queue = [];
+var draining = false;
+var currentQueue;
+var queueIndex = -1;
+
+function cleanUpNextTick() {
+    if (!draining || !currentQueue) {
+        return;
+    }
+    draining = false;
+    if (currentQueue.length) {
+        queue = currentQueue.concat(queue);
+    } else {
+        queueIndex = -1;
+    }
+    if (queue.length) {
+        drainQueue();
+    }
+}
+
+function drainQueue() {
+    if (draining) {
+        return;
+    }
+    var timeout = runTimeout(cleanUpNextTick);
+    draining = true;
+
+    var len = queue.length;
+    while(len) {
+        currentQueue = queue;
+        queue = [];
+        while (++queueIndex < len) {
+            if (currentQueue) {
+                currentQueue[queueIndex].run();
+            }
+        }
+        queueIndex = -1;
+        len = queue.length;
+    }
+    currentQueue = null;
+    draining = false;
+    runClearTimeout(timeout);
+}
+
+process.nextTick = function (fun) {
+    var args = new Array(arguments.length - 1);
+    if (arguments.length > 1) {
+        for (var i = 1; i < arguments.length; i++) {
+            args[i - 1] = arguments[i];
+        }
+    }
+    queue.push(new Item(fun, args));
+    if (queue.length === 1 && !draining) {
+        runTimeout(drainQueue);
+    }
+};
+
+// v8 likes predictible objects
+function Item(fun, array) {
+    this.fun = fun;
+    this.array = array;
+}
+Item.prototype.run = function () {
+    this.fun.apply(null, this.array);
+};
+process.title = 'browser';
+process.browser = true;
+process.env = {};
+process.argv = [];
+process.version = ''; // empty string to avoid regexp issues
+process.versions = {};
+
+function noop() {}
+
+process.on = noop;
+process.addListener = noop;
+process.once = noop;
+process.off = noop;
+process.removeListener = noop;
+process.removeAllListeners = noop;
+process.emit = noop;
+process.prependListener = noop;
+process.prependOnceListener = noop;
+
+process.listeners = function (name) { return [] }
+
+process.binding = function (name) {
+    throw new Error('process.binding is not supported');
+};
+
+process.cwd = function () { return '/' };
+process.chdir = function (dir) {
+    throw new Error('process.chdir is not supported');
+};
+process.umask = function() { return 0; };
+
+},{}],2:[function(require,module,exports){
 'use strict';
 
-var commonjsGlobal = typeof window !== 'undefined' ? window : typeof global !== 'undefined' ? global : typeof self !== 'undefined' ? self : {};
-
-
-
-
-
-function createCommonjsModule(fn, module) {
-  return module = { exports: {} }, fn(module, module.exports), module.exports;
-}
-
-var index$3 = createCommonjsModule(function (module) {
-/*
-        @@@@@@@            @@@@@@@         @@
-      @@       @@        @@       @@      @@@
-    @@   @@@ @@  @@    @@   @@@ @@  @@   @@@@@@ @@   @@@  @@ @@@      @@@@
-   @@  @@   @@@   @@  @@  @@   @@@   @@   @@@   @@   @@@  @@@   @@  @@@   @@
-   @@  @@   @@@   @@  @@  @@   @@@   @@   @@@   @@   @@@  @@@   @@  @@@@@@@@
-   @@  @@   @@@  @@   @@  @@   @@@  @@    @@@   @@   @@@  @@@   @@  @@@
-    @@   @@@ @@@@@     @@   @@@ @@@@@      @@@    @@@ @@  @@@@@@      @@@@@
-      @@                 @@                           @@  @@
-        @@@@@@@            @@@@@@@               @@@@@    @@
-                                                          */
-//. # sanctuary-type-identifiers
-//.
-//. A type is a set of values. Boolean, for example, is the type comprising
-//. `true` and `false`. A value may be a member of multiple types (`42` is a
-//. member of Number, PositiveNumber, Integer, and many other types).
-//.
-//. In certain situations it is useful to divide JavaScript values into
-//. non-overlapping types. The language provides two constructs for this
-//. purpose: the [`typeof`][1] operator and [`Object.prototype.toString`][2].
-//. Each has pros and cons, but neither supports user-defined types.
-//.
-//. This package specifies an [algorithm][3] for deriving a _type identifier_
-//. from any JavaScript value, and exports an implementation of the algorithm.
-//. Authors of algebraic data types may follow this specification in order to
-//. make their data types compatible with the algorithm.
-//.
-//. ### Algorithm
-//.
-//. 1.  Take any JavaScript value `x`.
-//.
-//. 2.  If `x` is `null` or `undefined`, go to step 6.
-//.
-//. 3.  If `x.constructor` evaluates to `null` or `undefined`, go to step 6.
-//.
-//. 4.  If `x.constructor.prototype === x`, go to step 6. This check prevents a
-//.     prototype object from being considered a member of its associated type.
-//.
-//. 5.  If `typeof x.constructor['@@type']` evaluates to `'string'`, return
-//.     the value of `x.constructor['@@type']`.
-//.
-//. 6.  Return the [`Object.prototype.toString`][2] representation of `x`
-//.     without the leading `'[object '` and trailing `']'`.
-//.
-//. ### Compatibility
-//.
-//. For an algebraic data type to be compatible with the [algorithm][3]:
-//.
-//.   - every member of the type must have a `constructor` property pointing
-//.     to an object known as the _type representative_;
-//.
-//.   - the type representative must have a `@@type` property; and
-//.
-//.   - the type representative's `@@type` property (the _type identifier_)
-//.     must be a string primitive, ideally `'<npm-package-name>/<type-name>'`.
-//.
-//. For example:
-//.
-//. ```javascript
-//. //  Identity :: a -> Identity a
-//. function Identity(x) {
-//.   if (!(this instanceof Identity)) return new Identity(x);
-//.   this.value = x;
-//. }
-//.
-//. Identity['@@type'] = 'my-package/Identity';
-//. ```
-//.
-//. Note that by using a constructor function the `constructor` property is set
-//. implicitly for each value created. Constructor functions are convenient for
-//. this reason, but are not required. This definition is also valid:
-//.
-//. ```javascript
-//. //  IdentityTypeRep :: TypeRep Identity
-//. var IdentityTypeRep = {
-//.   '@@type': 'my-package/Identity'
-//. };
-//.
-//. //  Identity :: a -> Identity a
-//. function Identity(x) {
-//.   return {constructor: IdentityTypeRep, value: x};
-//. }
-//. ```
-//.
-//. ### Usage
-//.
-//. ```javascript
-//. var Identity = require('my-package').Identity;
-//. var type = require('sanctuary-type-identifiers');
-//.
-//. type(null);         // => 'Null'
-//. type(true);         // => 'Boolean'
-//. type([1, 2, 3]);    // => 'Array'
-//. type(Identity);     // => 'Function'
-//. type(Identity(0));  // => 'my-package/Identity'
-//. ```
-//.
-//.
-//. [1]: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Operators/typeof
-//. [2]: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Object/toString
-//. [3]: #algorithm
-
-(function(f) {
-
-  'use strict';
-
-  {
-    module.exports = f();
-  }
-
-}(function() {
-
-  'use strict';
-
-  //  $$type :: String
-  var $$type = '@@type';
-
-  //  type :: Any -> String
-  function type(x) {
-    return x != null &&
-           x.constructor != null &&
-           x.constructor.prototype !== x &&
-           typeof x.constructor[$$type] === 'string' ?
-      x.constructor[$$type] :
-      Object.prototype.toString.call(x).slice('[object '.length, -']'.length);
-  }
-
-  return type;
-
-}));
-});
-
-var index$2 = createCommonjsModule(function (module) {
-/*
-             ############                  #
-            ############                  ###
-                  #####                  #####
-                #####      ####################
-              #####       ######################
-            #####                     ###########
-          #####         ######################
-        #####          ####################
-      #####                        #####
-     ############                 ###
-    ############                 */
-
-//. # sanctuary-type-classes
-//.
-//. The [Fantasy Land Specification][FL] "specifies interoperability of common
-//. algebraic structures" by defining a number of type classes. For each type
-//. class, it states laws which every member of a type must obey in order for
-//. the type to be a member of the type class. In order for the Maybe type to
-//. be considered a [Functor][], for example, every `Maybe a` value must have
-//. a `fantasy-land/map` method which obeys the identity and composition laws.
-//.
-//. This project provides:
-//.
-//.   - [`TypeClass`](#TypeClass), a function for defining type classes;
-//.   - one `TypeClass` value for each Fantasy Land type class;
-//.   - lawful Fantasy Land methods for JavaScript's built-in types;
-//.   - one function for each Fantasy Land method; and
-//.   - several functions derived from these functions.
-//.
-//. ## Type-class hierarchy
-//.
-//. <pre>
-//:  Setoid   Semigroupoid  Semigroup   Foldable        Functor      Contravariant
-//: (equals)    (compose)    (concat)   (reduce)         (map)        (contramap)
-//:     |           |           |           \         / | | | | \
-//:     |           |           |            \       /  | | | |  \
-//:     |           |           |             \     /   | | | |   \
-//:     |           |           |              \   /    | | | |    \
-//:     |           |           |               \ /     | | | |     \
-//:    Ord      Category     Monoid         Traversable | | | |      \
-//:   (lte)       (id)       (empty)        (traverse)  / | | \       \
-//:                                                    /  | |  \       \
-//:                                                   /   / \   \       \
-//:                                           Profunctor /   \ Bifunctor \
-//:                                            (promap) /     \ (bimap)   \
-//:                                                    /       \           \
-//:                                                   /         \           \
-//:                                                 Alt        Apply      Extend
-//:                                                (alt)        (ap)     (extend)
-//:                                                 /           / \           \
-//:                                                /           /   \           \
-//:                                               /           /     \           \
-//:                                              /           /       \           \
-//:                                             /           /         \           \
-//:                                           Plus    Applicative    Chain      Comonad
-//:                                          (zero)       (of)      (chain)    (extract)
-//:                                             \         / \         / \
-//:                                              \       /   \       /   \
-//:                                               \     /     \     /     \
-//:                                                \   /       \   /       \
-//:                                                 \ /         \ /         \
-//:                                             Alternative    Monad     ChainRec
-//:                                                                     (chainRec)
-//. </pre>
-//.
-//. ## API
-
-(function(f) {
-
-  'use strict';
-
-  /* istanbul ignore else */
-  {
-    module.exports = f(index$3);
-  }
-
-}(function(type) {
-
-  'use strict';
-
-  //  concat_ :: Array a -> Array a -> Array a
-  function concat_(xs) {
-    return function(ys) {
-      return xs.concat(ys);
-    };
-  }
-
-  //  constant :: a -> b -> a
-  function constant(x) {
-    return function(y) {
-      return x;
-    };
-  }
-
-  //  has :: (String, Object) -> Boolean
-  function has(k, o) {
-    return Object.prototype.hasOwnProperty.call(o, k);
-  }
-
-  //  identity :: a -> a
-  function identity(x) { return x; }
-
-  //  pair :: a -> b -> Pair a b
-  function pair(x) {
-    return function(y) {
-      return [x, y];
-    };
-  }
-
-  //  sameType :: (a, b) -> Boolean
-  function sameType(x, y) {
-    return typeof x === typeof y && type(x) === type(y);
-  }
-
-  //  type Iteration a = { value :: a, done :: Boolean }
-
-  //  iterationNext :: a -> Iteration a
-  function iterationNext(x) { return {value: x, done: false}; }
-
-  //  iterationDone :: a -> Iteration a
-  function iterationDone(x) { return {value: x, done: true}; }
-
-  //# TypeClass :: (String, String, Array TypeClass, a -> Boolean) -> TypeClass
-  //.
-  //. The arguments are:
-  //.
-  //.   - the name of the type class, prefixed by its npm package name;
-  //.   - the documentation URL of the type class;
-  //.   - an array of dependencies; and
-  //.   - a predicate which accepts any JavaScript value and returns `true`
-  //.     if the value satisfies the requirements of the type class; `false`
-  //.     otherwise.
-  //.
-  //. Example:
-  //.
-  //. ```javascript
-  //. //    hasMethod :: String -> a -> Boolean
-  //. const hasMethod = name => x => x != null && typeof x[name] == 'function';
-  //.
-  //. //    Foo :: TypeClass
-  //. const Foo = Z.TypeClass(
-  //.   'my-package/Foo',
-  //.   'http://example.com/my-package#Foo',
-  //.   [],
-  //.   hasMethod('foo')
-  //. );
-  //.
-  //. //    Bar :: TypeClass
-  //. const Bar = Z.TypeClass(
-  //.   'my-package/Bar',
-  //.   'http://example.com/my-package#Bar',
-  //.   [Foo],
-  //.   hasMethod('bar')
-  //. );
-  //. ```
-  //.
-  //. Types whose values have a `foo` method are members of the Foo type class.
-  //. Members of the Foo type class whose values have a `bar` method are also
-  //. members of the Bar type class.
-  //.
-  //. Each `TypeClass` value has a `test` field: a function which accepts
-  //. any JavaScript value and returns `true` if the value satisfies the
-  //. type class's predicate and the predicates of all the type class's
-  //. dependencies; `false` otherwise.
-  //.
-  //. `TypeClass` values may be used with [sanctuary-def][type-classes]
-  //. to define parametrically polymorphic functions which verify their
-  //. type-class constraints at run time.
-  function TypeClass(name, url, dependencies, test) {
-    if (!(this instanceof TypeClass)) {
-      return new TypeClass(name, url, dependencies, test);
-    }
-    this.name = name;
-    this.url = url;
-    this.test = function(x) {
-      return dependencies.every(function(d) { return d.test(x); }) && test(x);
-    };
-  }
-
-  TypeClass['@@type'] = 'sanctuary-type-classes/TypeClass';
-
-  //  data Location = Constructor | Value
-
-  //  Constructor :: Location
-  var Constructor = 'Constructor';
-
-  //  Value :: Location
-  var Value = 'Value';
-
-  //  _funcPath :: (Boolean, Array String, a) -> Nullable Function
-  function _funcPath(allowInheritedProps, path, _x) {
-    var x = _x;
-    for (var idx = 0; idx < path.length; idx += 1) {
-      var k = path[idx];
-      if (x == null || !(allowInheritedProps || has(k, x))) { return null; }
-      x = x[k];
-    }
-    return typeof x === 'function' ? x : null;
-  }
-
-  //  funcPath :: (Array String, a) -> Nullable Function
-  function funcPath(path, x) {
-    return _funcPath(true, path, x);
-  }
-
-  //  implPath :: Array String -> Nullable Function
-  function implPath(path) {
-    return _funcPath(false, path, implementations);
-  }
-
-  //  functionName :: Function -> String
-  var functionName = 'name' in function f() {} ?
-    function functionName(f) { return f.name; } :
-    /* istanbul ignore next */
-    function functionName(f) {
-      var match = /function (\w*)/.exec(f);
-      return match == null ? '' : match[1];
-    };
-
-  //  $ :: (String, Array TypeClass, StrMap (Array Location)) -> TypeClass
-  function $(_name, dependencies, requirements) {
-    function getBoundMethod(_name) {
-      var name = 'fantasy-land/' + _name;
-      return requirements[_name] === Constructor ?
-        function(typeRep) {
-          var f = funcPath([name], typeRep);
-          return f == null && typeof typeRep === 'function' ?
-            implPath([functionName(typeRep), name]) :
-            f;
-        } :
-        function(x) {
-          var isPrototype = x != null &&
-                            x.constructor != null &&
-                            x.constructor.prototype === x;
-          var m = null;
-          if (!isPrototype) { m = funcPath([name], x); }
-          if (m == null)    { m = implPath([type(x), 'prototype', name]); }
-          return m && m.bind(x);
-        };
-    }
-
-    var version = '6.0.0';  // updated programmatically
-    var keys = Object.keys(requirements);
-
-    var typeClass = TypeClass(
-      'sanctuary-type-classes/' + _name,
-      'https://github.com/sanctuary-js/sanctuary-type-classes/tree/v' + version
-        + '#' + _name,
-      dependencies,
-      function(x) {
-        return keys.every(function(_name) {
-          var arg = requirements[_name] === Constructor ? x.constructor : x;
-          return getBoundMethod(_name)(arg) != null;
-        });
-      }
-    );
-
-    typeClass.methods = keys.reduce(function(methods, _name) {
-      methods[_name] = getBoundMethod(_name);
-      return methods;
-    }, {});
-
-    return typeClass;
-  }
-
-  //# Setoid :: TypeClass
-  //.
-  //. `TypeClass` value for [Setoid][].
-  //.
-  //. ```javascript
-  //. > Setoid.test(null)
-  //. true
-  //. ```
-  var Setoid = $('Setoid', [], {equals: Value});
-
-  //# Ord :: TypeClass
-  //.
-  //. `TypeClass` value for [Ord][].
-  //.
-  //. ```javascript
-  //. > Ord.test(0)
-  //. true
-  //.
-  //. > Ord.test(Math.sqrt)
-  //. false
-  //. ```
-  var Ord = $('Ord', [Setoid], {lte: Value});
-
-  //# Semigroupoid :: TypeClass
-  //.
-  //. `TypeClass` value for [Semigroupoid][].
-  //.
-  //. ```javascript
-  //. > Semigroupoid.test(Math.sqrt)
-  //. true
-  //.
-  //. > Semigroupoid.test(0)
-  //. false
-  //. ```
-  var Semigroupoid = $('Semigroupoid', [], {compose: Value});
-
-  //# Category :: TypeClass
-  //.
-  //. `TypeClass` value for [Category][].
-  //.
-  //. ```javascript
-  //. > Category.test(Math.sqrt)
-  //. true
-  //.
-  //. > Category.test(0)
-  //. false
-  //. ```
-  var Category = $('Category', [Semigroupoid], {id: Constructor});
-
-  //# Semigroup :: TypeClass
-  //.
-  //. `TypeClass` value for [Semigroup][].
-  //.
-  //. ```javascript
-  //. > Semigroup.test('')
-  //. true
-  //.
-  //. > Semigroup.test(0)
-  //. false
-  //. ```
-  var Semigroup = $('Semigroup', [], {concat: Value});
-
-  //# Monoid :: TypeClass
-  //.
-  //. `TypeClass` value for [Monoid][].
-  //.
-  //. ```javascript
-  //. > Monoid.test('')
-  //. true
-  //.
-  //. > Monoid.test(0)
-  //. false
-  //. ```
-  var Monoid = $('Monoid', [Semigroup], {empty: Constructor});
-
-  //# Functor :: TypeClass
-  //.
-  //. `TypeClass` value for [Functor][].
-  //.
-  //. ```javascript
-  //. > Functor.test([])
-  //. true
-  //.
-  //. > Functor.test('')
-  //. false
-  //. ```
-  var Functor = $('Functor', [], {map: Value});
-
-  //# Bifunctor :: TypeClass
-  //.
-  //. `TypeClass` value for [Bifunctor][].
-  //.
-  //. ```javascript
-  //. > Bifunctor.test(Tuple('foo', 64))
-  //. true
-  //.
-  //. > Bifunctor.test([])
-  //. false
-  //. ```
-  var Bifunctor = $('Bifunctor', [Functor], {bimap: Value});
-
-  //# Profunctor :: TypeClass
-  //.
-  //. `TypeClass` value for [Profunctor][].
-  //.
-  //. ```javascript
-  //. > Profunctor.test(Math.sqrt)
-  //. true
-  //.
-  //. > Profunctor.test([])
-  //. false
-  //. ```
-  var Profunctor = $('Profunctor', [Functor], {promap: Value});
-
-  //# Apply :: TypeClass
-  //.
-  //. `TypeClass` value for [Apply][].
-  //.
-  //. ```javascript
-  //. > Apply.test([])
-  //. true
-  //.
-  //. > Apply.test('')
-  //. false
-  //. ```
-  var Apply = $('Apply', [Functor], {ap: Value});
-
-  //# Applicative :: TypeClass
-  //.
-  //. `TypeClass` value for [Applicative][].
-  //.
-  //. ```javascript
-  //. > Applicative.test([])
-  //. true
-  //.
-  //. > Applicative.test({})
-  //. false
-  //. ```
-  var Applicative = $('Applicative', [Apply], {of: Constructor});
-
-  //# Chain :: TypeClass
-  //.
-  //. `TypeClass` value for [Chain][].
-  //.
-  //. ```javascript
-  //. > Chain.test([])
-  //. true
-  //.
-  //. > Chain.test({})
-  //. false
-  //. ```
-  var Chain = $('Chain', [Apply], {chain: Value});
-
-  //# ChainRec :: TypeClass
-  //.
-  //. `TypeClass` value for [ChainRec][].
-  //.
-  //. ```javascript
-  //. > ChainRec.test([])
-  //. true
-  //.
-  //. > ChainRec.test({})
-  //. false
-  //. ```
-  var ChainRec = $('ChainRec', [Chain], {chainRec: Constructor});
-
-  //# Monad :: TypeClass
-  //.
-  //. `TypeClass` value for [Monad][].
-  //.
-  //. ```javascript
-  //. > Monad.test([])
-  //. true
-  //.
-  //. > Monad.test({})
-  //. false
-  //. ```
-  var Monad = $('Monad', [Applicative, Chain], {});
-
-  //# Alt :: TypeClass
-  //.
-  //. `TypeClass` value for [Alt][].
-  //.
-  //. ```javascript
-  //. > Alt.test({})
-  //. true
-  //.
-  //. > Alt.test('')
-  //. false
-  //. ```
-  var Alt = $('Alt', [Functor], {alt: Value});
-
-  //# Plus :: TypeClass
-  //.
-  //. `TypeClass` value for [Plus][].
-  //.
-  //. ```javascript
-  //. > Plus.test({})
-  //. true
-  //.
-  //. > Plus.test('')
-  //. false
-  //. ```
-  var Plus = $('Plus', [Alt], {zero: Constructor});
-
-  //# Alternative :: TypeClass
-  //.
-  //. `TypeClass` value for [Alternative][].
-  //.
-  //. ```javascript
-  //. > Alternative.test([])
-  //. true
-  //.
-  //. > Alternative.test({})
-  //. false
-  //. ```
-  var Alternative = $('Alternative', [Applicative, Plus], {});
-
-  //# Foldable :: TypeClass
-  //.
-  //. `TypeClass` value for [Foldable][].
-  //.
-  //. ```javascript
-  //. > Foldable.test({})
-  //. true
-  //.
-  //. > Foldable.test('')
-  //. false
-  //. ```
-  var Foldable = $('Foldable', [], {reduce: Value});
-
-  //# Traversable :: TypeClass
-  //.
-  //. `TypeClass` value for [Traversable][].
-  //.
-  //. ```javascript
-  //. > Traversable.test([])
-  //. true
-  //.
-  //. > Traversable.test('')
-  //. false
-  //. ```
-  var Traversable = $('Traversable', [Functor, Foldable], {traverse: Value});
-
-  //# Extend :: TypeClass
-  //.
-  //. `TypeClass` value for [Extend][].
-  //.
-  //. ```javascript
-  //. > Extend.test([])
-  //. true
-  //.
-  //. > Extend.test({})
-  //. false
-  //. ```
-  var Extend = $('Extend', [Functor], {extend: Value});
-
-  //# Comonad :: TypeClass
-  //.
-  //. `TypeClass` value for [Comonad][].
-  //.
-  //. ```javascript
-  //. > Comonad.test(Identity(0))
-  //. true
-  //.
-  //. > Comonad.test([])
-  //. false
-  //. ```
-  var Comonad = $('Comonad', [Extend], {extract: Value});
-
-  //# Contravariant :: TypeClass
-  //.
-  //. `TypeClass` value for [Contravariant][].
-  //.
-  //. ```javascript
-  //. > Contravariant.test(Math.sqrt)
-  //. true
-  //.
-  //. > Contravariant.test([])
-  //. false
-  //. ```
-  var Contravariant = $('Contravariant', [], {contramap: Value});
-
-  //  Null$prototype$toString :: Null ~> () -> String
-  function Null$prototype$toString() {
-    return 'null';
-  }
-
-  //  Null$prototype$equals :: Null ~> Null -> Boolean
-  function Null$prototype$equals(other) {
-    return true;
-  }
-
-  //  Null$prototype$lte :: Null ~> Null -> Boolean
-  function Null$prototype$lte(other) {
-    return true;
-  }
-
-  //  Undefined$prototype$toString :: Undefined ~> () -> String
-  function Undefined$prototype$toString() {
-    return 'undefined';
-  }
-
-  //  Undefined$prototype$equals :: Undefined ~> Undefined -> Boolean
-  function Undefined$prototype$equals(other) {
-    return true;
-  }
-
-  //  Undefined$prototype$lte :: Undefined ~> Undefined -> Boolean
-  function Undefined$prototype$lte(other) {
-    return true;
-  }
-
-  //  Boolean$prototype$toString :: Boolean ~> () -> String
-  function Boolean$prototype$toString() {
-    return typeof this === 'object' ?
-      'new Boolean(' + toString(this.valueOf()) + ')' :
-      this.toString();
-  }
-
-  //  Boolean$prototype$equals :: Boolean ~> Boolean -> Boolean
-  function Boolean$prototype$equals(other) {
-    return typeof this === 'object' ?
-      equals(this.valueOf(), other.valueOf()) :
-      this === other;
-  }
-
-  //  Boolean$prototype$lte :: Boolean ~> Boolean -> Boolean
-  function Boolean$prototype$lte(other) {
-    return typeof this === 'object' ?
-      lte(this.valueOf(), other.valueOf()) :
-      this === false || other === true;
-  }
-
-  //  Number$prototype$toString :: Number ~> () -> String
-  function Number$prototype$toString() {
-    return typeof this === 'object' ?
-      'new Number(' + toString(this.valueOf()) + ')' :
-      1 / this === -Infinity ? '-0' : this.toString(10);
-  }
-
-  //  Number$prototype$equals :: Number ~> Number -> Boolean
-  function Number$prototype$equals(other) {
-    return typeof this === 'object' ?
-      equals(this.valueOf(), other.valueOf()) :
-      isNaN(this) && isNaN(other) || this === other;
-  }
-
-  //  Number$prototype$lte :: Number ~> Number -> Boolean
-  function Number$prototype$lte(other) {
-    return typeof this === 'object' ?
-      lte(this.valueOf(), other.valueOf()) :
-      isNaN(this) && isNaN(other) || this <= other;
-  }
-
-  //  Date$prototype$toString :: Date ~> () -> String
-  function Date$prototype$toString() {
-    var x = isNaN(this.valueOf()) ? NaN : this.toISOString();
-    return 'new Date(' + toString(x) + ')';
-  }
-
-  //  Date$prototype$equals :: Date ~> Date -> Boolean
-  function Date$prototype$equals(other) {
-    return equals(this.valueOf(), other.valueOf());
-  }
-
-  //  Date$prototype$lte :: Date ~> Date -> Boolean
-  function Date$prototype$lte(other) {
-    return lte(this.valueOf(), other.valueOf());
-  }
-
-  //  RegExp$prototype$equals :: RegExp ~> RegExp -> Boolean
-  function RegExp$prototype$equals(other) {
-    return other.source === this.source &&
-           other.global === this.global &&
-           other.ignoreCase === this.ignoreCase &&
-           other.multiline === this.multiline &&
-           other.sticky === this.sticky &&
-           other.unicode === this.unicode;
-  }
-
-  //  String$empty :: () -> String
-  function String$empty() {
-    return '';
-  }
-
-  //  String$prototype$toString :: String ~> () -> String
-  function String$prototype$toString() {
-    return typeof this === 'object' ?
-      'new String(' + toString(this.valueOf()) + ')' :
-      JSON.stringify(this);
-  }
-
-  //  String$prototype$equals :: String ~> String -> Boolean
-  function String$prototype$equals(other) {
-    return typeof this === 'object' ?
-      equals(this.valueOf(), other.valueOf()) :
-      this === other;
-  }
-
-  //  String$prototype$lte :: String ~> String -> Boolean
-  function String$prototype$lte(other) {
-    return typeof this === 'object' ?
-      lte(this.valueOf(), other.valueOf()) :
-      this <= other;
-  }
-
-  //  String$prototype$concat :: String ~> String -> String
-  function String$prototype$concat(other) {
-    return this + other;
-  }
-
-  //  Array$empty :: () -> Array a
-  function Array$empty() {
-    return [];
-  }
-
-  //  Array$of :: a -> Array a
-  function Array$of(x) {
-    return [x];
-  }
-
-  //  Array$chainRec :: ((a -> c, b -> c, a) -> Array c, a) -> Array b
-  function Array$chainRec(f, x) {
-    var $todo = [x];
-    var $done = [];
-    while ($todo.length > 0) {
-      var xs = f(iterationNext, iterationDone, $todo.shift());
-      var $more = [];
-      for (var idx = 0; idx < xs.length; idx += 1) {
-        (xs[idx].done ? $done : $more).push(xs[idx].value);
-      }
-      Array.prototype.unshift.apply($todo, $more);
-    }
-    return $done;
-  }
-
-  //  Array$zero :: () -> Array a
-  function Array$zero() {
-    return [];
-  }
-
-  //  Array$prototype$toString :: Array a ~> () -> String
-  function Array$prototype$toString() {
-    var this$1 = this;
-
-    var reprs = this.map(toString);
-    var keys = Object.keys(this).sort();
-    for (var idx = 0; idx < keys.length; idx += 1) {
-      var k = keys[idx];
-      if (!/^\d+$/.test(k)) {
-        reprs.push(toString(k) + ': ' + toString(this$1[k]));
-      }
-    }
-    return '[' + reprs.join(', ') + ']';
-  }
-
-  //  Array$prototype$equals :: Array a ~> Array a -> Boolean
-  function Array$prototype$equals(other) {
-    var this$1 = this;
-
-    if (other.length !== this.length) { return false; }
-    for (var idx = 0; idx < this.length; idx += 1) {
-      if (!equals(this$1[idx], other[idx])) { return false; }
-    }
-    return true;
-  }
-
-  //  Array$prototype$lte :: Array a ~> Array a -> Boolean
-  function Array$prototype$lte(other) {
-    var this$1 = this;
-
-    for (var idx = 0; true; idx += 1) {
-      if (idx === this$1.length) { return true; }
-      if (idx === other.length) { return false; }
-      if (!equals(this$1[idx], other[idx])) { return lte(this$1[idx], other[idx]); }
-    }
-  }
-
-  //  Array$prototype$concat :: Array a ~> Array a -> Array a
-  function Array$prototype$concat(other) {
-    return this.concat(other);
-  }
-
-  //  Array$prototype$map :: Array a ~> (a -> b) -> Array b
-  function Array$prototype$map(f) {
-    return this.map(function(x) { return f(x); });
-  }
-
-  //  Array$prototype$ap :: Array a ~> Array (a -> b) -> Array b
-  function Array$prototype$ap(fs) {
-    var this$1 = this;
-
-    var result = [];
-    for (var idx = 0; idx < fs.length; idx += 1) {
-      for (var idx2 = 0; idx2 < this.length; idx2 += 1) {
-        result.push(fs[idx](this$1[idx2]));
-      }
-    }
-    return result;
-  }
-
-  //  Array$prototype$chain :: Array a ~> (a -> Array b) -> Array b
-  function Array$prototype$chain(f) {
-    var result = [];
-    this.forEach(function(x) { Array.prototype.push.apply(result, f(x)); });
-    return result;
-  }
-
-  //  Array$prototype$alt :: Array a ~> Array a -> Array a
-  var Array$prototype$alt = Array$prototype$concat;
-
-  //  Array$prototype$reduce :: Array a ~> ((b, a) -> b, b) -> b
-  function Array$prototype$reduce(f, initial) {
-    return this.reduce(function(acc, x) { return f(acc, x); }, initial);
-  }
-
-  //  Array$prototype$traverse :: Applicative f => Array a ~> (TypeRep f, a -> f b) -> f (Array b)
-  function Array$prototype$traverse(typeRep, f) {
-    var xs = this;
-    function go(idx, n) {
-      switch (n) {
-        case 0: return of(typeRep, []);
-        case 2: return lift2(pair, f(xs[idx]), f(xs[idx + 1]));
-        default:
-          var m = Math.floor(n / 4) * 2;
-          return lift2(concat_, go(idx, m), go(idx + m, n - m));
-      }
-    }
-    return this.length % 2 === 1 ?
-      lift2(concat_, map(Array$of, f(this[0])), go(1, this.length - 1)) :
-      go(0, this.length);
-  }
-
-  //  Array$prototype$extend :: Array a ~> (Array a -> b) -> Array b
-  function Array$prototype$extend(f) {
-    return this.map(function(_, idx, xs) { return f(xs.slice(idx)); });
-  }
-
-  //  Arguments$prototype$toString :: Arguments ~> String
-  function Arguments$prototype$toString() {
-    var args = Array.prototype.map.call(this, toString).join(', ');
-    return '(function () { return arguments; }(' + args + '))';
-  }
-
-  //  Arguments$prototype$equals :: Arguments ~> Arguments -> Boolean
-  function Arguments$prototype$equals(other) {
-    return Array$prototype$equals.call(this, other);
-  }
-
-  //  Arguments$prototype$lte :: Arguments ~> Arguments -> Boolean
-  function Arguments$prototype$lte(other) {
-    return Array$prototype$lte.call(this, other);
-  }
-
-  //  Error$prototype$toString :: Error ~> () -> String
-  function Error$prototype$toString() {
-    return 'new ' + this.name + '(' + toString(this.message) + ')';
-  }
-
-  //  Error$prototype$equals :: Error ~> Error -> Boolean
-  function Error$prototype$equals(other) {
-    return equals(this.name, other.name) &&
-           equals(this.message, other.message);
-  }
-
-  //  Object$empty :: () -> StrMap a
-  function Object$empty() {
-    return {};
-  }
-
-  //  Object$zero :: () -> StrMap a
-  function Object$zero() {
-    return {};
-  }
-
-  //  Object$prototype$toString :: StrMap a ~> () -> String
-  function Object$prototype$toString() {
-    var this$1 = this;
-
-    var reprs = [];
-    var keys = Object.keys(this).sort();
-    for (var idx = 0; idx < keys.length; idx += 1) {
-      var k = keys[idx];
-      reprs.push(toString(k) + ': ' + toString(this$1[k]));
-    }
-    return '{' + reprs.join(', ') + '}';
-  }
-
-  //  Object$prototype$equals :: StrMap a ~> StrMap a -> Boolean
-  function Object$prototype$equals(other) {
-    var self = this;
-    var keys = Object.keys(this).sort();
-    return equals(keys, Object.keys(other).sort()) &&
-           keys.every(function(k) { return equals(self[k], other[k]); });
-  }
-
-  //  Object$prototype$lte :: StrMap a ~> StrMap a -> Boolean
-  function Object$prototype$lte(other) {
-    var this$1 = this;
-
-    var theseKeys = Object.keys(this).sort();
-    var otherKeys = Object.keys(other).sort();
-    while (true) {
-      if (theseKeys.length === 0) { return true; }
-      if (otherKeys.length === 0) { return false; }
-      var k = theseKeys.shift();
-      var z = otherKeys.shift();
-      if (k < z) { return true; }
-      if (k > z) { return false; }
-      if (!equals(this$1[k], other[k])) { return lte(this$1[k], other[k]); }
-    }
-  }
-
-  //  Object$prototype$concat :: StrMap a ~> StrMap a -> StrMap a
-  function Object$prototype$concat(other) {
-    var this$1 = this;
-
-    var result = {};
-    for (var k in this$1) { result[k] = this$1[k]; }
-    for (k in other) { result[k] = other[k]; }
-    return result;
-  }
-
-  //  Object$prototype$map :: StrMap a ~> (a -> b) -> StrMap b
-  function Object$prototype$map(f) {
-    var this$1 = this;
-
-    var result = {};
-    for (var k in this$1) { result[k] = f(this$1[k]); }
-    return result;
-  }
-
-  //  Object$prototype$ap :: StrMap a ~> StrMap (a -> b) -> StrMap b
-  function Object$prototype$ap(other) {
-    var this$1 = this;
-
-    var result = {};
-    for (var k in this$1) { if (k in other) { result[k] = other[k](this$1[k]); } }
-    return result;
-  }
-
-  //  Object$prototype$alt :: StrMap a ~> StrMap a -> StrMap a
-  var Object$prototype$alt = Object$prototype$concat;
-
-  //  Object$prototype$reduce :: StrMap a ~> ((b, a) -> b, b) -> b
-  function Object$prototype$reduce(f, initial) {
-    var self = this;
-    function reducer(acc, k) { return f(acc, self[k]); }
-    return Object.keys(this).sort().reduce(reducer, initial);
-  }
-
-  //  Object$prototype$traverse :: Applicative f => StrMap a ~> (TypeRep f, a -> f b) -> f (StrMap b)
-  function Object$prototype$traverse(typeRep, f) {
-    var self = this;
-    return Object.keys(this).reduce(function(applicative, k) {
-      function set(o) { return function(v) { o[k] = v; return o; }; }
-      return lift2(set, applicative, f(self[k]));
-    }, of(typeRep, {}));
-  }
-
-  //  Function$id :: () -> a -> a
-  function Function$id() {
-    return identity;
-  }
-
-  //  Function$of :: b -> (a -> b)
-  function Function$of(x) {
-    return function(_) { return x; };
-  }
-
-  //  Function$chainRec :: ((a -> c, b -> c, a) -> (z -> c), a) -> (z -> b)
-  function Function$chainRec(f, x) {
-    return function(a) {
-      var step = iterationNext(x);
-      while (!step.done) {
-        step = f(iterationNext, iterationDone, step.value)(a);
-      }
-      return step.value;
-    };
-  }
-
-  //  Function$prototype$equals :: Function ~> Function -> Boolean
-  function Function$prototype$equals(other) {
-    return other === this;
-  }
-
-  //  Function$prototype$compose :: (a -> b) ~> (b -> c) -> (a -> c)
-  function Function$prototype$compose(other) {
-    var semigroupoid = this;
-    return function(x) { return other(semigroupoid(x)); };
-  }
-
-  //  Function$prototype$map :: (a -> b) ~> (b -> c) -> (a -> c)
-  function Function$prototype$map(f) {
-    var functor = this;
-    return function(x) { return f(functor(x)); };
-  }
-
-  //  Function$prototype$promap :: (b -> c) ~> (a -> b, c -> d) -> (a -> d)
-  function Function$prototype$promap(f, g) {
-    var profunctor = this;
-    return function(x) { return g(profunctor(f(x))); };
-  }
-
-  //  Function$prototype$ap :: (a -> b) ~> (a -> b -> c) -> (a -> c)
-  function Function$prototype$ap(f) {
-    var apply = this;
-    return function(x) { return f(x)(apply(x)); };
-  }
-
-  //  Function$prototype$chain :: (a -> b) ~> (b -> a -> c) -> (a -> c)
-  function Function$prototype$chain(f) {
-    var chain = this;
-    return function(x) { return f(chain(x))(x); };
-  }
-
-  //  Function$prototype$contramap :: (b -> c) ~> (a -> b) -> (a -> c)
-  function Function$prototype$contramap(f) {
-    var contravariant = this;
-    return function(x) { return contravariant(f(x)); };
-  }
-
-  /* eslint-disable key-spacing */
-  var implementations = {
-    Null: {
-      prototype: {
-        toString:                   Null$prototype$toString,
-        'fantasy-land/equals':      Null$prototype$equals,
-        'fantasy-land/lte':         Null$prototype$lte
-      }
-    },
-    Undefined: {
-      prototype: {
-        toString:                   Undefined$prototype$toString,
-        'fantasy-land/equals':      Undefined$prototype$equals,
-        'fantasy-land/lte':         Undefined$prototype$lte
-      }
-    },
-    Boolean: {
-      prototype: {
-        toString:                   Boolean$prototype$toString,
-        'fantasy-land/equals':      Boolean$prototype$equals,
-        'fantasy-land/lte':         Boolean$prototype$lte
-      }
-    },
-    Number: {
-      prototype: {
-        toString:                   Number$prototype$toString,
-        'fantasy-land/equals':      Number$prototype$equals,
-        'fantasy-land/lte':         Number$prototype$lte
-      }
-    },
-    Date: {
-      prototype: {
-        toString:                   Date$prototype$toString,
-        'fantasy-land/equals':      Date$prototype$equals,
-        'fantasy-land/lte':         Date$prototype$lte
-      }
-    },
-    RegExp: {
-      prototype: {
-        'fantasy-land/equals':      RegExp$prototype$equals
-      }
-    },
-    String: {
-      'fantasy-land/empty':         String$empty,
-      prototype: {
-        toString:                   String$prototype$toString,
-        'fantasy-land/equals':      String$prototype$equals,
-        'fantasy-land/lte':         String$prototype$lte,
-        'fantasy-land/concat':      String$prototype$concat
-      }
-    },
-    Array: {
-      'fantasy-land/empty':         Array$empty,
-      'fantasy-land/of':            Array$of,
-      'fantasy-land/chainRec':      Array$chainRec,
-      'fantasy-land/zero':          Array$zero,
-      prototype: {
-        toString:                   Array$prototype$toString,
-        'fantasy-land/equals':      Array$prototype$equals,
-        'fantasy-land/lte':         Array$prototype$lte,
-        'fantasy-land/concat':      Array$prototype$concat,
-        'fantasy-land/map':         Array$prototype$map,
-        'fantasy-land/ap':          Array$prototype$ap,
-        'fantasy-land/chain':       Array$prototype$chain,
-        'fantasy-land/alt':         Array$prototype$alt,
-        'fantasy-land/reduce':      Array$prototype$reduce,
-        'fantasy-land/traverse':    Array$prototype$traverse,
-        'fantasy-land/extend':      Array$prototype$extend
-      }
-    },
-    Arguments: {
-      prototype: {
-        toString:                   Arguments$prototype$toString,
-        'fantasy-land/equals':      Arguments$prototype$equals,
-        'fantasy-land/lte':         Arguments$prototype$lte
-      }
-    },
-    Error: {
-      prototype: {
-        toString:                   Error$prototype$toString,
-        'fantasy-land/equals':      Error$prototype$equals
-      }
-    },
-    Object: {
-      'fantasy-land/empty':         Object$empty,
-      'fantasy-land/zero':          Object$zero,
-      prototype: {
-        toString:                   Object$prototype$toString,
-        'fantasy-land/equals':      Object$prototype$equals,
-        'fantasy-land/lte':         Object$prototype$lte,
-        'fantasy-land/concat':      Object$prototype$concat,
-        'fantasy-land/map':         Object$prototype$map,
-        'fantasy-land/ap':          Object$prototype$ap,
-        'fantasy-land/alt':         Object$prototype$alt,
-        'fantasy-land/reduce':      Object$prototype$reduce,
-        'fantasy-land/traverse':    Object$prototype$traverse
-      }
-    },
-    Function: {
-      'fantasy-land/id':            Function$id,
-      'fantasy-land/of':            Function$of,
-      'fantasy-land/chainRec':      Function$chainRec,
-      prototype: {
-        'fantasy-land/equals':      Function$prototype$equals,
-        'fantasy-land/compose':     Function$prototype$compose,
-        'fantasy-land/map':         Function$prototype$map,
-        'fantasy-land/promap':      Function$prototype$promap,
-        'fantasy-land/ap':          Function$prototype$ap,
-        'fantasy-land/chain':       Function$prototype$chain,
-        'fantasy-land/contramap':   Function$prototype$contramap
-      }
-    }
-  };
-  /* eslint-enable key-spacing */
-
-  //# toString :: a -> String
-  //.
-  //. Returns a useful string representation of its argument.
-  //.
-  //. Dispatches to the argument's `toString` method if appropriate.
-  //.
-  //. Where practical, `equals(eval(toString(x)), x) = true`.
-  //.
-  //. `toString` implementations are provided for the following built-in types:
-  //. Null, Undefined, Boolean, Number, Date, String, Array, Arguments, Error,
-  //. and Object.
-  //.
-  //. ```javascript
-  //. > toString(-0)
-  //. '-0'
-  //.
-  //. > toString(['foo', 'bar', 'baz'])
-  //. '["foo", "bar", "baz"]'
-  //.
-  //. > toString({x: 1, y: 2, z: 3})
-  //. '{"x": 1, "y": 2, "z": 3}'
-  //.
-  //. > toString(Cons(1, Cons(2, Cons(3, Nil))))
-  //. 'Cons(1, Cons(2, Cons(3, Nil)))'
-  //. ```
-  var toString = (function() {
-    //  $seen :: Array Any
-    var $seen = [];
-
-    function call(method, x) {
-      $seen.push(x);
-      try { return method.call(x); } finally { $seen.pop(); }
-    }
-
-    return function toString(x) {
-      if ($seen.indexOf(x) >= 0) { return '<Circular>'; }
-
-      var xType = type(x);
-      if (xType === 'Object') {
-        var result;
-        try { result = call(x.toString, x); } catch (err) {}
-        if (result != null && result !== '[object Object]') { return result; }
-      }
-
-      return call(implPath([xType, 'prototype', 'toString']) || x.toString, x);
-    };
-  }());
-
-  //# equals :: (a, b) -> Boolean
-  //.
-  //. Returns `true` if its arguments are of the same type and equal according
-  //. to the type's [`fantasy-land/equals`][] method; `false` otherwise.
-  //.
-  //. `fantasy-land/equals` implementations are provided for the following
-  //. built-in types: Null, Undefined, Boolean, Number, Date, RegExp, String,
-  //. Array, Arguments, Error, Object, and Function.
-  //.
-  //. The algorithm supports circular data structures. Two arrays are equal
-  //. if they have the same index paths and for each path have equal values.
-  //. Two arrays which represent `[1, [1, [1, [1, [1, ...]]]]]`, for example,
-  //. are equal even if their internal structures differ. Two objects are equal
-  //. if they have the same property paths and for each path have equal values.
-  //.
-  //. ```javascript
-  //. > equals(0, -0)
-  //. true
-  //.
-  //. > equals(NaN, NaN)
-  //. true
-  //.
-  //. > equals(Cons('foo', Cons('bar', Nil)), Cons('foo', Cons('bar', Nil)))
-  //. true
-  //.
-  //. > equals(Cons('foo', Cons('bar', Nil)), Cons('bar', Cons('foo', Nil)))
-  //. false
-  //. ```
-  var equals = (function() {
-    //  $pairs :: Array (Pair Any Any)
-    var $pairs = [];
-
-    return function equals(x, y) {
-      if (!sameType(x, y)) { return false; }
-
-      //  This algorithm for comparing circular data structures was
-      //  suggested in <http://stackoverflow.com/a/40622794/312785>.
-      if ($pairs.some(function(p) { return p[0] === x && p[1] === y; })) {
-        return true;
-      }
-
-      $pairs.push([x, y]);
-      try {
-        return Setoid.test(x) && Setoid.test(y) && Setoid.methods.equals(x)(y);
-      } finally {
-        $pairs.pop();
-      }
-    };
-  }());
-
-  //# lt :: (a, b) -> Boolean
-  //.
-  //. Returns `true` if its arguments are of the same type and the first is
-  //. less than the second according to the type's [`fantasy-land/lte`][]
-  //. method; `false` otherwise.
-  //.
-  //. This function is derived from [`lte`](#lte).
-  //.
-  //. See also [`gt`](#gt) and [`gte`](#gte).
-  //.
-  //. ```javascript
-  //. > lt(0, 0)
-  //. false
-  //.
-  //. > lt(0, 1)
-  //. true
-  //.
-  //. > lt(1, 0)
-  //. false
-  //. ```
-  function lt(x, y) {
-    return sameType(x, y) && !lte(y, x);
-  }
-
-  //# lte :: (a, b) -> Boolean
-  //.
-  //. Returns `true` if its arguments are of the same type and the first
-  //. is less than or equal to the second according to the type's
-  //. [`fantasy-land/lte`][] method; `false` otherwise.
-  //.
-  //. `fantasy-land/lte` implementations are provided for the following
-  //. built-in types: Null, Undefined, Boolean, Number, Date, String, Array,
-  //. Arguments, and Object.
-  //.
-  //. The algorithm supports circular data structures in the same manner as
-  //. [`equals`](#equals).
-  //.
-  //. See also [`lt`](#lt), [`gt`](#gt), and [`gte`](#gte).
-  //.
-  //. ```javascript
-  //. > lte(0, 0)
-  //. true
-  //.
-  //. > lte(0, 1)
-  //. true
-  //.
-  //. > lte(1, 0)
-  //. false
-  //. ```
-  var lte = (function() {
-    //  $pairs :: Array (Pair Any Any)
-    var $pairs = [];
-
-    return function lte(x, y) {
-      if (!sameType(x, y)) { return false; }
-
-      //  This algorithm for comparing circular data structures was
-      //  suggested in <http://stackoverflow.com/a/40622794/312785>.
-      if ($pairs.some(function(p) { return p[0] === x && p[1] === y; })) {
-        return equals(x, y);
-      }
-
-      $pairs.push([x, y]);
-      try {
-        return Ord.test(x) && Ord.test(y) && Ord.methods.lte(x)(y);
-      } finally {
-        $pairs.pop();
-      }
-    };
-  }());
-
-  //# gt :: (a, b) -> Boolean
-  //.
-  //. Returns `true` if its arguments are of the same type and the first is
-  //. greater than the second according to the type's [`fantasy-land/lte`][]
-  //. method; `false` otherwise.
-  //.
-  //. This function is derived from [`lte`](#lte).
-  //.
-  //. See also [`lt`](#lt) and [`gte`](#gte).
-  //.
-  //. ```javascript
-  //. > gt(0, 0)
-  //. false
-  //.
-  //. > gt(0, 1)
-  //. false
-  //.
-  //. > gt(1, 0)
-  //. true
-  //. ```
-  function gt(x, y) {
-    return lt(y, x);
-  }
-
-  //# gte :: (a, b) -> Boolean
-  //.
-  //. Returns `true` if its arguments are of the same type and the first
-  //. is greater than or equal to the second according to the type's
-  //. [`fantasy-land/lte`][] method; `false` otherwise.
-  //.
-  //. This function is derived from [`lte`](#lte).
-  //.
-  //. See also [`lt`](#lt) and [`gt`](#gt).
-  //.
-  //. ```javascript
-  //. > gte(0, 0)
-  //. true
-  //.
-  //. > gte(0, 1)
-  //. false
-  //.
-  //. > gte(1, 0)
-  //. true
-  //. ```
-  function gte(x, y) {
-    return lte(y, x);
-  }
-
-  //# compose :: Semigroupoid c => (c j k, c i j) -> c i k
-  //.
-  //. Function wrapper for [`fantasy-land/compose`][].
-  //.
-  //. `fantasy-land/compose` implementations are provided for the following
-  //. built-in types: Function.
-  //.
-  //. ```javascript
-  //. > compose(Math.sqrt, x => x + 1)(99)
-  //. 10
-  //. ```
-  function compose(x, y) {
-    return Semigroupoid.methods.compose(y)(x);
-  }
-
-  //# id :: Category c => TypeRep c -> c
-  //.
-  //. Function wrapper for [`fantasy-land/id`][].
-  //.
-  //. `fantasy-land/id` implementations are provided for the following
-  //. built-in types: Function.
-  //.
-  //. ```javascript
-  //. > id(Function)('foo')
-  //. 'foo'
-  //. ```
-  function id(typeRep) {
-    return Category.methods.id(typeRep)();
-  }
-
-  //# concat :: Semigroup a => (a, a) -> a
-  //.
-  //. Function wrapper for [`fantasy-land/concat`][].
-  //.
-  //. `fantasy-land/concat` implementations are provided for the following
-  //. built-in types: String, Array, and Object.
-  //.
-  //. ```javascript
-  //. > concat('abc', 'def')
-  //. 'abcdef'
-  //.
-  //. > concat([1, 2, 3], [4, 5, 6])
-  //. [1, 2, 3, 4, 5, 6]
-  //.
-  //. > concat({x: 1, y: 2}, {y: 3, z: 4})
-  //. {x: 1, y: 3, z: 4}
-  //.
-  //. > concat(Cons('foo', Cons('bar', Cons('baz', Nil))), Cons('quux', Nil))
-  //. Cons('foo', Cons('bar', Cons('baz', Cons('quux', Nil))))
-  //. ```
-  function concat(x, y) {
-    return Semigroup.methods.concat(x)(y);
-  }
-
-  //# empty :: Monoid m => TypeRep m -> m
-  //.
-  //. Function wrapper for [`fantasy-land/empty`][].
-  //.
-  //. `fantasy-land/empty` implementations are provided for the following
-  //. built-in types: String, Array, and Object.
-  //.
-  //. ```javascript
-  //. > empty(String)
-  //. ''
-  //.
-  //. > empty(Array)
-  //. []
-  //.
-  //. > empty(Object)
-  //. {}
-  //.
-  //. > empty(List)
-  //. Nil
-  //. ```
-  function empty(typeRep) {
-    return Monoid.methods.empty(typeRep)();
-  }
-
-  //# map :: Functor f => (a -> b, f a) -> f b
-  //.
-  //. Function wrapper for [`fantasy-land/map`][].
-  //.
-  //. `fantasy-land/map` implementations are provided for the following
-  //. built-in types: Array, Object, and Function.
-  //.
-  //. ```javascript
-  //. > map(Math.sqrt, [1, 4, 9])
-  //. [1, 2, 3]
-  //.
-  //. > map(Math.sqrt, {x: 1, y: 4, z: 9})
-  //. {x: 1, y: 2, z: 3}
-  //.
-  //. > map(Math.sqrt, s => s.length)('Sanctuary')
-  //. 3
-  //.
-  //. > map(Math.sqrt, Tuple('foo', 64))
-  //. Tuple('foo', 8)
-  //.
-  //. > map(Math.sqrt, Nil)
-  //. Nil
-  //.
-  //. > map(Math.sqrt, Cons(1, Cons(4, Cons(9, Nil))))
-  //. Cons(1, Cons(2, Cons(3, Nil)))
-  //. ```
-  function map(f, functor) {
-    return Functor.methods.map(functor)(f);
-  }
-
-  //# bimap :: Bifunctor f => (a -> b, c -> d, f a c) -> f b d
-  //.
-  //. Function wrapper for [`fantasy-land/bimap`][].
-  //.
-  //. ```javascript
-  //. > bimap(s => s.toUpperCase(), Math.sqrt, Tuple('foo', 64))
-  //. Tuple('FOO', 8)
-  //. ```
-  function bimap(f, g, bifunctor) {
-    return Bifunctor.methods.bimap(bifunctor)(f, g);
-  }
-
-  //# promap :: Profunctor p => (a -> b, c -> d, p b c) -> p a d
-  //.
-  //. Function wrapper for [`fantasy-land/promap`][].
-  //.
-  //. `fantasy-land/promap` implementations are provided for the following
-  //. built-in types: Function.
-  //.
-  //. ```javascript
-  //. > promap(Math.abs, x => x + 1, Math.sqrt)(-100)
-  //. 11
-  //. ```
-  function promap(f, g, profunctor) {
-    return Profunctor.methods.promap(profunctor)(f, g);
-  }
-
-  //# ap :: Apply f => (f (a -> b), f a) -> f b
-  //.
-  //. Function wrapper for [`fantasy-land/ap`][].
-  //.
-  //. `fantasy-land/ap` implementations are provided for the following
-  //. built-in types: Array, Object, and Function.
-  //.
-  //. ```javascript
-  //. > ap([Math.sqrt, x => x * x], [1, 4, 9, 16, 25])
-  //. [1, 2, 3, 4, 5, 1, 16, 81, 256, 625]
-  //.
-  //. > ap({a: Math.sqrt, b: x => x * x}, {a: 16, b: 10, c: 1})
-  //. {a: 4, b: 100}
-  //.
-  //. > ap(s => n => s.slice(0, n), s => Math.ceil(s.length / 2))('Haskell')
-  //. 'Hask'
-  //.
-  //. > ap(Identity(Math.sqrt), Identity(64))
-  //. Identity(8)
-  //.
-  //. > ap(Cons(Math.sqrt, Cons(x => x * x, Nil)), Cons(16, Cons(100, Nil)))
-  //. Cons(4, Cons(10, Cons(256, Cons(10000, Nil))))
-  //. ```
-  function ap(applyF, applyX) {
-    return Apply.methods.ap(applyX)(applyF);
-  }
-
-  //# lift2 :: Apply f => (a -> b -> c, f a, f b) -> f c
-  //.
-  //. Lifts `a -> b -> c` to `Apply f => f a -> f b -> f c` and returns the
-  //. result of applying this to the given arguments.
-  //.
-  //. This function is derived from [`map`](#map) and [`ap`](#ap).
-  //.
-  //. See also [`lift3`](#lift3).
-  //.
-  //. ```javascript
-  //. > lift2(x => y => Math.pow(x, y), [10], [1, 2, 3])
-  //. [10, 100, 1000]
-  //.
-  //. > lift2(x => y => Math.pow(x, y), Identity(10), Identity(3))
-  //. Identity(1000)
-  //. ```
-  function lift2(f, x, y) {
-    return ap(map(f, x), y);
-  }
-
-  //# lift3 :: Apply f => (a -> b -> c -> d, f a, f b, f c) -> f d
-  //.
-  //. Lifts `a -> b -> c -> d` to `Apply f => f a -> f b -> f c -> f d` and
-  //. returns the result of applying this to the given arguments.
-  //.
-  //. This function is derived from [`map`](#map) and [`ap`](#ap).
-  //.
-  //. See also [`lift2`](#lift2).
-  //.
-  //. ```javascript
-  //. > lift3(x => y => z => x + z + y, ['<'], ['>'], ['foo', 'bar', 'baz'])
-  //. ['<foo>', '<bar>', '<baz>']
-  //.
-  //. > lift3(x => y => z => x + z + y, Identity('<'), Identity('>'), Identity('baz'))
-  //. Identity('<baz>')
-  //. ```
-  function lift3(f, x, y, z) {
-    return ap(ap(map(f, x), y), z);
-  }
-
-  //# apFirst :: Apply f => (f a, f b) -> f a
-  //.
-  //. Combines two effectful actions, keeping only the result of the first.
-  //. Equivalent to Haskell's `(<*)` function.
-  //.
-  //. This function is derived from [`lift2`](#lift2).
-  //.
-  //. See also [`apSecond`](#apSecond).
-  //.
-  //. ```javascript
-  //. > apFirst([1, 2], [3, 4])
-  //. [1, 1, 2, 2]
-  //.
-  //. > apFirst(Identity(1), Identity(2))
-  //. Identity(1)
-  //. ```
-  function apFirst(x, y) {
-    return lift2(constant, x, y);
-  }
-
-  //# apSecond :: Apply f => (f a, f b) -> f b
-  //.
-  //. Combines two effectful actions, keeping only the result of the second.
-  //. Equivalent to Haskell's `(*>)` function.
-  //.
-  //. This function is derived from [`lift2`](#lift2).
-  //.
-  //. See also [`apFirst`](#apFirst).
-  //.
-  //. ```javascript
-  //. > apSecond([1, 2], [3, 4])
-  //. [3, 4, 3, 4]
-  //.
-  //. > apSecond(Identity(1), Identity(2))
-  //. Identity(2)
-  //. ```
-  function apSecond(x, y) {
-    return lift2(constant(identity), x, y);
-  }
-
-  //# of :: Applicative f => (TypeRep f, a) -> f a
-  //.
-  //. Function wrapper for [`fantasy-land/of`][].
-  //.
-  //. `fantasy-land/of` implementations are provided for the following
-  //. built-in types: Array and Function.
-  //.
-  //. ```javascript
-  //. > of(Array, 42)
-  //. [42]
-  //.
-  //. > of(Function, 42)(null)
-  //. 42
-  //.
-  //. > of(List, 42)
-  //. Cons(42, Nil)
-  //. ```
-  function of(typeRep, x) {
-    return Applicative.methods.of(typeRep)(x);
-  }
-
-  //# chain :: Chain m => (a -> m b, m a) -> m b
-  //.
-  //. Function wrapper for [`fantasy-land/chain`][].
-  //.
-  //. `fantasy-land/chain` implementations are provided for the following
-  //. built-in types: Array and Function.
-  //.
-  //. ```javascript
-  //. > chain(x => [x, x], [1, 2, 3])
-  //. [1, 1, 2, 2, 3, 3]
-  //.
-  //. > chain(x => x % 2 == 1 ? of(List, x) : Nil, Cons(1, Cons(2, Cons(3, Nil))))
-  //. Cons(1, Cons(3, Nil))
-  //.
-  //. > chain(n => s => s.slice(0, n), s => Math.ceil(s.length / 2))('Haskell')
-  //. 'Hask'
-  //. ```
-  function chain(f, chain_) {
-    return Chain.methods.chain(chain_)(f);
-  }
-
-  //# join :: Chain m => m (m a) -> m a
-  //.
-  //. Removes one level of nesting from a nested monadic structure.
-  //.
-  //. This function is derived from [`chain`](#chain).
-  //.
-  //. ```javascript
-  //. > join([[1], [2], [3]])
-  //. [1, 2, 3]
-  //.
-  //. > join([[[1, 2, 3]]])
-  //. [[1, 2, 3]]
-  //.
-  //. > join(Identity(Identity(1)))
-  //. Identity(1)
-  //. ```
-  function join(chain_) {
-    return chain(identity, chain_);
-  }
-
-  //# chainRec :: ChainRec m => (TypeRep m, (a -> c, b -> c, a) -> m c, a) -> m b
-  //.
-  //. Function wrapper for [`fantasy-land/chainRec`][].
-  //.
-  //. `fantasy-land/chainRec` implementations are provided for the following
-  //. built-in types: Array.
-  //.
-  //. ```javascript
-  //. > chainRec(
-  //. .   Array,
-  //. .   (next, done, s) => s.length == 2 ? [s + '!', s + '?'].map(done)
-  //. .                                    : [s + 'o', s + 'n'].map(next),
-  //. .   ''
-  //. . )
-  //. ['oo!', 'oo?', 'on!', 'on?', 'no!', 'no?', 'nn!', 'nn?']
-  //. ```
-  function chainRec(typeRep, f, x) {
-    return ChainRec.methods.chainRec(typeRep)(f, x);
-  }
-
-  //# filter :: (Applicative f, Foldable f, Monoid (f a)) => (a -> Boolean, f a) -> f a
-  //.
-  //. Filters its second argument in accordance with the given predicate.
-  //.
-  //. This function is derived from [`concat`](#concat), [`empty`](#empty),
-  //. [`of`](#of), and [`reduce`](#reduce).
-  //.
-  //. See also [`filterM`](#filterM).
-  //.
-  //. ```javascript
-  //. > filter(x => x % 2 == 1, [1, 2, 3])
-  //. [1, 3]
-  //.
-  //. > filter(x => x % 2 == 1, Cons(1, Cons(2, Cons(3, Nil))))
-  //. Cons(1, Cons(3, Nil))
-  //. ```
-  function filter(pred, m) {
-    var M = m.constructor;
-    return reduce(function(m, x) { return pred(x) ? concat(m, of(M, x)) : m; },
-                  empty(M),
-                  m);
-  }
-
-  //# filterM :: (Alternative m, Monad m) => (a -> Boolean, m a) -> m a
-  //.
-  //. Filters its second argument in accordance with the given predicate.
-  //.
-  //. This function is derived from [`of`](#of), [`chain`](#chain), and
-  //. [`zero`](#zero).
-  //.
-  //. See also [`filter`](#filter).
-  //.
-  //. ```javascript
-  //. > filterM(x => x % 2 == 1, [1, 2, 3])
-  //. [1, 3]
-  //.
-  //. > filterM(x => x % 2 == 1, Cons(1, Cons(2, Cons(3, Nil))))
-  //. Cons(1, Cons(3, Nil))
-  //.
-  //. > filterM(x => x % 2 == 1, Nothing)
-  //. Nothing
-  //.
-  //. > filterM(x => x % 2 == 1, Just(0))
-  //. Nothing
-  //.
-  //. > filterM(x => x % 2 == 1, Just(1))
-  //. Just(1)
-  //. ```
-  function filterM(pred, m) {
-    var M = m.constructor;
-    var z = zero(M);
-    return chain(function(x) { return pred(x) ? of(M, x) : z; }, m);
-  }
-
-  //# alt :: Alt f => (f a, f a) -> f a
-  //.
-  //. Function wrapper for [`fantasy-land/alt`][].
-  //.
-  //. `fantasy-land/alt` implementations are provided for the following
-  //. built-in types: Array and Object.
-  //.
-  //. ```javascript
-  //. > alt([1, 2, 3], [4, 5, 6])
-  //. [1, 2, 3, 4, 5, 6]
-  //.
-  //. > alt(Nothing, Nothing)
-  //. Nothing
-  //.
-  //. > alt(Nothing, Just(1))
-  //. Just(1)
-  //.
-  //. > alt(Just(2), Just(3))
-  //. Just(2)
-  //. ```
-  function alt(x, y) {
-    return Alt.methods.alt(x)(y);
-  }
-
-  //# zero :: Plus f => TypeRep f -> f a
-  //.
-  //. Function wrapper for [`fantasy-land/zero`][].
-  //.
-  //. `fantasy-land/zero` implementations are provided for the following
-  //. built-in types: Array and Object.
-  //.
-  //. ```javascript
-  //. > zero(Array)
-  //. []
-  //.
-  //. > zero(Object)
-  //. {}
-  //.
-  //. > zero(Maybe)
-  //. Nothing
-  //. ```
-  function zero(typeRep) {
-    return Plus.methods.zero(typeRep)();
-  }
-
-  //# reduce :: Foldable f => ((b, a) -> b, b, f a) -> b
-  //.
-  //. Function wrapper for [`fantasy-land/reduce`][].
-  //.
-  //. `fantasy-land/reduce` implementations are provided for the following
-  //. built-in types: Array and Object.
-  //.
-  //. ```javascript
-  //. > reduce((xs, x) => [x].concat(xs), [], [1, 2, 3])
-  //. [3, 2, 1]
-  //.
-  //. > reduce(concat, '', Cons('foo', Cons('bar', Cons('baz', Nil))))
-  //. 'foobarbaz'
-  //. ```
-  function reduce(f, x, foldable) {
-    return Foldable.methods.reduce(foldable)(f, x);
-  }
-
-  //# traverse :: (Applicative f, Traversable t) => (TypeRep f, a -> f b, t a) -> f (t b)
-  //.
-  //. Function wrapper for [`fantasy-land/traverse`][].
-  //.
-  //. `fantasy-land/traverse` implementations are provided for the following
-  //. built-in types: Array and Object.
-  //.
-  //. See also [`sequence`](#sequence).
-  //.
-  //. ```javascript
-  //. > traverse(Array, x => x, [[1, 2, 3], [4, 5]])
-  //. [[1, 4], [1, 5], [2, 4], [2, 5], [3, 4], [3, 5]]
-  //.
-  //. > traverse(Identity, x => Identity(x + 1), [1, 2, 3])
-  //. Identity([2, 3, 4])
-  //. ```
-  function traverse(typeRep, f, traversable) {
-    return Traversable.methods.traverse(traversable)(typeRep, f);
-  }
-
-  //# sequence :: (Applicative f, Traversable t) => (TypeRep f, t (f a)) -> f (t a)
-  //.
-  //. Inverts the given `t (f a)` to produce an `f (t a)`.
-  //.
-  //. This function is derived from [`traverse`](#traverse).
-  //.
-  //. ```javascript
-  //. > sequence(Array, Identity([1, 2, 3]))
-  //. [Identity(1), Identity(2), Identity(3)]
-  //.
-  //. > sequence(Identity, [Identity(1), Identity(2), Identity(3)])
-  //. Identity([1, 2, 3])
-  //. ```
-  function sequence(typeRep, traversable) {
-    return traverse(typeRep, identity, traversable);
-  }
-
-  //# extend :: Extend w => (w a -> b, w a) -> w b
-  //.
-  //. Function wrapper for [`fantasy-land/extend`][].
-  //.
-  //. `fantasy-land/extend` implementations are provided for the following
-  //. built-in types: Array.
-  //.
-  //. ```javascript
-  //. > extend(ss => ss.join(''), ['x', 'y', 'z'])
-  //. ['xyz', 'yz', 'z']
-  //. ```
-  function extend(f, extend_) {
-    return Extend.methods.extend(extend_)(f);
-  }
-
-  //# extract :: Comonad w => w a -> a
-  //.
-  //. Function wrapper for [`fantasy-land/extract`][].
-  //.
-  //. ```javascript
-  //. > extract(Identity(42))
-  //. 42
-  //. ```
-  function extract(comonad) {
-    return Comonad.methods.extract(comonad)();
-  }
-
-  //# contramap :: Contravariant f => (b -> a, f a) -> f b
-  //.
-  //. Function wrapper for [`fantasy-land/contramap`][].
-  //.
-  //. `fantasy-land/contramap` implementations are provided for the following
-  //. built-in types: Function.
-  //.
-  //. ```javascript
-  //. > contramap(s => s.length, Math.sqrt)('Sanctuary')
-  //. 3
-  //. ```
-  function contramap(f, contravariant) {
-    return Contravariant.methods.contramap(contravariant)(f);
-  }
-
-  return {
-    TypeClass: TypeClass,
-    Setoid: Setoid,
-    Ord: Ord,
-    Semigroupoid: Semigroupoid,
-    Category: Category,
-    Semigroup: Semigroup,
-    Monoid: Monoid,
-    Functor: Functor,
-    Bifunctor: Bifunctor,
-    Profunctor: Profunctor,
-    Apply: Apply,
-    Applicative: Applicative,
-    Chain: Chain,
-    ChainRec: ChainRec,
-    Monad: Monad,
-    Alt: Alt,
-    Plus: Plus,
-    Alternative: Alternative,
-    Foldable: Foldable,
-    Traversable: Traversable,
-    Extend: Extend,
-    Comonad: Comonad,
-    Contravariant: Contravariant,
-    toString: toString,
-    equals: equals,
-    lt: lt,
-    lte: lte,
-    gt: gt,
-    gte: gte,
-    compose: compose,
-    id: id,
-    concat: concat,
-    empty: empty,
-    map: map,
-    bimap: bimap,
-    promap: promap,
-    ap: ap,
-    lift2: lift2,
-    lift3: lift3,
-    apFirst: apFirst,
-    apSecond: apSecond,
-    of: of,
-    chain: chain,
-    join: join,
-    chainRec: chainRec,
-    filter: filter,
-    filterM: filterM,
-    alt: alt,
-    zero: zero,
-    reduce: reduce,
-    traverse: traverse,
-    sequence: sequence,
-    extend: extend,
-    extract: extract,
-    contramap: contramap
-  };
-
-}));
-
-//. [Alt]:                      https://github.com/fantasyland/fantasy-land#alt
-//. [Alternative]:              https://github.com/fantasyland/fantasy-land#alternative
-//. [Applicative]:              https://github.com/fantasyland/fantasy-land#applicative
-//. [Apply]:                    https://github.com/fantasyland/fantasy-land#apply
-//. [Bifunctor]:                https://github.com/fantasyland/fantasy-land#bifunctor
-//. [Category]:                 https://github.com/fantasyland/fantasy-land#category
-//. [Chain]:                    https://github.com/fantasyland/fantasy-land#chain
-//. [ChainRec]:                 https://github.com/fantasyland/fantasy-land#chainrec
-//. [Comonad]:                  https://github.com/fantasyland/fantasy-land#comonad
-//. [Contravariant]:            https://github.com/fantasyland/fantasy-land#contravariant
-//. [Extend]:                   https://github.com/fantasyland/fantasy-land#extend
-//. [FL]:                       https://github.com/fantasyland/fantasy-land
-//. [Foldable]:                 https://github.com/fantasyland/fantasy-land#foldable
-//. [Functor]:                  https://github.com/fantasyland/fantasy-land#functor
-//. [Monad]:                    https://github.com/fantasyland/fantasy-land#monad
-//. [Monoid]:                   https://github.com/fantasyland/fantasy-land#monoid
-//. [Ord]:                      https://github.com/fantasyland/fantasy-land#ord
-//. [Plus]:                     https://github.com/fantasyland/fantasy-land#plus
-//. [Profunctor]:               https://github.com/fantasyland/fantasy-land#profunctor
-//. [Semigroup]:                https://github.com/fantasyland/fantasy-land#semigroup
-//. [Semigroupoid]:             https://github.com/fantasyland/fantasy-land#semigroupoid
-//. [Setoid]:                   https://github.com/fantasyland/fantasy-land#setoid
-//. [Traversable]:              https://github.com/fantasyland/fantasy-land#traversable
-//. [`fantasy-land/alt`]:       https://github.com/fantasyland/fantasy-land#alt-method
-//. [`fantasy-land/ap`]:        https://github.com/fantasyland/fantasy-land#ap-method
-//. [`fantasy-land/bimap`]:     https://github.com/fantasyland/fantasy-land#bimap-method
-//. [`fantasy-land/chain`]:     https://github.com/fantasyland/fantasy-land#chain-method
-//. [`fantasy-land/chainRec`]:  https://github.com/fantasyland/fantasy-land#chainrec-method
-//. [`fantasy-land/compose`]:   https://github.com/fantasyland/fantasy-land#compose-method
-//. [`fantasy-land/concat`]:    https://github.com/fantasyland/fantasy-land#concat-method
-//. [`fantasy-land/contramap`]: https://github.com/fantasyland/fantasy-land#contramap-method
-//. [`fantasy-land/empty`]:     https://github.com/fantasyland/fantasy-land#empty-method
-//. [`fantasy-land/equals`]:    https://github.com/fantasyland/fantasy-land#equals-method
-//. [`fantasy-land/extend`]:    https://github.com/fantasyland/fantasy-land#extend-method
-//. [`fantasy-land/extract`]:   https://github.com/fantasyland/fantasy-land#extract-method
-//. [`fantasy-land/id`]:        https://github.com/fantasyland/fantasy-land#id-method
-//. [`fantasy-land/lte`]:       https://github.com/fantasyland/fantasy-land#lte-method
-//. [`fantasy-land/map`]:       https://github.com/fantasyland/fantasy-land#map-method
-//. [`fantasy-land/of`]:        https://github.com/fantasyland/fantasy-land#of-method
-//. [`fantasy-land/promap`]:    https://github.com/fantasyland/fantasy-land#promap-method
-//. [`fantasy-land/reduce`]:    https://github.com/fantasyland/fantasy-land#reduce-method
-//. [`fantasy-land/traverse`]:  https://github.com/fantasyland/fantasy-land#traverse-method
-//. [`fantasy-land/zero`]:      https://github.com/fantasyland/fantasy-land#zero-method
-//. [type-classes]:             https://github.com/sanctuary-js/sanctuary-def#type-classes
-});
-
-var inspectF = createCommonjsModule(function (module) {
-(function(global, f) {
-
-  'use strict';
-
-  /*istanbul ignore next*/
-  {
-    module.exports = f();
-  }
-
-}(/*istanbul ignore next*/(commonjsGlobal || window || commonjsGlobal), function() {
-
-  'use strict';
-
-  function checkn(n) {
-    if(typeof n !== 'number') {
-      throw new TypeError(
-        'inspectf expects its first argument to be a number'
-      );
-    }
-  }
-
-  function checkf(f) {
-    if(typeof f !== 'function') {
-      throw new TypeError(
-        'inspectf expects its second argument to be a function'
-      );
-    }
-  }
-
-  var RSPACE = /^ */;
-  var RCODE = /\s*[^\s]/;
-  var RTABS = /\t/g;
-  var REOL = /\n\r?/;
-
-  function isCode(line) {
-    return RCODE.test(line);
-  }
-
-  function getPadding(line) {
-    return line.match(RSPACE)[0].length;
-  }
-
-  function guessIndentation(lines) {
-    var filtered = lines.filter(isCode);
-    var paddings = filtered.map(getPadding);
-    var depth = paddings.reduce(Math.min, Infinity);
-    var tabsize = paddings
-    .map(function(x) { return x - depth; })
-    .find(function(x) { return x > 1; }) || 2;
-    return {depth: depth, tabsize: tabsize};
-  }
-
-  function pad(n) {
-    return (new Array(n + 1)).join(' ');
-  }
-
-  function show(f, indentation) {
-    return f.toString().replace(RTABS, indentation);
-  }
-
-  function toLines(s) {
-    return s.split(REOL);
-  }
-
-  function fixIndentation(lines, indentation) {
-    var info = guessIndentation(lines.slice(1));
-    var RPAD = new RegExp(pad(info.tabsize), 'g');
-    return lines.map(function(line) {
-      return line.slice(Math.min(info.depth, getPadding(line)))
-      .replace(RPAD, '\t').replace(RTABS, indentation);
-    }).join('\n');
-  }
-
-  return function inspectf(n, f) {
-    checkn(n);
-    if(arguments.length < 2) {
-      return function inspectf$partial(f) { return inspectf(n, f); };
-    }
-    checkf(f);
-    if(f.toString !== Function.prototype.toString) {return f.toString();}
-    var i = pad(n), shown = show(f, i), lines = toLines(shown, i);
-    if(lines.length < 2) {return shown;}
-    return fixIndentation(lines, i);
-  };
-
-}));
-});
-
-var noop = function noop(){};
-var moop = function moop(){ return this };
-var show = index$2.toString;
-var padf = function (sf, s) { return s.replace(/^/gm, sf).replace(sf, ''); };
-var showf = function (f) { return padf('  ', inspectF(2, f)); };
-
-var mapArray = function (xs, f) {
-  var l = xs.length, ys = new Array(l);
-  for(var i = 0; i < l; i++) { ys[i] = f(xs[i], i, xs); }
-  return ys;
-};
-
-var partial1 = function (f, a) { return function bound1(b, c, d){
-  switch(arguments.length){
-    case 1: return f(a, b);
-    case 2: return f(a, b, c);
-    default: return f(a, b, c, d);
-  }
-}; };
-
-var partial2 = function (f, a, b) { return function bound2(c, d){
-  return arguments.length === 1 ? f(a, b, c) : f(a, b, c, d);
-}; };
-
-var partial3 = function (f, a, b, c) { return function bound3(d){
-  return f(a, b, c, d);
-}; };
-
-var escapeTick = function (f) { return function imprisoned(x){
-  setTimeout(function escaped(){ f(x); }, 0);
-}; };
-
-var isFunction = function (f) { return typeof f === 'function'; };
-var isThenable = function (m) { return m instanceof Promise || Boolean(m) && isFunction(m.then); };
-var isBoolean = function (f) { return typeof f === 'boolean'; };
-var isNumber = function (f) { return typeof f === 'number'; };
-var isUnsigned = function (n) { return (n === Infinity || isNumber(n) && n > 0 && n % 1 === 0); };
-var isObject = function (o) { return o !== null && typeof o === 'object'; };
-var isIterator = function (i) { return isObject(i) && isFunction(i.next); };
-var isArray = Array.isArray;
-
-var FL = {
-  map: 'fantasy-land/map',
-  bimap: 'fantasy-land/bimap',
-  chain: 'fantasy-land/chain',
-  chainRec: 'fantasy-land/chainRec',
-  ap: 'fantasy-land/ap',
-  of: 'fantasy-land/of',
-  zero: 'fantasy-land/zero'
-};
-
-var ordinal = ['first', 'second', 'third', 'fourth', 'fifth'];
-
-var namespace = 'fluture';
-var name = 'Future';
-var version = 3;
-
-var $$type = namespace + "/" + name + "@" + version;
-
-var index$5 = createCommonjsModule(function (module) {
-/*
-        @@@@@@@            @@@@@@@         @@
-      @@       @@        @@       @@      @@@
-    @@   @@@ @@  @@    @@   @@@ @@  @@   @@@@@@ @@   @@@  @@ @@@      @@@@
-   @@  @@   @@@   @@  @@  @@   @@@   @@   @@@   @@   @@@  @@@   @@  @@@   @@
-   @@  @@   @@@   @@  @@  @@   @@@   @@   @@@   @@   @@@  @@@   @@  @@@@@@@@
-   @@  @@   @@@  @@   @@  @@   @@@  @@    @@@   @@   @@@  @@@   @@  @@@
-    @@   @@@ @@@@@     @@   @@@ @@@@@      @@@    @@@ @@  @@@@@@      @@@@@
-      @@                 @@                           @@  @@
-        @@@@@@@            @@@@@@@               @@@@@    @@
-                                                          */
-//. # sanctuary-type-identifiers
-//.
-//. A type is a set of values. Boolean, for example, is the type comprising
-//. `true` and `false`. A value may be a member of multiple types (`42` is a
-//. member of Number, PositiveNumber, Integer, and many other types).
-//.
-//. In certain situations it is useful to divide JavaScript values into
-//. non-overlapping types. The language provides two constructs for this
-//. purpose: the [`typeof`][1] operator and [`Object.prototype.toString`][2].
-//. Each has pros and cons, but neither supports user-defined types.
-//.
-//. sanctuary-type-identifiers comprises:
-//.
-//.   - an npm and browser -compatible package for deriving the
-//.     _type identifier_ of a JavaScript value; and
-//.   - a specification which authors may follow to specify type
-//.     identifiers for their types.
-//.
-//. ### Specification
-//.
-//. For a type to be compatible with the algorithm:
-//.
-//.   - every member of the type MUST have a `constructor` property
-//.     pointing to an object known as the _type representative_;
-//.
-//.   - the type representative MUST have a `@@type` property
-//.     (the _type identifier_); and
-//.
-//.   - the type identifier MUST be a string primitive and SHOULD have
-//.     format `'<namespace>/<name>[@<version>]'`, where:
-//.
-//.       - `<namespace>` MUST consist of one or more characters, and
-//.         SHOULD equal the name of the npm package which defines the
-//.         type (including [scope][3] where appropriate);
-//.
-//.       - `<name>` MUST consist of one or more characters, and SHOULD
-//.         be the unique name of the type; and
-//.
-//.       - `<version>` MUST consist of one or more digits, and SHOULD
-//.         represent the version of the type.
-//.
-//. If the type identifier does not conform to the format specified above,
-//. it is assumed that the entire string represents the _name_ of the type;
-//. _namespace_ will be `null` and _version_ will be `0`.
-//.
-//. If the _version_ is not given, it is assumed to be `0`.
-//.
-//. For example:
-//.
-//. ```javascript
-//. //  Identity :: a -> Identity a
-//. function Identity(x) {
-//.   if (!(this instanceof Identity)) return new Identity(x);
-//.   this.value = x;
-//. }
-//.
-//. Identity['@@type'] = 'my-package/Identity';
-//. ```
-//.
-//. Note that by using a constructor function the `constructor` property is set
-//. implicitly for each value created. Constructor functions are convenient for
-//. this reason, but are not required. This definition is also valid:
-//.
-//. ```javascript
-//. //  IdentityTypeRep :: TypeRep Identity
-//. var IdentityTypeRep = {
-//.   '@@type': 'my-package/Identity'
-//. };
-//.
-//. //  Identity :: a -> Identity a
-//. function Identity(x) {
-//.   return {constructor: IdentityTypeRep, value: x};
-//. }
-//. ```
-
-(function(f) {
-
-  'use strict';
-
-  {
-    module.exports = f();
-  }
-
-}(function() {
-
-  'use strict';
-
-  //  $$type :: String
-  var $$type = '@@type';
-
-  //  pattern :: RegExp
-  var pattern = new RegExp(
-    '^'
-  + '([\\s\\S]+)'   //  <namespace>
-  + '/'             //  SOLIDUS (U+002F)
-  + '([\\s\\S]+?)'  //  <name>
-  + '(?:'           //  optional non-capturing group {
-  +   '@'           //    COMMERCIAL AT (U+0040)
-  +   '([0-9]+)'    //    <version>
-  + ')?'            //  }
-  + '$'
-  );
-
-  //. ### Usage
-  //.
-  //. ```javascript
-  //. const type = require('sanctuary-type-identifiers');
-  //. ```
-  //.
-  //. ```javascript
-  //. > function Identity(x) {
-  //. .   if (!(this instanceof Identity)) return new Identity(x);
-  //. .   this.value = x;
-  //. . }
-  //. . Identity['@@type'] = 'my-package/Identity@1';
-  //.
-  //. > type.parse(type(Identity(0)))
-  //. {namespace: 'my-package', name: 'Identity', version: 1}
-  //. ```
-  //.
-  //. ### API
-  //.
-  //# type :: Any -> String
-  //.
-  //. Takes any value and returns a string which identifies its type. If the
-  //. value conforms to the [specification][4], the custom type identifier is
-  //. returned.
-  //.
-  //. ```javascript
-  //. > type(null)
-  //. 'Null'
-  //.
-  //. > type(true)
-  //. 'Boolean'
-  //.
-  //. > type(Identity(0))
-  //. 'my-package/Identity@1'
-  //. ```
-  function type(x) {
-    return x != null &&
-           x.constructor != null &&
-           x.constructor.prototype !== x &&
-           typeof x.constructor[$$type] === 'string' ?
-      x.constructor[$$type] :
-      Object.prototype.toString.call(x).slice('[object '.length, -']'.length);
-  }
-
-  //# type.parse :: String -> { namespace :: Nullable String, name :: String, version :: Number }
-  //.
-  //. Takes any string and parses it according to the [specification][4],
-  //. returning an object with `namespace`, `name`, and `version` fields.
-  //.
-  //. ```javascript
-  //. > type.parse('my-package/List@2')
-  //. {namespace: 'my-package', name: 'List', version: 2}
-  //.
-  //. > type.parse('nonsense!')
-  //. {namespace: null, name: 'nonsense!', version: 0}
-  //.
-  //. > type.parse(Identity['@@type'])
-  //. {namespace: 'my-package', name: 'Identity', version: 1}
-  //. ```
-  type.parse = function parse(s) {
-    var groups = pattern.exec(s);
-    return {
-      namespace: groups == null || groups[1] == null ? null : groups[1],
-      name:      groups == null                      ? s    : groups[2],
-      version:   groups == null || groups[3] == null ? 0    : Number(groups[3])
-    };
-  };
-
-  return type;
-
-}));
-
-//. [1]: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Operators/typeof
-//. [2]: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Object/toString
-//. [3]: https://docs.npmjs.com/misc/scope
-//. [4]: #specification
-});
-
-var error = function (message) {
-  throw new Error(message);
-};
-
-var typeError = function (message) {
-  throw new TypeError(message);
-};
-
-var invalidArgument = function (it, at, expected, actual) { return typeError(
-  (it + " expects its " + (ordinal[at]) + " argument to " + expected + "\n  Actual: " + (show(actual)))
-); };
-
-var invalidContext = function (it, actual) { return typeError(
-  it + " was invoked outside the context of a Future. You might want to use"
-  + " a dispatcher instead\n  Called on: " + (show(actual))
-); };
-
-var invalidNamespace = function (m, x) { return (
-  "The Future was not created by " + namespace + ". "
-+ "Make sure you transform other Futures to " + namespace + " Futures. "
-+ "Got " + (x ? ("a Future from " + x) : 'an unscoped Future') + "."
-+ '\n  See: https://github.com/fluture-js/Fluture#casting-futures'
-); };
-
-var invalidVersion = function (m, x) { return (
-  "The Future was created by " + (x < version ? 'an older' : 'a newer') + " version of " + namespace + ". "
-+ 'This means that one of the sources which creates Futures is outdated. '
-+ 'Update this source, or transform its created Futures to be compatible.'
-+ '\n  See: https://github.com/fluture-js/Fluture#casting-futures'
-); };
-
-var invalidFuture = function (it, at, m, s) {
-  if ( s === void 0 ) s = '';
-
-  var id = index$5.parse(index$5(m));
-  var info = id.name === name ? '\n' + (
-    id.namespace !== namespace ? invalidNamespace(m, id.namespace)
-  : id.version !== version ? invalidVersion(m, id.version)
-  : 'Nothing seems wrong. Contact the Fluture maintainers.') : '';
-  typeError(
-    it + " expects " + (ordinal[at] ? ("its " + (ordinal[at]) + " argument to be a valid Future") : at) + "."
-  + info + "\n  Actual: " + (show(m)) + " :: " + (id.name) + s
-  );
-};
-
-/**
- * Custom implementation of a double ended queue.
+//----------------------------------------------------------------------
+//
+// This source file is part of the Folktale project.
+//
+// Licensed under MIT. See LICENCE for full licence information.
+// See CONTRIBUTORS for the list of contributors to the project.
+//
+//----------------------------------------------------------------------
+
+/*~
+ * stability: experimental
+ * name: module folktale/adt
  */
-function Denque(array) {
-  // circular buffer
-  this._list = new Array(4);
-  // bit mask
-  this._capacityMask = 0x3;
-  // next unread item
-  this._head = 0;
-  // next empty slot
-  this._tail = 0;
+module.exports = {
+  union: require('./union')
+};
+},{"./union":7}],3:[function(require,module,exports){
+'use strict';
 
-  if (Array.isArray(array)) {
-    this._fromArray(array);
-  }
-}
+var _typeof = typeof Symbol === "function" && typeof Symbol.iterator === "symbol" ? function (obj) { return typeof obj; } : function (obj) { return obj && typeof Symbol === "function" && obj.constructor === Symbol && obj !== Symbol.prototype ? "symbol" : typeof obj; };
 
-/**
- * -------------
- *  PUBLIC API
- * -------------
+//----------------------------------------------------------------------
+//
+// This source file is part of the Folktale project.
+//
+// Licensed under MIT. See LICENCE for full licence information.
+// See CONTRIBUTORS for the list of contributors to the project.
+//
+//----------------------------------------------------------------------
+
+// --[ Dependencies ]---------------------------------------------------
+var _require = require('../union'),
+    tagSymbol = _require.tagSymbol,
+    typeSymbol = _require.typeSymbol;
+
+// --[ Helpers ]--------------------------------------------------------
+/*~
+ * type: (Object Any) => String
  */
 
-/**
- * Returns the item at the specified index from the list.
- * 0 is the first element, 1 is the second, and so on...
- * Elements at negative values are that many from the end: -1 is one before the end
- * (the last element), -2 is two before the end (one before last), etc.
- * @param index
- * @returns {*}
- */
-Denque.prototype.peekAt = function peekAt(index) {
-  var i = index;
-  // expect a number or return undefined
-  if ((i !== (i | 0))) {
-    return void 0;
-  }
-  var len = this.size();
-  if (i >= len || i < -len) { return undefined; }
-  if (i < 0) { i += len; }
-  i = (this._head + i) & this._capacityMask;
-  return this._list[i];
+
+var objectToKeyValuePairs = function objectToKeyValuePairs(object) {
+  return Object.keys(object).map(function (key) {
+    return key + ': ' + showValue(object[key]);
+  }).join(', ');
 };
 
-/**
- * Alias for peakAt()
- * @param i
- * @returns {*}
+/*~
+ * type: (Object Any).() => String
  */
-Denque.prototype.get = function get(i) {
-  return this.peekAt(i);
+var plainObjectToString = function plainObjectToString() {
+  return '{ ' + objectToKeyValuePairs(this) + ' }';
 };
 
-/**
- * Returns the first item in the list without removing it.
- * @returns {*}
+/*~
+ * type: (Array Any).() => String
  */
-Denque.prototype.peek = function peek() {
-  if (this._head === this._tail) { return undefined; }
-  return this._list[this._head];
+var arrayToString = function arrayToString() {
+  return '[' + this.map(showValue).join(', ') + ']';
 };
 
-/**
- * Alias for peek()
- * @returns {*}
+/*~
+ * type: (Function) => String
  */
-Denque.prototype.peekFront = function peekFront() {
-  return this.peek();
+var functionNameToString = function functionNameToString(fn) {
+  return fn.name !== '' ? ': ' + fn.name : '';
 };
 
-/**
- * Returns the item that is at the back of the queue without removing it.
- * Uses peekAt(-1)
+/*~
+ * type: (Function) => String
  */
-Denque.prototype.peekBack = function peekBack() {
-  return this.peekAt(-1);
+var functionToString = function functionToString(fn) {
+  return '[Function' + functionNameToString(fn) + ']';
 };
 
-/**
- * Returns the current length of the queue
- * @return {Number}
+/*~
+ * type: () => String
  */
-Object.defineProperty(Denque.prototype, 'length', {
-  get: function length() {
-    return this.size();
-  }
-});
-
-/**
- * Return the number of items on the list, or 0 if empty.
- * @returns {number}
- */
-Denque.prototype.size = function size() {
-  if (this._head === this._tail) { return 0; }
-  if (this._head < this._tail) { return this._tail - this._head; }
-  else { return this._capacityMask + 1 - (this._head - this._tail); }
+var nullToString = function nullToString() {
+  return 'null';
 };
 
-/**
- * Add an item at the beginning of the list.
- * @param item
+/*~
+ * type: (Null | Object Any) => String
  */
-Denque.prototype.unshift = function unshift(item) {
-  if (item === undefined) { return this.length; }
-  var len = this._list.length;
-  this._head = (this._head - 1 + len) & this._capacityMask;
-  this._list[this._head] = item;
-  if (this._tail === this._head) { this._growArray(); }
-  if (this._head < this._tail) { return this._tail - this._head; }
-  else { return this._capacityMask + 1 - (this._head - this._tail); }
+var objectToString = function objectToString(object) {
+  return object === null ? nullToString : Array.isArray(object) ? arrayToString : object.toString() === {}.toString() ? plainObjectToString : /* otherwise */object.toString;
 };
 
-/**
- * Remove and return the first item on the list,
- * Returns undefined if the list is empty.
- * @returns {*}
+/*~
+ * type: (Any) => String
  */
-Denque.prototype.shift = function shift() {
-  var head = this._head;
-  if (head === this._tail) { return undefined; }
-  var item = this._list[head];
-  this._list[head] = undefined;
-  this._head = (head + 1) & this._capacityMask;
-  if (head < 2 && this._tail > 10000 && this._tail <= this._list.length >>> 2) { this._shrinkArray(); }
-  return item;
+var showValue = function showValue(value) {
+  return typeof value === 'undefined' ? 'undefined' : typeof value === 'function' ? functionToString(value) : (typeof value === 'undefined' ? 'undefined' : _typeof(value)) === 'symbol' ? value.toString() : (typeof value === 'undefined' ? 'undefined' : _typeof(value)) === 'object' ? objectToString(value).call(value) : /* otherwise */JSON.stringify(value);
 };
 
-/**
- * Add an item to the bottom of the list.
- * @param item
- */
-Denque.prototype.push = function push(item) {
-  if (item === undefined) { return this.length; }
-  var tail = this._tail;
-  this._list[tail] = item;
-  this._tail = (tail + 1) & this._capacityMask;
-  if (this._tail === this._head) {
-    this._growArray();
-  }
+// --[ Implementation ]------------------------------------------------
 
-  if (this._head < this._tail) { return this._tail - this._head; }
-  else { return this._capacityMask + 1 - (this._head - this._tail); }
-};
-
-/**
- * Remove and return the last item on the list.
- * Returns undefined if the list is empty.
- * @returns {*}
- */
-Denque.prototype.pop = function pop() {
-  var tail = this._tail;
-  if (tail === this._head) { return undefined; }
-  var len = this._list.length;
-  this._tail = (tail - 1 + len) & this._capacityMask;
-  var item = this._list[this._tail];
-  this._list[this._tail] = undefined;
-  if (this._head < 2 && tail > 10000 && tail <= len >>> 2) { this._shrinkArray(); }
-  return item;
-};
-
-/**
- * Remove and return the item at the specified index from the list.
- * Returns undefined if the list is empty.
- * @param index
- * @returns {*}
- */
-Denque.prototype.removeOne = function removeOne(index) {
-  var this$1 = this;
-
-  var i = index;
-  // expect a number or return undefined
-  if ((i !== (i | 0))) {
-    return void 0;
-  }
-  if (this._head === this._tail) { return void 0; }
-  var size = this.size();
-  var len = this._list.length;
-  if (i >= size || i < -size) { return void 0; }
-  if (i < 0) { i += size; }
-  i = (this._head + i) & this._capacityMask;
-  var item = this._list[i];
-  var k;
-  if (index < size / 2) {
-    for (k = index; k > 0; k--) {
-      this$1._list[i] = this$1._list[i = (i - 1 + len) & this$1._capacityMask];
-    }
-    this._list[i] = void 0;
-    this._head = (this._head + 1 + len) & this._capacityMask;
-  } else {
-    for (k = size - 1 - index; k > 0; k--) {
-      this$1._list[i] = this$1._list[i = ( i + 1 + len) & this$1._capacityMask];
-    }
-    this._list[i] = void 0;
-    this._tail = (this._tail - 1 + len) & this._capacityMask;
-  }
-  return item;
-};
-
-/**
- * Remove number of items from the specified index from the list.
- * Returns array of removed items.
- * Returns undefined if the list is empty.
- * @param index
- * @param count
- * @returns {array}
- */
-Denque.prototype.remove = function remove(index, count) {
-  var this$1 = this;
-
-  var i = index;
-  var removed;
-  var del_count = count;
-  // expect a number or return undefined
-  if ((i !== (i | 0))) {
-    return void 0;
-  }
-  if (this._head === this._tail) { return void 0; }
-  var size = this.size();
-  var len = this._list.length;
-  if (i >= size || i < -size || count < 1) { return void 0; }
-  if (i < 0) { i += size; }
-  if (count === 1 || !count) {
-    removed = new Array(1);
-    removed[0] = this.removeOne(i);
-    return removed;
-  }
-  if (i === 0 && i + count >= size) { return this.clear(); }
-  if (i + count > size) { count = size - i; }
-  var k;
-  removed = new Array(count);
-  for (k = 0; k < count; k++) {
-    removed[k] = this$1._list[(this$1._head + i + k) & this$1._capacityMask];
-  }
-  i = (this._head + i) & this._capacityMask;
-  if (index + count === size) {
-    this._tail = (this._tail - count + len) & this._capacityMask;
-    for (k = count; k > 0; k--) {
-      this$1._list[i = (i + 1 + len) & this$1._capacityMask] = void 0;
-    }
-    return removed;
-  }
-  if (index === 0) {
-    this._head = (this._head + count + len) & this._capacityMask;
-    for (k = count - 1; k > 0; k--) {
-      this$1._list[i = (i + 1 + len) & this$1._capacityMask] = void 0;
-    }
-    return removed;
-  }
-  if (index < size / 2) {
-    this._head = (this._head + index + count + len) & this._capacityMask;
-    for (k = index; k > 0; k--) {
-      this$1.unshift(this$1._list[i = (i - 1 + len) & this$1._capacityMask]);
-    }
-    i = (this._head - 1 + len) & this._capacityMask;
-    while (del_count > 0) {
-      this$1._list[i = (i - 1 + len) & this$1._capacityMask] = void 0;
-      del_count--;
-    }
-  } else {
-    this._tail = i;
-    i = (i + count + len) & this._capacityMask;
-    for (k = size - (count + index); k > 0; k--) {
-      this$1.push(this$1._list[i++]);
-    }
-    i = this._tail;
-    while (del_count > 0) {
-      this$1._list[i = (i + 1 + len) & this$1._capacityMask] = void 0;
-      del_count--;
-    }
-  }
-  if (this._head < 2 && this._tail > 10000 && this._tail <= len >>> 2) { this._shrinkArray(); }
-  return removed;
-};
-
-/**
- * Native splice implementation.
- * Remove number of items from the specified index from the list and/or add new elements.
- * Returns array of removed items or empty array if count == 0.
- * Returns undefined if the list is empty.
+/*~
+ * stability: experimental
+ * authors:
+ *   - "@boris-marinov"
  *
- * @param index
- * @param count
- * @param {...*} [elements]
- * @returns {array}
+ * type: |
+ *   (Variant, Union) => Void
  */
-Denque.prototype.splice = function splice(index, count) {
-  var arguments$1 = arguments;
-  var this$1 = this;
+var debugRepresentation = function debugRepresentation(variant, adt) {
+  // eslint-disable-line max-statements
+  var typeName = adt[typeSymbol];
+  var variantName = adt[typeSymbol] + '.' + variant.prototype[tagSymbol];
 
-  var i = index;
-  var size = this.size();
-  // expect a number or return undefined
-  if ((i !== (i | 0))) {
-    return void 0;
-  }
-  if (this._head === this._tail) { return void 0; }
-  if (i > size || i < -size) { return void 0; }
-  if (i === size && count != 0) { return void 0; }
-  if (i < 0) { i += size; }
-  if (arguments.length > 2) {
-    var k;
-    var temp;
-    var removed;
-    var arg_len = arguments.length;
-    var len = this._list.length;
-    var arguments_index = 2;
-    if (i < size / 2) {
-      temp = new Array(i);
-      for (k = 0; k < i; k++) {
-        temp[k] = this$1._list[(this$1._head + k) & this$1._capacityMask];
-      }
-      if (count === 0) {
-        removed = [];
-        if (i > 0) {
-          this._head = (this._head + i + len) & this._capacityMask;
-        }
-      } else {
-        removed = this.remove(i, count);
-        this._head = (this._head + i + len) & this._capacityMask;
-      }
-      while (arg_len > arguments_index) {
-        this$1.unshift(arguments$1[--arg_len]);
-      }
-      for (k = i; k > 0; k--) {
-        this$1.unshift(temp[k - 1]);
-      }
-    } else {
-      temp = new Array(size - (i + count));
-      var leng = temp.length;
-      for (k = 0; k < leng; k++) {
-        temp[k] = this$1._list[(this$1._head + i + count + k) & this$1._capacityMask];
-      }
-      if (count === 0) {
-        removed = [];
-        if (i != size) {
-          this._tail = (this._head + i + len) & this._capacityMask;
-        }
-      } else {
-        removed = this.remove(i, count);
-        this._tail = (this._tail - leng + len) & this._capacityMask;
-      }
-      while (arguments_index < arg_len) {
-        this$1.push(arguments$1[arguments_index++]);
-      }
-      for (k = 0; k < leng; k++) {
-        this$1.push(temp[k]);
-      }
-    }
-    return removed;
-  } else {
-    return this.remove(i, count);
-  }
-};
+  // (for Object.prototype.toString)
+  adt[Symbol.toStringTag] = typeName;
+  variant.prototype[Symbol.toStringTag] = variantName;
 
-/**
- * Soft clear - does not reset capacity.
- */
-Denque.prototype.clear = function clear() {
-  this._head = 0;
-  this._tail = 0;
-};
-
-/**
- * Returns true or false whether the list is empty.
- * @returns {boolean}
- */
-Denque.prototype.isEmpty = function isEmpty() {
-  return this._head === this._tail;
-};
-
-/**
- * Returns an array of all queue items.
- * @returns {Array}
- */
-Denque.prototype.toArray = function toArray() {
-  return this._copyArray(false);
-};
-
-/**
- * -------------
- *   INTERNALS
- * -------------
- */
-
-/**
- * Fills the queue with items from an array
- * For use in the constructor
- * @param array
- * @private
- */
-Denque.prototype._fromArray = function _fromArray(array) {
-  var this$1 = this;
-
-  for (var i = 0; i < array.length; i++) { this$1.push(array[i]); }
-};
-
-/**
- *
- * @param fullCopy
- * @returns {Array}
- * @private
- */
-Denque.prototype._copyArray = function _copyArray(fullCopy) {
-  var newArray = [];
-  var list = this._list;
-  var len = list.length;
-  var i;
-  if (fullCopy || this._head > this._tail) {
-    for (i = this._head; i < len; i++) { newArray.push(list[i]); }
-    for (i = 0; i < this._tail; i++) { newArray.push(list[i]); }
-  } else {
-    for (i = this._head; i < this._tail; i++) { newArray.push(list[i]); }
-  }
-  return newArray;
-};
-
-/**
- * Grows the internal list array.
- * @private
- */
-Denque.prototype._growArray = function _growArray() {
-  if (this._head) {
-    // copy existing data, head to end, then beginning to tail.
-    this._list = this._copyArray(true);
-    this._head = 0;
-  }
-
-  // head is at 0 and array is now full, safe to extend
-  this._tail = this._list.length;
-
-  this._list.length *= 2;
-  this._capacityMask = (this._capacityMask << 1) | 1;
-};
-
-/**
- * Shrinks the internal list array.
- * @private
- */
-Denque.prototype._shrinkArray = function _shrinkArray() {
-  this._list.length >>>= 1;
-  this._capacityMask >>>= 1;
-};
-
-
-var index$6 = Denque;
-
-/*eslint no-cond-assign:0, no-constant-condition:0 */
-
-function interpreter(rej, res){
-
-  //This is the primary queue of actions. All actions in here will be "cold",
-  //meaning they haven't had the chance yet to run concurrent computations.
-  var cold = new index$6(this._actions.size);
-
-  //This is the secondary queue of actions. All actions in here will be "hot",
-  //meaning they have already had a chance to run a concurrent computation.
-  var queue = new index$6(this._actions.size);
-
-  //These combined variables define our current state.
-  // future  = the future we are currently forking
-  // action  = the action to be informed when the future settles
-  // cancel  = the cancel function of the current future
-  // settled = a boolean indicating whether a new tick should start
-  // async   = a boolean indicating whether we are awaiting a result asynchronously
-  var future, action, cancel = noop, settled, async = true, it;
-
-  //This function is called with a future to use in the next tick.
-  //Here we "flatten" the actions of another Sequence into our own actions,
-  //this is the magic that allows for infinitely stack safe recursion because
-  //actions like ChainAction will return a new Sequence.
-  //If we settled asynchronously, we call drain() directly to run the next tick.
-  function settle(m){
-    settled = true;
-    future = m;
-
-    if(future._spawn){
-      var tail = future._actions;
-
-      while(!tail.isEmpty){
-        cold.unshift(tail.head);
-        tail = tail.tail;
-      }
-
-      future = future._spawn;
-    }
-
-    if(async) { drain(); }
-  }
-
-  //This function serves as a rejection handler for our current future.
-  //It will tell the current action that the future rejected, and it will
-  //settle the current tick with the action's answer to that.
-  function rejected(x){
-    settle(action.rejected(x));
-  }
-
-  //This function serves as a resolution handler for our current future.
-  //It will tell the current action that the future resolved, and it will
-  //settle the current tick with the action's answer to that.
-  function resolved(x){
-    settle(action.resolved(x));
-  }
-
-  //This function is passed into actions when they are "warmed up".
-  //If the action decides that it has its result, without the need to await
-  //anything else, then it can call this function to force "early termination".
-  //When early termination occurs, all actions which were queued prior to the
-  //terminator will be skipped. If they were already hot, they will also receive
-  //a cancel signal so they can cancel their own concurrent computations, as
-  //their results are no longer needed.
-  function early(m, terminator){
-    cancel();
-    cold.clear();
-
-    if(async && action !== terminator){
-      action.cancel();
-      while((it = queue.shift()) && it !== terminator) { it.cancel(); }
-    }
-
-    settle(m);
-  }
-
-  //This function serves to kickstart concurrent computations.
-  //Takes all actions from the cold queue *back-to-front*, and calls run() on
-  //each of them, passing them the "early" function. If any of them settles (by
-  //calling early()), we abort. After warming up all actions in the cold queue,
-  //we warm up the current action as well.
-  function warmupActions(){
-    while(it = cold.pop()){
-      it = it.run(early);
-      if(settled) { return; }
-      queue.unshift(it);
-    }
-
-    action = action.run(early);
-  }
-
-  //This function represents our main execution loop.
-  //When we refer to a "tick", we mean the execution of the body inside the
-  //primary while-loop of this function.
-  //Every tick follows the following algorithm:
-  // 1. We try to take an action from the cold queue, if we fail, go to step 2.
-  //      1a. We fork the future.
-  //      1b. We warmupActions() if the we haven't settled yet.
-  // 2. We try to take an action from the hot queue, if we fail, go to step 3.
-  //      2a. We fork the Future, if settles, we continue to the next tick.
-  // 3. If we couldn't take actions from either queues, we fork the Future into
-  //    the user provided continuations. This is the end of the interpretation.
-  // 4. If we did take an action from one of queues, but none of the steps
-  //    caused a settle(), it means we are asynchronously waiting for something
-  //    to settle and start the next tick, so we return from the function.
-  function drain(){
-    async = false;
-
-    while(true){
-      settled = false;
-      if(action = cold.shift()){
-        cancel = future._fork(rejected, resolved);
-        if(!settled) { warmupActions(); }
-      }else if(action = queue.shift()){
-        cancel = future._fork(rejected, resolved);
-      }else { break; }
-      if(settled) { continue; }
-      async = true;
-      return;
-    }
-
-    cancel = future._fork(rej, res);
-  }
-
-  //Start the execution loop.
-  settle(this);
-
-  //Return a cancellation function. It will cancel the current Future, the
-  //current action, and all queued hot actions.
-  return function Sequence$cancel(){
-    cancel();
-    action && action.cancel();
-    while(it = queue.shift()) { it.cancel(); }
+  // (regular JavaScript representations)
+  /*~
+   * stability: experimental
+   * module: null
+   * authors:
+   *   - "@boris-marinov"
+   *
+   * type: |
+   *   () => String
+   */
+  adt.toString = function () {
+    return typeName;
   };
 
-}
-
-var empty = ({isEmpty: true, size: 0, head: null, tail: null});
-var cons = function (head, tail) { return ({isEmpty: false, size: tail.size + 1, head: head, tail: tail}); };
-
-var throwRejection = function (x) { return error(
-  ("Future#value was called on a rejected Future\n  Actual: Future.reject(" + (show(x)) + ")")
-); };
-
-function Future$1(computation){
-  if(!isFunction(computation)) { invalidArgument('Future', 0, 'be a Function', computation); }
-  return new Computation(computation);
-}
-
-function isFuture(x){
-  return x instanceof Future$1 || index$5(x) === $$type;
-}
-
-Future$1.prototype.ap = function Future$ap(other){
-  if(!isFuture(this)) { invalidContext('Future#ap', this); }
-  if(!isFuture(other)) { invalidFuture('Future#ap', 0, other); }
-  return this._ap(other);
-};
-
-Future$1.prototype.map = function Future$map(mapper){
-  if(!isFuture(this)) { invalidContext('Future#map', this); }
-  if(!isFunction(mapper)) { invalidArgument('Future#map', 0, 'to be a Function', mapper); }
-  return this._map(mapper);
-};
-
-Future$1.prototype.bimap = function Future$bimap(lmapper, rmapper){
-  if(!isFuture(this)) { invalidContext('Future#bimap', this); }
-  if(!isFunction(lmapper)) { invalidArgument('Future#bimap', 0, 'to be a Function', lmapper); }
-  if(!isFunction(rmapper)) { invalidArgument('Future#bimap', 1, 'to be a Function', rmapper); }
-  return this._bimap(lmapper, rmapper);
-};
-
-Future$1.prototype.chain = function Future$chain(mapper){
-  if(!isFuture(this)) { invalidContext('Future#chain', this); }
-  if(!isFunction(mapper)) { invalidArgument('Future#chain', 0, 'to be a Function', mapper); }
-  return this._chain(mapper);
-};
-
-Future$1.prototype.mapRej = function Future$mapRej(mapper){
-  if(!isFuture(this)) { invalidContext('Future#mapRej', this); }
-  if(!isFunction(mapper)) { invalidArgument('Future#mapRej', 0, 'to be a Function', mapper); }
-  return this._mapRej(mapper);
-};
-
-Future$1.prototype.chainRej = function Future$chainRej(mapper){
-  if(!isFuture(this)) { invalidContext('Future#chainRej', this); }
-  if(!isFunction(mapper)) { invalidArgument('Future#chainRej', 0, 'to be a Function', mapper); }
-  return this._chainRej(mapper);
-};
-
-Future$1.prototype.race = function Future$race(other){
-  if(!isFuture(this)) { invalidContext('Future#race', this); }
-  if(!isFuture(other)) { invalidFuture('Future#race', 0, other); }
-  return this._race(other);
-};
-
-Future$1.prototype.both = function Future$both(other){
-  if(!isFuture(this)) { invalidContext('Future#both', this); }
-  if(!isFuture(other)) { invalidFuture('Future#both', 0, other); }
-  return this._both(other);
-};
-
-Future$1.prototype.and = function Future$and(other){
-  if(!isFuture(this)) { invalidContext('Future#and', this); }
-  if(!isFuture(other)) { invalidFuture('Future#and', 0, other); }
-  return this._and(other);
-};
-
-Future$1.prototype.or = function Future$or(other){
-  if(!isFuture(this)) { invalidContext('Future#or', this); }
-  if(!isFuture(other)) { invalidFuture('Future#or', 0, other); }
-  return this._or(other);
-};
-
-Future$1.prototype.swap = function Future$swap(){
-  if(!isFuture(this)) { invalidContext('Future#ap', this); }
-  return this._swap();
-};
-
-Future$1.prototype.fold = function Future$fold(lmapper, rmapper){
-  if(!isFuture(this)) { invalidContext('Future#ap', this); }
-  if(!isFunction(lmapper)) { invalidArgument('Future#fold', 0, 'to be a Function', lmapper); }
-  if(!isFunction(rmapper)) { invalidArgument('Future#fold', 1, 'to be a Function', rmapper); }
-  return this._fold(lmapper, rmapper);
-};
-
-Future$1.prototype.finally = function Future$finally(other){
-  if(!isFuture(this)) { invalidContext('Future#finally', this); }
-  if(!isFuture(other)) { invalidFuture('Future#finally', 0, other); }
-  return this._finally(other);
-};
-
-Future$1.prototype.lastly = function Future$lastly(other){
-  if(!isFuture(this)) { invalidContext('Future#lastly', this); }
-  if(!isFuture(other)) { invalidFuture('Future#lastly', 0, other); }
-  return this._finally(other);
-};
-
-Future$1.prototype.fork = function Future$fork(rej, res){
-  if(!isFuture(this)) { invalidContext('Future#fork', this); }
-  if(!isFunction(rej)) { invalidArgument('Future#fork', 0, 'to be a Function', rej); }
-  if(!isFunction(res)) { invalidArgument('Future#fork', 0, 'to be a Function', res); }
-  return this._fork(rej, res);
-};
-
-Future$1.prototype.value = function Future$value(res){
-  if(!isFuture(this)) { invalidContext('Future#value', this); }
-  if(!isFunction(res)) { invalidArgument('Future#value', 0, 'to be a Function', res); }
-  return this._fork(throwRejection, res);
-};
-
-Future$1.prototype.done = function Future$done(callback){
-  if(!isFuture(this)) { invalidContext('Future#done', this); }
-  if(!isFunction(callback)) { invalidArgument('Future#done', 0, 'to be a Function', callback); }
-  return this._fork(function Future$done$rej(x){ callback(x); },
-                    function Future$done$res(x){ callback(null, x); });
-};
-
-Future$1.prototype.promise = function Future$promise(){
-  var this$1 = this;
-
-  return new Promise(function (res, rej) { return this$1._fork(rej, res); });
-};
-
-Future$1.prototype.isRejected = function Future$isRejected(){
-  return false;
-};
-
-Future$1.prototype.isResolved = function Future$isResolved(){
-  return false;
-};
-
-Future$1.prototype.isSettled = function Future$isSettled(){
-  return this.isRejected() || this.isResolved();
-};
-
-Future$1.prototype.extractLeft = function Future$extractLeft(){
-  return [];
-};
-
-Future$1.prototype.extractRight = function Future$extractRight(){
-  return [];
-};
-
-var Core = Object.create(Future$1.prototype);
-
-Core._ap = function Core$ap(other){
-  return new Sequence(this)._ap(other);
-};
-
-Core._map = function Core$map(mapper){
-  return new Sequence(this)._map(mapper);
-};
-
-Core._bimap = function Core$bimap(lmapper, rmapper){
-  return new Sequence(this)._bimap(lmapper, rmapper);
-};
-
-Core._chain = function Core$chain(mapper){
-  return new Sequence(this)._chain(mapper);
-};
-
-Core._mapRej = function Core$mapRej(mapper){
-  return new Sequence(this)._mapRej(mapper);
-};
-
-Core._chainRej = function Core$chainRej(mapper){
-  return new Sequence(this)._chainRej(mapper);
-};
-
-Core._race = function Core$race(other){
-  return new Sequence(this)._race(other);
-};
-
-Core._both = function Core$both(other){
-  return new Sequence(this)._both(other);
-};
-
-Core._and = function Core$and(other){
-  return new Sequence(this)._and(other);
-};
-
-Core._or = function Core$or(other){
-  return new Sequence(this)._or(other);
-};
-
-Core._swap = function Core$swap(){
-  return new Sequence(this)._swap();
-};
-
-Core._fold = function Core$fold(lmapper, rmapper){
-  return new Sequence(this)._fold(lmapper, rmapper);
-};
-
-Core._finally = function Core$finally(other){
-  return new Sequence(this)._finally(other);
-};
-
-function check$fork(f, c){
-  if(!(f === undefined || (isFunction(f) && f.length === 0))) { typeError(
-    'Future expected its computation to return a nullary function or void'
-    + "\n  Actual: " + (show(f)) + "\n  From calling: " + (showf(c))
-  ); }
-}
-
-function Computation(computation){
-  this._computation = computation;
-}
-
-Computation.prototype = Object.create(Core);
-
-Computation.prototype._fork = function Computation$_fork(rej, res){
-  var open = true;
-  var f = this._computation(function Computation$rej(x){
-    if(open){
-      open = false;
-      rej(x);
-    }
-  }, function Computation$res(x){
-    if(open){
-      open = false;
-      res(x);
-    }
-  });
-  check$fork(f, this._computation);
-
-  return function Computation$cancel(){
-    open && f && f();
-    open = false;
-  };
-};
-
-Computation.prototype.toString = function Computation$toString(){
-  return ("Future(" + (showf(this._computation)) + ")");
-};
-
-function Rejected(value){
-  this._value = value;
-}
-
-Rejected.prototype = Object.create(Core);
-
-Rejected.prototype._ap = moop;
-Rejected.prototype._map = moop;
-Rejected.prototype._chain = moop;
-Rejected.prototype._race = moop;
-Rejected.prototype._both = moop;
-Rejected.prototype._and = moop;
-
-Rejected.prototype._or = function Rejected$or(other){
-  return other;
-};
-
-Rejected.prototype._finally = function Rejected$finally(other){
-  return other._and(this);
-};
-
-Rejected.prototype._swap = function Rejected$swap(){
-  return new Resolved(this._value);
-};
-
-Rejected.prototype._fork = function Rejected$_fork(rej){
-  rej(this._value);
-  return noop;
-};
-
-Rejected.prototype.isRejected = function Rejected$isRejected(){
-  return true;
-};
-
-Rejected.prototype.extractLeft = function Rejected$extractLeft(){
-  return [this._value];
-};
-
-Rejected.prototype.toString = function Rejected$toString(){
-  return ("Future.reject(" + (show(this._value)) + ")");
-};
-
-var reject = function (x) { return new Rejected(x); };
-
-function Resolved(value){
-  this._value = value;
-}
-
-Resolved.prototype = Object.create(Core);
-
-Resolved.prototype._race = moop;
-Resolved.prototype._mapRej = moop;
-Resolved.prototype._or = moop;
-
-Resolved.prototype._and = function Resolved$and(other){
-  return other;
-};
-
-Resolved.prototype._both = function Resolved$both(other){
-  var this$1 = this;
-
-  return other._map(function (x) { return [this$1._value, x]; });
-};
-
-Resolved.prototype._swap = function Resolved$swap(){
-  return new Rejected(this._value);
-};
-
-Resolved.prototype._finally = function Resolved$finally(other){
-  var this$1 = this;
-
-  return other._map(function () { return this$1._value; });
-};
-
-Resolved.prototype._fork = function _fork(rej, res){
-  res(this._value);
-  return noop;
-};
-
-Resolved.prototype.isResolved = function Resolved$isResolved(){
-  return true;
-};
-
-Resolved.prototype.extractRight = function Resolved$extractRight(){
-  return [this._value];
-};
-
-Resolved.prototype.toString = function Resolved$toString(){
-  return ("Future.of(" + (show(this._value)) + ")");
-};
-
-var of = function (x) { return new Resolved(x); };
-
-function Never(){
-  this._isNever = true;
-}
-
-Never.prototype = Object.create(Future$1.prototype);
-
-Never.prototype._ap = moop;
-Never.prototype._map = moop;
-Never.prototype._bimap = moop;
-Never.prototype._chain = moop;
-Never.prototype._mapRej = moop;
-Never.prototype._chainRej = moop;
-Never.prototype._both = moop;
-Never.prototype._or = moop;
-Never.prototype._swap = moop;
-Never.prototype._fold = moop;
-Never.prototype._finally = moop;
-
-Never.prototype._race = function Never$race(other){
-  return other;
-};
-
-Never.prototype._fork = function Never$_fork(){
-  return noop;
-};
-
-Never.prototype.toString = function Never$toString(){
-  return 'Future.never';
-};
-
-var never = new Never();
-var isNever = function (x) { return isFuture(x) && x._isNever === true; };
-
-function Eager(future){
-  var this$1 = this;
-
-  this.rej = noop;
-  this.res = noop;
-  this.rejected = false;
-  this.resolved = false;
-  this.value = null;
-  this.cancel = future._fork(function (x) {
-    this$1.value = x;
-    this$1.rejected = true;
-    this$1.cancel = noop;
-    this$1.rej(x);
-  }, function (x) {
-    this$1.value = x;
-    this$1.resolved = true;
-    this$1.cancel = noop;
-    this$1.res(x);
-  });
-}
-
-Eager.prototype = Object.create(Core);
-
-Eager.prototype._fork = function Eager$_fork(rej, res){
-  if(this.rejected) { rej(this.value); }
-  else if(this.resolved) { res(this.value); }
-  else{
-    this.rej = rej;
-    this.res = res;
-  }
-
-  return this.cancel;
-};
-
-var Action = function Action () {};
-
-Action.prototype.rejected = function rejected (x){ this.cancel(); return new Rejected(x) };
-Action.prototype.resolved = function resolved (x){ this.cancel(); return new Resolved(x) };
-Action.prototype.run = function run (){ return this };
-Action.prototype.cancel = function cancel (){};
-var check$ap = function (f) { return isFunction(f) ? f : typeError(
-  'Future#ap expects its first argument to be a Future of a Function'
-  + "\n  Actual: Future.of(" + (show(f)) + ")"
-); };
-var ApAction = (function (Action) {
-  function ApAction(other){ Action.call(this); this.other = other; }
-
-  if ( Action ) ApAction.__proto__ = Action;
-  ApAction.prototype = Object.create( Action && Action.prototype );
-  ApAction.prototype.constructor = ApAction;
-  ApAction.prototype.resolved = function resolved (f){ check$ap(f); return this.other._map(function (x) { return f(x); }) };
-  ApAction.prototype.toString = function toString (){ return ("ap(" + (this.other.toString()) + ")") };
-
-  return ApAction;
-}(Action));
-var MapAction = (function (Action) {
-  function MapAction(mapper){ Action.call(this); this.mapper = mapper; }
-
-  if ( Action ) MapAction.__proto__ = Action;
-  MapAction.prototype = Object.create( Action && Action.prototype );
-  MapAction.prototype.constructor = MapAction;
-  MapAction.prototype.resolved = function resolved (x){ return new Resolved(this.mapper(x)) };
-  MapAction.prototype.toString = function toString (){ return ("map(" + (showf(this.mapper)) + ")") };
-
-  return MapAction;
-}(Action));
-var BimapAction = (function (Action) {
-  function BimapAction(lmapper, rmapper){ Action.call(this); this.lmapper = lmapper; this.rmapper = rmapper; }
-
-  if ( Action ) BimapAction.__proto__ = Action;
-  BimapAction.prototype = Object.create( Action && Action.prototype );
-  BimapAction.prototype.constructor = BimapAction;
-  BimapAction.prototype.rejected = function rejected (x){ return new Rejected(this.lmapper(x)) };
-  BimapAction.prototype.resolved = function resolved (x){ return new Resolved(this.rmapper(x)) };
-  BimapAction.prototype.toString = function toString (){ return ("bimap(" + (showf(this.lmapper)) + ", " + (showf(this.rmapper)) + ")") };
-
-  return BimapAction;
-}(Action));
-var check$chain = function (m, f, x) { return isFuture(m) ? m : invalidFuture(
-  'Future#chain',
-  'the function it\'s given to return a Future',
-  m,
-  ("\n  From calling: " + (showf(f)) + "\n  With: " + (show(x)))
-); };
-var ChainAction = (function (Action) {
-  function ChainAction(mapper){ Action.call(this); this.mapper = mapper; }
-
-  if ( Action ) ChainAction.__proto__ = Action;
-  ChainAction.prototype = Object.create( Action && Action.prototype );
-  ChainAction.prototype.constructor = ChainAction;
-  ChainAction.prototype.resolved = function resolved (x){ return check$chain(this.mapper(x), this.mapper, x) };
-  ChainAction.prototype.toString = function toString (){ return ("chain(" + (showf(this.mapper)) + ")") };
-
-  return ChainAction;
-}(Action));
-var MapRejAction = (function (Action) {
-  function MapRejAction(mapper){ Action.call(this); this.mapper = mapper; }
-
-  if ( Action ) MapRejAction.__proto__ = Action;
-  MapRejAction.prototype = Object.create( Action && Action.prototype );
-  MapRejAction.prototype.constructor = MapRejAction;
-  MapRejAction.prototype.rejected = function rejected (x){ return new Rejected(this.mapper(x)) };
-  MapRejAction.prototype.toString = function toString (){ return ("mapRej(" + (showf(this.mapper)) + ")") };
-
-  return MapRejAction;
-}(Action));
-var check$chainRej = function (m, f, x) { return isFuture(m) ? m : invalidFuture(
-  'Future#chainRej',
-  'the function it\'s given to return a Future',
-  m,
-  ("\n  From calling: " + (showf(f)) + "\n  With: " + (show(x)))
-); };
-var ChainRejAction = (function (Action) {
-  function ChainRejAction(mapper){ Action.call(this); this.mapper = mapper; }
-
-  if ( Action ) ChainRejAction.__proto__ = Action;
-  ChainRejAction.prototype = Object.create( Action && Action.prototype );
-  ChainRejAction.prototype.constructor = ChainRejAction;
-  ChainRejAction.prototype.rejected = function rejected (x){ return check$chainRej(this.mapper(x), this.mapper, x) };
-  ChainRejAction.prototype.toString = function toString (){ return ("chainRej(" + (showf(this.mapper)) + ")") };
-
-  return ChainRejAction;
-}(Action));
-var SwapAction = (function (Action) {
-  function SwapAction(){ Action.call(this); return SwapAction.instance || (SwapAction.instance = this) }
-
-  if ( Action ) SwapAction.__proto__ = Action;
-  SwapAction.prototype = Object.create( Action && Action.prototype );
-  SwapAction.prototype.constructor = SwapAction;
-  SwapAction.prototype.rejected = function rejected (x){ return new Resolved(x) };
-  SwapAction.prototype.resolved = function resolved (x){ return new Rejected(x) };
-  SwapAction.prototype.toString = function toString (){ return 'swap()' };
-
-  return SwapAction;
-}(Action));
-var FoldAction = (function (Action) {
-  function FoldAction(lmapper, rmapper){ Action.call(this); this.lmapper = lmapper; this.rmapper = rmapper; }
-
-  if ( Action ) FoldAction.__proto__ = Action;
-  FoldAction.prototype = Object.create( Action && Action.prototype );
-  FoldAction.prototype.constructor = FoldAction;
-  FoldAction.prototype.rejected = function rejected (x){ return new Resolved(this.lmapper(x)) };
-  FoldAction.prototype.resolved = function resolved (x){ return new Resolved(this.rmapper(x)) };
-  FoldAction.prototype.toString = function toString (){ return ("fold(" + (showf(this.lmapper)) + ", " + (showf(this.rmapper)) + ")") };
-
-  return FoldAction;
-}(Action));
-var FinallyAction = (function (Action) {
-  function FinallyAction(other){ Action.call(this); this.other = other; }
-
-  if ( Action ) FinallyAction.__proto__ = Action;
-  FinallyAction.prototype = Object.create( Action && Action.prototype );
-  FinallyAction.prototype.constructor = FinallyAction;
-  FinallyAction.prototype.cancel = function cancel (){ this.other._fork(noop, noop)(); };
-  FinallyAction.prototype.rejected = function rejected (x){ return this.other._and(new Rejected(x)) };
-  FinallyAction.prototype.resolved = function resolved (x){ return this.other._map(function () { return x; }) };
-  FinallyAction.prototype.toString = function toString (){ return ("finally(" + (this.other.toString()) + ")") };
-
-  return FinallyAction;
-}(Action));
-var AndAction = (function (Action) {
-  function AndAction(other){ Action.call(this); this.other = other; }
-
-  if ( Action ) AndAction.__proto__ = Action;
-  AndAction.prototype = Object.create( Action && Action.prototype );
-  AndAction.prototype.constructor = AndAction;
-  AndAction.prototype.resolved = function resolved (){ return this.other };
-  AndAction.prototype.toString = function toString (){ return ("and(" + (this.other.toString()) + ")") };
-
-  return AndAction;
-}(Action));
-var OrAction = (function (Action) {
-  function OrAction(other){ Action.call(this); this.other = other; }
-
-  if ( Action ) OrAction.__proto__ = Action;
-  OrAction.prototype = Object.create( Action && Action.prototype );
-  OrAction.prototype.constructor = OrAction;
-  OrAction.prototype.rejected = function rejected (){ return this.other };
-  OrAction.prototype.toString = function toString (){ return ("or(" + (this.other.toString()) + ")") };
-
-  return OrAction;
-}(Action));
-var RaceAction = (function (Action) {
-  function RaceAction(other){ Action.call(this); this.other = other; }
-
-  if ( Action ) RaceAction.__proto__ = Action;
-  RaceAction.prototype = Object.create( Action && Action.prototype );
-  RaceAction.prototype.constructor = RaceAction;
-  RaceAction.prototype.run = function run (early){ return new RaceActionState(early, new Eager(this.other)) };
-  RaceAction.prototype.toString = function toString (){ return ("race(" + (this.other.toString()) + ")") };
-
-  return RaceAction;
-}(Action));
-var RaceActionState = (function (RaceAction) {
-  function RaceActionState(early, other){
-    var this$1 = this;
-
-    RaceAction.call(this, other);
-    this.cancel = other._fork(function (x) { return early(new Rejected(x), this$1); }, function (x) { return early(new Resolved(x), this$1); });
-  }
-
-  if ( RaceAction ) RaceActionState.__proto__ = RaceAction;
-  RaceActionState.prototype = Object.create( RaceAction && RaceAction.prototype );
-  RaceActionState.prototype.constructor = RaceActionState;
-
-  return RaceActionState;
-}(RaceAction));
-var BothAction = (function (Action) {
-  function BothAction(other){ Action.call(this); this.other = other; }
-
-  if ( Action ) BothAction.__proto__ = Action;
-  BothAction.prototype = Object.create( Action && Action.prototype );
-  BothAction.prototype.constructor = BothAction;
-  BothAction.prototype.run = function run (early){ return new BothActionState(early, new Eager(this.other)) };
-  BothAction.prototype.resolved = function resolved (x){ return this.other._map(function (y) { return [x, y]; }) };
-  BothAction.prototype.toString = function toString (){ return ("both(" + (this.other.toString()) + ")") };
-
-  return BothAction;
-}(Action));
-var BothActionState = (function (BothAction) {
-  function BothActionState(early, other){
-    var this$1 = this;
-
-    BothAction.call(this, other);
-    this.cancel = this.other.fork(function (x) { return early(new Rejected(x), this$1); }, noop);
-  }
-
-  if ( BothAction ) BothActionState.__proto__ = BothAction;
-  BothActionState.prototype = Object.create( BothAction && BothAction.prototype );
-  BothActionState.prototype.constructor = BothActionState;
-
-  return BothActionState;
-}(BothAction));
-
-function Sequence(spawn, actions){
-  if ( actions === void 0 ) actions = empty;
-
-  this._spawn = spawn;
-  this._actions = actions;
-}
-
-Sequence.prototype = Object.create(Future$1.prototype);
-
-Sequence.prototype._transform = function Sequence$_transform(action){
-  return new Sequence(this._spawn, cons(action, this._actions));
-};
-
-Sequence.prototype._ap = function Sequence$ap(other){
-  return this._transform(new ApAction(other));
-};
-
-Sequence.prototype._map = function Sequence$map(mapper){
-  return this._transform(new MapAction(mapper));
-};
-
-Sequence.prototype._bimap = function Sequence$bimap(lmapper, rmapper){
-  return this._transform(new BimapAction(lmapper, rmapper));
-};
-
-Sequence.prototype._chain = function Sequence$chain(mapper){
-  return this._transform(new ChainAction(mapper));
-};
-
-Sequence.prototype._mapRej = function Sequence$mapRej(mapper){
-  return this._transform(new MapRejAction(mapper));
-};
-
-Sequence.prototype._chainRej = function Sequence$chainRej(mapper){
-  return this._transform(new ChainRejAction(mapper));
-};
-
-Sequence.prototype._race = function Sequence$race(other){
-  return isNever(other) ? this : this._transform(new RaceAction(other));
-};
-
-Sequence.prototype._both = function Sequence$both(other){
-  return this._transform(new BothAction(other));
-};
-
-Sequence.prototype._and = function Sequence$and(other){
-  return this._transform(new AndAction(other));
-};
-
-Sequence.prototype._or = function Sequence$or(other){
-  return this._transform(new OrAction(other));
-};
-
-Sequence.prototype._swap = function Sequence$swap(){
-  return this._transform(new SwapAction);
-};
-
-Sequence.prototype._fold = function Sequence$fold(lmapper, rmapper){
-  return this._transform(new FoldAction(lmapper, rmapper));
-};
-
-Sequence.prototype._finally = function Sequence$finally(other){
-  return this._transform(new FinallyAction(other));
-};
-
-Sequence.prototype._fork = interpreter;
-
-Sequence.prototype.toString = function Sequence$toString(){
-  var str = '', tail = this._actions;
-
-  while(!tail.isEmpty){
-    str = "." + (tail.head.toString()) + str;
-    tail = tail.tail;
-  }
-
-  return ("" + (this._spawn.toString()) + str);
-};
-
-var Next = function (x) { return ({done: false, value: x}); };
-var Done = function (x) { return ({done: true, value: x}); };
-var isIteration = function (x) { return isObject(x) && isBoolean(x.done); };
-
-var Undetermined = 0;
-var Synchronous = 1;
-var Asynchronous = 2;
-
-function ChainRec(step, init){
-  this._step = step;
-  this._init = init;
-}
-
-ChainRec.prototype = Object.create(Core);
-
-ChainRec.prototype._fork = function ChainRec$_fork(rej, res){
-
-  var ref = this;
-  var _step = ref._step;
-  var _init = ref._init;
-  var timing = Undetermined, cancel = noop, state = Next(_init);
-
-  function resolved(it){
-    state = it;
-    timing = timing === Undetermined ? Synchronous : drain();
-  }
-
-  function drain(){
-    while(!state.done){
-      timing = Undetermined;
-      var m = _step(Next, Done, state.value);
-      cancel = m._fork(rej, resolved);
-
-      if(timing !== Synchronous){
-        timing = Asynchronous;
-        return;
-      }
-    }
-
-    res(state.value);
-  }
-
-  drain();
-
-  return function Future$chainRec$cancel(){ cancel(); };
-
-};
-
-ChainRec.prototype.toString = function ChainRec$toString(){
-  return ("Future.chainRec(" + (showf(this._step)) + ", " + (show(this._init)) + ")");
-};
-
-function chainRec(step, init){
-  return new ChainRec(step, init);
-}
-
-function ap$mval(mval, mfunc){
-  if(!index$2.Apply.test(mfunc)) { invalidArgument('Future.ap', 1, 'be an Apply', mfunc); }
-  return index$2.ap(mval, mfunc);
-}
-
-function ap(mval, mfunc){
-  if(!index$2.Apply.test(mval)) { invalidArgument('Future.ap', 0, 'be an Apply', mval); }
-  if(arguments.length === 1) { return partial1(ap$mval, mval); }
-  return ap$mval(mval, mfunc);
-}
-
-function alt$left(left, right){
-  if(!index$2.Alt.test(right)) { invalidArgument('alt', 1, 'be an Alt', right); }
-  return index$2.alt(left, right);
-}
-
-function alt(left, right){
-  if(!index$2.Alt.test(left)) { invalidArgument('alt', 0, 'be an Alt', left); }
-  if(arguments.length === 1) { return partial1(alt$left, left); }
-  return alt$left(left, right);
-}
-
-function map$mapper(mapper, m){
-  if(!index$2.Functor.test(m)) { invalidArgument('Future.map', 1, 'be a Functor', m); }
-  return index$2.map(mapper, m);
-}
-
-function map(mapper, m){
-  if(!isFunction(mapper)) { invalidArgument('Future.map', 0, 'be a Function', mapper); }
-  if(arguments.length === 1) { return partial1(map$mapper, mapper); }
-  return map$mapper(mapper, m);
-}
-
-function bimap$lmapper$rmapper(lmapper, rmapper, m){
-  if(!index$2.Bifunctor.test(m)) { invalidArgument('Future.bimap', 2, 'be a Bifunctor', m); }
-  return index$2.bimap(lmapper, rmapper, m);
-}
-
-function bimap$lmapper(lmapper, rmapper, m){
-  if(!isFunction(rmapper)) { invalidArgument('Future.bimap', 1, 'be a Function', rmapper); }
-  if(arguments.length === 2) { return partial2(bimap$lmapper$rmapper, lmapper, rmapper); }
-  return bimap$lmapper$rmapper(lmapper, rmapper, m);
-}
-
-function bimap(lmapper, rmapper, m){
-  if(!isFunction(lmapper)) { invalidArgument('Future.bimap', 0, 'be a Function', lmapper); }
-  if(arguments.length === 1) { return partial1(bimap$lmapper, lmapper); }
-  if(arguments.length === 2) { return bimap$lmapper(lmapper, rmapper); }
-  return bimap$lmapper(lmapper, rmapper, m);
-}
-
-function chain$chainer(chainer, m){
-  if(!index$2.Chain.test(m)) { invalidArgument('Future.chain', 1, 'be a Chain', m); }
-  return index$2.chain(chainer, m);
-}
-
-function chain(chainer, m){
-  if(!isFunction(chainer)) { invalidArgument('Future.chain', 0, 'be a Function', chainer); }
-  if(arguments.length === 1) { return partial1(chain$chainer, chainer); }
-  return chain$chainer(chainer, m);
-}
-
-function mapRej$mapper(mapper, m){
-  if(!isFuture(m)) { invalidFuture('Future.mapRej', 1, m); }
-  return m.mapRej(mapper);
-}
-
-function mapRej(mapper, m){
-  if(!isFunction(mapper)) { invalidArgument('Future.mapRej', 0, 'be a Function', mapper); }
-  if(arguments.length === 1) { return partial1(mapRej$mapper, mapper); }
-  return mapRej$mapper(mapper, m);
-}
-
-function chainRej$chainer(chainer, m){
-  if(!isFuture(m)) { invalidFuture('Future.chainRej', 1, m); }
-  return m.chainRej(chainer);
-}
-
-function chainRej(chainer, m){
-  if(!isFunction(chainer)) { invalidArgument('Future.chainRej', 0, 'be a Function', chainer); }
-  if(arguments.length === 1) { return partial1(chainRej$chainer, chainer); }
-  return chainRej$chainer(chainer, m);
-}
-
-function lastly$right(right, left){
-  if(!isFuture(left)) { invalidFuture('Future.finally', 1, left); }
-  return left.finally(right);
-}
-
-function lastly(right, left){
-  if(!isFuture(right)) { invalidFuture('Future.finally', 0, right); }
-  if(arguments.length === 1) { return partial1(lastly$right, right); }
-  return lastly$right(right, left);
-}
-
-function and$left(left, right){
-  if(!isFuture(right)) { invalidFuture('Future.and', 1, right); }
-  return left.and(right);
-}
-
-function and(left, right){
-  if(!isFuture(left)) { invalidFuture('Future.and', 0, left); }
-  if(arguments.length === 1) { return partial1(and$left, left); }
-  return and$left(left, right);
-}
-
-function both$left(left, right){
-  if(!isFuture(right)) { invalidFuture('Future.both', 1, right); }
-  return left.both(right);
-}
-
-function both(left, right){
-  if(!isFuture(left)) { invalidFuture('Future.both', 0, left); }
-  if(arguments.length === 1) { return partial1(both$left, left); }
-  return both$left(left, right);
-}
-
-function or$left(left, right){
-  if(!isFuture(right)) { invalidFuture('Future.or', 1, right); }
-  return left.or(right);
-}
-
-function or(left, right){
-  if(!isFuture(left)) { invalidFuture('Future.or', 0, left); }
-  if(arguments.length === 1) { return partial1(or$left, left); }
-  return or$left(left, right);
-}
-
-function race$right(right, left){
-  if(!isFuture(left)) { invalidFuture('Future.race', 1, left); }
-  return left.race(right);
-}
-
-function race(right, left){
-  if(!isFuture(right)) { invalidFuture('Future.race', 0, right); }
-  if(arguments.length === 1) { return partial1(race$right, right); }
-  return race$right(right, left);
-}
-
-function swap(m){
-  if(!isFuture(m)) { invalidFuture('Future.swap', 0, m); }
-  return m.swap();
-}
-
-function fold$f$g(f, g, m){
-  if(!isFuture(m)) { invalidFuture('Future.fold', 2, m); }
-  return m.fold(f, g);
-}
-
-function fold$f(f, g, m){
-  if(!isFunction(g)) { invalidArgument('Future.fold', 1, 'be a function', g); }
-  if(arguments.length === 2) { return partial2(fold$f$g, f, g); }
-  return fold$f$g(f, g, m);
-}
-
-function fold(f, g, m){
-  if(!isFunction(f)) { invalidArgument('Future.fold', 0, 'be a function', f); }
-  if(arguments.length === 1) { return partial1(fold$f, f); }
-  if(arguments.length === 2) { return fold$f(f, g); }
-  return fold$f(f, g, m);
-}
-
-function done$callback(callback, m){
-  if(!isFuture(m)) { invalidFuture('Future.done', 1, m); }
-  return m.done(callback);
-}
-
-function done(callback, m){
-  if(!isFunction(callback)) { invalidArgument('Future.done', 0, 'be a Function', callback); }
-  if(arguments.length === 1) { return partial1(done$callback, callback); }
-  return done$callback(callback, m);
-}
-
-function fork$f$g(f, g, m){
-  if(!isFuture(m)) { invalidFuture('Future.fork', 2, m); }
-  return m._fork(f, g);
-}
-
-function fork$f(f, g, m){
-  if(!isFunction(g)) { invalidArgument('Future.fork', 1, 'be a function', g); }
-  if(arguments.length === 2) { return partial2(fork$f$g, f, g); }
-  return fork$f$g(f, g, m);
-}
-
-function fork(f, g, m){
-  if(!isFunction(f)) { invalidArgument('Future.fork', 0, 'be a function', f); }
-  if(arguments.length === 1) { return partial1(fork$f, f); }
-  if(arguments.length === 2) { return fork$f(f, g); }
-  return fork$f(f, g, m);
-}
-
-function promise(m){
-  if(!isFuture(m)) { invalidFuture('Future.promise', 0, m); }
-  return m.promise();
-}
-
-function value$cont(cont, m){
-  if(!isFuture(m)) { invalidFuture('Future.value', 1, m); }
-  return m.value(cont);
-}
-
-function value(cont, m){
-  if(!isFunction(cont)) { invalidArgument('Future.value', 0, 'be a Function', cont); }
-  if(arguments.length === 1) { return partial1(value$cont, cont); }
-  return value$cont(cont, m);
-}
-
-function extractLeft(m){
-  if(!isFuture(m)) { invalidFuture('Future.extractLeft', 0, m); }
-  return m.extractLeft();
-}
-
-function extractRight(m){
-  if(!isFuture(m)) { invalidFuture('Future.extractRight', 0, m); }
-  return m.extractRight();
-}
-
-
-
-var dispatchers = Object.freeze({
-  ap: ap,
-  alt: alt,
-  map: map,
-  bimap: bimap,
-  chain: chain,
-  mapRej: mapRej,
-  chainRej: chainRej,
-  lastly: lastly,
-  finally: lastly,
-  and: and,
-  both: both,
-  or: or,
-  race: race,
-  swap: swap,
-  fold: fold,
-  done: done,
-  fork: fork,
-  promise: promise,
-  value: value,
-  extractLeft: extractLeft,
-  extractRight: extractRight
-});
-
-Future$1['@@type'] = $$type;
-Future$1[FL.of] = Future$1.of = of;
-Future$1[FL.chainRec] = Future$1.chainRec = chainRec;
-Future$1.reject = reject;
-
-Future$1.ap = ap;
-
-Future$1.prototype[FL.ap] = function Future$FL$ap(other){
-  return other._ap(this);
-};
-
-Future$1.map = map;
-
-Future$1.prototype[FL.map] = function Future$FL$map(mapper){
-  return this._map(mapper);
-};
-
-Future$1.bimap = bimap;
-
-Future$1.prototype[FL.bimap] = function Future$FL$bimap(lmapper, rmapper){
-  return this._bimap(lmapper, rmapper);
-};
-
-Future$1.chain = chain;
-
-Future$1.prototype[FL.chain] = function Future$FL$chain(mapper){
-  return this._chain(mapper);
-};
-
-function After$race(other){
-  return other.isSettled()
-       ? other
-       : isNever(other)
-       ? this
-       : typeof other._time === 'number'
-       ? other._time < this._time ? other : this
-       : Core._race.call(this, other);
-}
-
-function After(time, value){
-  this._time = time;
-  this._value = value;
-}
-
-After.prototype = Object.create(Core);
-
-After.prototype._race = After$race;
-
-After.prototype._swap = function After$swap(){
-  return new RejectAfter(this._time, this._value);
-};
-
-After.prototype._fork = function After$_fork(rej, res){
-  var id = setTimeout(res, this._time, this._value);
-  return function () { clearTimeout(id); };
-};
-
-After.prototype.extractRight = function After$extractRight(){
-  return [this._value];
-};
-
-After.prototype.toString = function After$toString(){
-  return ("Future.after(" + (show(this._time)) + ", " + (show(this._value)) + ")");
-};
-
-function RejectAfter(time, value){
-  this._time = time;
-  this._value = value;
-}
-
-RejectAfter.prototype = Object.create(Core);
-
-RejectAfter.prototype._race = After$race;
-
-RejectAfter.prototype._swap = function RejectAfter$swap(){
-  return new After(this._time, this._value);
-};
-
-RejectAfter.prototype._fork = function RejectAfter$_fork(rej){
-  var id = setTimeout(rej, this._time, this._value);
-  return function () { clearTimeout(id); };
-};
-
-RejectAfter.prototype.extractLeft = function RejectAfter$extractLeft(){
-  return [this._value];
-};
-
-RejectAfter.prototype.toString = function RejectAfter$toString(){
-  return ("Future.rejectAfter(" + (show(this._time)) + ", " + (show(this._value)) + ")");
-};
-
-function after$time(time, value){
-  return time === Infinity ? never : new After(time, value);
-}
-
-function after(time, value){
-  if(!isUnsigned(time)) { invalidArgument('Future.after', 0, 'be a positive integer', time); }
-  if(arguments.length === 1) { return partial1(after$time, time); }
-  return after$time(time, value);
-}
-
-function rejectAfter$time(time, reason){
-  return time === Infinity ? never : new RejectAfter(time, reason);
-}
-
-function rejectAfter(time, reason){
-  if(!isUnsigned(time)) { invalidArgument('Future.rejectAfter', 0, 'be a positive integer', time); }
-  if(arguments.length === 1) { return partial1(rejectAfter$time, time); }
-  return rejectAfter$time(time, reason);
-}
-
-function Attempt(fn){
-  this._fn = fn;
-}
-
-Attempt.prototype = Object.create(Core);
-
-Attempt.prototype._fork = function Attempt$fork(rej, res){
-  var r;
-  try{ r = this._fn(); }catch(e){ rej(e); return noop }
-  res(r);
-  return noop;
-};
-
-Attempt.prototype.toString = function Attempt$toString(){
-  return ("Future.try(" + (showf(this._fn)) + ")");
-};
-
-function attempt(f){
-  if(!isFunction(f)) { invalidArgument('Future.try', 0, 'be a function', f); }
-  return new Attempt(f);
-}
-
-var Cold = Cached.Cold = 0;
-var Pending = Cached.Pending = 1;
-var Rejected$1 = Cached.Rejected = 2;
-var Resolved$1 = Cached.Resolved = 3;
-
-function Queued(rej, res){
-  this[Rejected$1] = rej;
-  this[Resolved$1] = res;
-}
-
-function Cached(pure){
-  this._pure = pure;
-  this.reset();
-}
-
-Cached.prototype = Object.create(Core);
-
-Cached.prototype.isRejected = function Cached$isRejected(){
-  return this._state === Rejected$1;
-};
-
-Cached.prototype.isResolved = function Cached$isResolved(){
-  return this._state === Resolved$1;
-};
-
-Cached.prototype.extractLeft = function Cached$extractLeft(){
-  return this.isRejected() ? [this._value] : [];
-};
-
-Cached.prototype.extractRight = function Cached$extractRight(){
-  return this.isResolved() ? [this._value] : [];
-};
-
-Cached.prototype._addToQueue = function Cached$addToQueue(rej, res){
-  var _this = this;
-  if(_this._state > Pending) { return noop; }
-  var i = _this._queue.push(new Queued(rej, res)) - 1;
-  _this._queued = _this._queued + 1;
-
-  return function Cached$removeFromQueue(){
-    if(_this._state > Pending) { return; }
-    _this._queue[i] = undefined;
-    _this._queued = _this._queued - 1;
-    if(_this._queued === 0) { _this.reset(); }
-  };
-};
-
-Cached.prototype._drainQueue = function Cached$drainQueue(){
-  if(this._state <= Pending) { return; }
-  if(this._queued === 0) { return; }
-  var queue = this._queue;
-  var length = queue.length;
-  var state = this._state;
-  var value = this._value;
-
-  for(var i = 0; i < length; i++){
-    queue[i] && queue[i][state](value);
-    queue[i] = undefined;
-  }
-
-  this._queue = undefined;
-  this._queued = 0;
-};
-
-Cached.prototype.reject = function Cached$reject(reason){
-  if(this._state > Pending) { return; }
-  this._value = reason;
-  this._state = Rejected$1;
-  this._drainQueue();
-};
-
-Cached.prototype.resolve = function Cached$resolve(value){
-  if(this._state > Pending) { return; }
-  this._value = value;
-  this._state = Resolved$1;
-  this._drainQueue();
-};
-
-Cached.prototype.run = function Cached$run(){
-  var _this = this;
-  if(_this._state > Cold) { return; }
-  _this._state = Pending;
-  _this._cancel = _this._pure._fork(
-    function Cached$fork$rej(x){ _this.reject(x); },
-    function Cached$fork$res(x){ _this.resolve(x); }
-  );
-};
-
-Cached.prototype.reset = function Cached$reset(){
-  if(this._state === Cold) { return; }
-  if(this._state > Pending) { this._cancel(); }
-  this._cancel = noop;
-  this._queue = [];
-  this._queued = 0;
-  this._value = undefined;
-  this._state = Cold;
-};
-
-Cached.prototype._fork = function Cached$_fork(rej, res){
-  var cancel = noop;
-
-  switch(this._state){
-    case Pending: cancel = this._addToQueue(rej, res); break;
-    case Rejected$1: rej(this._value); break;
-    case Resolved$1: res(this._value); break;
-    default: cancel = this._addToQueue(rej, res); this.run();
-  }
-
-  return cancel;
-};
-
-Cached.prototype.toString = function Cached$toString(){
-  return ("Future.cache(" + (this._pure.toString()) + ")");
-};
-
-function cache(m){
-  if(!isFuture(m)) { invalidFuture('Future.cache', 0, m); }
-  return new Cached(m);
-}
-
-function Encase(fn, a){
-  this._fn = fn;
-  this._a = a;
-}
-
-Encase.prototype = Object.create(Core);
-
-Encase.prototype._fork = function Encase$fork(rej, res){
-  var r;
-  try{ r = this._fn(this._a); }catch(e){ rej(e); return noop }
-  res(r);
-  return noop;
-};
-
-Encase.prototype.toString = function Encase$toString(){
-  var ref = this;
-  var _fn = ref._fn;
-  var _a = ref._a;
-  return ("Future.encase(" + (showf(_fn)) + ", " + (show(_a)) + ")");
-};
-
-function encase(f, x){
-  if(!isFunction(f)) { invalidArgument('Future.encase', 0, 'be a function', f); }
-  if(arguments.length === 1) { return partial1(encase, f); }
-  return new Encase(f, x);
-}
-
-function Encase2(fn, a, b){
-  this._fn = fn;
-  this._a = a;
-  this._b = b;
-}
-
-Encase2.prototype = Object.create(Core);
-
-Encase2.prototype._fork = function Encase2$fork(rej, res){
-  var r;
-  try{ r = this._fn(this._a, this._b); }catch(e){ rej(e); return noop }
-  res(r);
-  return noop;
-};
-
-Encase2.prototype.toString = function Encase2$toString(){
-  var ref = this;
-  var _fn = ref._fn;
-  var _a = ref._a;
-  var _b = ref._b;
-  return ("Future.encase2(" + (showf(_fn)) + ", " + (show(_a)) + ", " + (show(_b)) + ")");
-};
-
-function encase2(f, x, y){
-  if(!isFunction(f)) { invalidArgument('Future.encase2', 0, 'be a function', f); }
-
-  switch(arguments.length){
-    case 1: return partial1(encase2, f);
-    case 2: return partial2(encase2, f, x);
-    default: return new Encase2(f, x, y);
-  }
-}
-
-function Encase3(fn, a, b, c){
-  this._fn = fn;
-  this._a = a;
-  this._b = b;
-  this._c = c;
-}
-
-Encase3.prototype = Object.create(Core);
-
-Encase3.prototype._fork = function Encase3$fork(rej, res){
-  var r;
-  try{ r = this._fn(this._a, this._b, this._c); }catch(e){ rej(e); return noop }
-  res(r);
-  return noop;
-};
-
-Encase3.prototype.toString = function Encase3$toString(){
-  var ref = this;
-  var _fn = ref._fn;
-  var _a = ref._a;
-  var _b = ref._b;
-  var _c = ref._c;
-  return ("Future.encase3(" + (showf(_fn)) + ", " + (show(_a)) + ", " + (show(_b)) + ", " + (show(_c)) + ")");
-};
-
-function encase3(f, x, y, z){
-  if(!isFunction(f)) { invalidArgument('Future.encase3', 0, 'be a function', f); }
-
-  switch(arguments.length){
-    case 1: return partial1(encase3, f);
-    case 2: return partial2(encase3, f, x);
-    case 3: return partial3(encase3, f, x, y);
-    default: return new Encase3(f, x, y, z);
-  }
-}
-
-function EncaseN(fn, a){
-  this._fn = fn;
-  this._a = a;
-}
-
-EncaseN.prototype = Object.create(Core);
-
-EncaseN.prototype._fork = function EncaseN$fork(rej, res){
-  var open = true;
-  this._fn(this._a, function EncaseN$done(err, val){
-    if(open){
-      open = false;
-      err ? rej(err) : res(val);
-    }
-  });
-  return function EncaseN$cancel(){ open = false; };
-};
-
-EncaseN.prototype.toString = function EncaseN$toString(){
-  var ref = this;
-  var _fn = ref._fn;
-  var _a = ref._a;
-  return ("Future.encaseN(" + (showf(_fn)) + ", " + (show(_a)) + ")");
-};
-
-function encaseN(f, x){
-  if(!isFunction(f)) { invalidArgument('Future.encaseN', 0, 'be a function', f); }
-  if(arguments.length === 1) { return partial1(encaseN, f); }
-  return new EncaseN(f, x);
-}
-
-function EncaseN2(fn, a, b){
-  this._fn = fn;
-  this._a = a;
-  this._b = b;
-}
-
-EncaseN2.prototype = Object.create(Core);
-
-EncaseN2.prototype._fork = function EncaseN2$fork(rej, res){
-  var open = true;
-  this._fn(this._a, this._b, function EncaseN2$done(err, val){
-    if(open){
-      open = false;
-      err ? rej(err) : res(val);
-    }
-  });
-  return function EncaseN2$cancel(){ open = false; };
-};
-
-EncaseN2.prototype.toString = function EncaseN2$toString(){
-  var ref = this;
-  var _fn = ref._fn;
-  var _a = ref._a;
-  var _b = ref._b;
-  return ("Future.encaseN2(" + (showf(_fn)) + ", " + (show(_a)) + ", " + (show(_b)) + ")");
-};
-
-function encaseN2(f, x, y){
-  if(!isFunction(f)) { invalidArgument('Future.encaseN2', 0, 'be a function', f); }
-
-  switch(arguments.length){
-    case 1: return partial1(encaseN2, f);
-    case 2: return partial2(encaseN2, f, x);
-    default: return new EncaseN2(f, x, y);
-  }
-}
-
-function EncaseN$1(fn, a, b, c){
-  this._fn = fn;
-  this._a = a;
-  this._b = b;
-  this._c = c;
-}
-
-EncaseN$1.prototype = Object.create(Core);
-
-EncaseN$1.prototype._fork = function EncaseN$3$fork(rej, res){
-  var open = true;
-  this._fn(this._a, this._b, this._c, function EncaseN$3$done(err, val){
-    if(open){
-      open = false;
-      err ? rej(err) : res(val);
-    }
-  });
-  return function EncaseN$3$cancel(){ open = false; };
-};
-
-EncaseN$1.prototype.toString = function EncaseN$3$toString(){
-  var ref = this;
-  var _fn = ref._fn;
-  var _a = ref._a;
-  var _b = ref._b;
-  var _c = ref._c;
-  return ("Future.encaseN3(" + (showf(_fn)) + ", " + (show(_a)) + ", " + (show(_b)) + ", " + (show(_c)) + ")");
-};
-
-function encaseN3(f, x, y, z){
-  if(!isFunction(f)) { invalidArgument('Future.encaseN3', 0, 'be a function', f); }
-
-  switch(arguments.length){
-    case 1: return partial1(encaseN3, f);
-    case 2: return partial2(encaseN3, f, x);
-    case 3: return partial3(encaseN3, f, x, y);
-    default: return new EncaseN$1(f, x, y, z);
-  }
-}
-
-function check$promise(p, f, a){
-  return isThenable(p) ? p : typeError(
-    'Future.encaseP expects the function it\'s given to return a Promise/Thenable'
-    + "\n  Actual: " + (show(p)) + "\n  From calling: " + (showf(f))
-    + "\n  With: " + (show(a))
-  );
-}
-
-function EncaseP(fn, a){
-  this._fn = fn;
-  this._a = a;
-}
-
-EncaseP.prototype = Object.create(Core);
-
-EncaseP.prototype._fork = function EncaseP$fork(rej, res){
-  var ref = this;
-  var _fn = ref._fn;
-  var _a = ref._a;
-  check$promise(_fn(_a), _fn, _a).then(escapeTick(res), escapeTick(rej));
-  return noop;
-};
-
-EncaseP.prototype.toString = function EncaseP$toString(){
-  var ref = this;
-  var _fn = ref._fn;
-  var _a = ref._a;
-  return ("Future.encaseP(" + (showf(_fn)) + ", " + (show(_a)) + ")");
-};
-
-function encaseP(f, x){
-  if(!isFunction(f)) { invalidArgument('Future.encaseP', 0, 'be a function', f); }
-  if(arguments.length === 1) { return partial1(encaseP, f); }
-  return new EncaseP(f, x);
-}
-
-function check$promise$1(p, f, a, b){
-  return isThenable(p) ? p : typeError(
-    'Future.encaseP2 expects the function it\'s given to return a Promise/Thenable'
-    + "\n  Actual: " + (show(p)) + "\n  From calling: " + (showf(f))
-    + "\n  With 1: " + (show(a))
-    + "\n  With 2: " + (show(b))
-  );
-}
-
-function EncaseP2(fn, a, b){
-  this._fn = fn;
-  this._a = a;
-  this._b = b;
-}
-
-EncaseP2.prototype = Object.create(Core);
-
-EncaseP2.prototype._fork = function EncaseP2$fork(rej, res){
-  var ref = this;
-  var _fn = ref._fn;
-  var _a = ref._a;
-  var _b = ref._b;
-  check$promise$1(_fn(_a, _b), _fn, _a, _b).then(escapeTick(res), escapeTick(rej));
-  return noop;
-};
-
-EncaseP2.prototype.toString = function EncaseP2$toString(){
-  var ref = this;
-  var _fn = ref._fn;
-  var _a = ref._a;
-  var _b = ref._b;
-  return ("Future.encaseP2(" + (showf(_fn)) + ", " + (show(_a)) + ", " + (show(_b)) + ")");
-};
-
-function encaseP2(f, x, y){
-  if(!isFunction(f)) { invalidArgument('Future.encaseP2', 0, 'be a function', f); }
-
-  switch(arguments.length){
-    case 1: return partial1(encaseP2, f);
-    case 2: return partial2(encaseP2, f, x);
-    default: return new EncaseP2(f, x, y);
-  }
-}
-
-function check$promise$2(p, f, a, b, c){
-  return isThenable(p) ? p : typeError(
-    'Future.encaseP3 expects the function it\'s given to return a Promise/Thenable'
-    + "\n  Actual: " + (show(p)) + "\n  From calling: " + (showf(f))
-    + "\n  With 1: " + (show(a))
-    + "\n  With 2: " + (show(b))
-    + "\n  With 3: " + (show(c))
-  );
-}
-
-function EncaseP3(fn, a, b, c){
-  this._fn = fn;
-  this._a = a;
-  this._b = b;
-  this._c = c;
-}
-
-EncaseP3.prototype = Object.create(Core);
-
-EncaseP3.prototype._fork = function EncaseP3$fork(rej, res){
-  var ref = this;
-  var _fn = ref._fn;
-  var _a = ref._a;
-  var _b = ref._b;
-  var _c = ref._c;
-  check$promise$2(_fn(_a, _b, _c), _fn, _a, _b, _c).then(escapeTick(res), escapeTick(rej));
-  return noop;
-};
-
-EncaseP3.prototype.toString = function EncaseP3$toString(){
-  var ref = this;
-  var _fn = ref._fn;
-  var _a = ref._a;
-  var _b = ref._b;
-  var _c = ref._c;
-  return ("Future.encaseP3(" + (show(_fn)) + ", " + (show(_a)) + ", " + (show(_b)) + ", " + (show(_c)) + ")");
-};
-
-function encaseP3(f, x, y, z){
-  if(!isFunction(f)) { invalidArgument('Future.encaseP3', 0, 'be a function', f); }
-
-  switch(arguments.length){
-    case 1: return partial1(encaseP3, f);
-    case 2: return partial2(encaseP3, f, x);
-    case 3: return partial3(encaseP3, f, x, y);
-    default: return new EncaseP3(f, x, y, z);
-  }
-}
-
-/*eslint consistent-return: 0*/
-
-var check$iterator = function (g) { return isIterator(g) ? g : invalidArgument(
-  'Future.do', 0, 'return an iterator, maybe you forgot the "*"', g
-); };
-
-var check$iteration = function (o) {
-  if(!isIteration(o)) { typeError(
-    'Future.do was given an invalid generator:'
-    + ' Its iterator did not return a valid iteration from iterator.next()'
-    + "\n  Actual: " + (show(o))
-  ); }
-  if(o.done || isFuture(o.value)) { return o; }
-  return invalidFuture(
-    'Future.do',
-    'the iterator to produce only valid Futures',
-    o.value,
-    '\n  Tip: If you\'re using a generator, make sure you always yield a Future'
-  );
-};
-
-function Go(generator){
-  this._generator = generator;
-}
-
-Go.prototype = Object.create(Core);
-
-Go.prototype._fork = function Go$_fork(rej, res){
-
-  var iterator = check$iterator(this._generator());
-
-  var timing = Undetermined, cancel = noop, state, value;
-
-  function resolved(x){
-    value = x;
-    if(timing === Asynchronous) { return drain(); }
-    timing = Synchronous;
-    state = check$iteration(iterator.next(value));
-  }
-
-  function drain(){
-    state = check$iteration(iterator.next(value));
-
-    while(!state.done){
-      timing = Undetermined;
-      cancel = state.value._fork(rej, resolved);
-
-      if(timing !== Synchronous){
-        timing = Asynchronous;
-        return;
-      }
-    }
-
-    res(state.value);
-  }
-
-  drain();
-
-  return function Go$cancel(){ cancel(); };
-
-};
-
-Go.prototype.toString = function Go$toString(){
-  return ("Future.do(" + (showf(this._generator)) + ")");
-};
-
-function go(generator){
-  if(!isFunction(generator)) { invalidArgument('Future.do', 0, 'be a Function', generator); }
-  return new Go(generator);
-}
-
-function check$dispose(m, f, x){
-  if(!isFuture(m)) { invalidFuture(
-    'Future.hook',
-    'the first function it\'s given to return a Future',
-    m,
-    ("\n  From calling: " + (showf(f)) + "\n  With: " + (show(x)))
-  ); }
-}
-
-function check$consume(m, f, x){
-  if(!isFuture(m)) { invalidFuture(
-    'Future.hook',
-    'the second function it\'s given to return a Future',
-    m,
-    ("\n  From calling: " + (showf(f)) + "\n  With: " + (show(x)))
-  ); }
-}
-
-function Hook(acquire, dispose, consume){
-  this._acquire = acquire;
-  this._dispose = dispose;
-  this._consume = consume;
-}
-
-Hook.prototype = Object.create(Core);
-
-Hook.prototype._fork = function Hook$fork(rej, res){
-
-  var ref = this;
-  var _acquire = ref._acquire;
-  var _dispose = ref._dispose;
-  var _consume = ref._consume;
-  var cancel, cancelAcquire = noop, cancelConsume = noop, resource, value, cont = noop;
-
-  function Hook$done(){
-    cont(value);
-  }
-
-  function Hook$dispose(){
-    var disposal = _dispose(resource);
-    check$dispose(disposal, _dispose, resource);
-    cancel = disposal._fork(rej, Hook$done);
-    return cancel;
-  }
-
-  function Hook$cancelConsuption(){
-    cancelConsume();
-    Hook$dispose()();
-  }
-
-  function Hook$consumptionRejected(x){
-    cont = rej;
-    value = x;
-    Hook$dispose();
-  }
-
-  function Hook$consumptionResolved(x){
-    cont = res;
-    value = x;
-    Hook$dispose();
-  }
-
-  function Hook$acquireResolved(x){
-    resource = x;
-    var consumption = _consume(resource);
-    check$consume(consumption, _consume, resource);
-    cancel = Hook$cancelConsuption;
-    cancelConsume = consumption._fork(Hook$consumptionRejected, Hook$consumptionResolved);
-  }
-
-  cancelAcquire = _acquire._fork(rej, Hook$acquireResolved);
-
-  cancel = cancel || cancelAcquire;
-
-  return function Hook$fork$cancel(){ cancel(); };
-
-};
-
-Hook.prototype.toString = function Hook$toString(){
-  var ref = this;
-  var _acquire = ref._acquire;
-  var _dispose = ref._dispose;
-  var _consume = ref._consume;
-  return ("Future.hook(" + (_acquire.toString()) + ", " + (showf(_dispose)) + ", " + (showf(_consume)) + ")");
-};
-
-function hook$acquire$cleanup(acquire, cleanup, consume){
-  if(!isFunction(consume)) { invalidArgument('Future.hook', 2, 'be a Future', consume); }
-  return new Hook(acquire, cleanup, consume);
-}
-
-function hook$acquire(acquire, cleanup, consume){
-  if(!isFunction(cleanup)) { invalidArgument('Future.hook', 1, 'be a function', cleanup); }
-  if(arguments.length === 2) { return partial2(hook$acquire$cleanup, acquire, cleanup); }
-  return hook$acquire$cleanup(acquire, cleanup, consume);
-}
-
-function hook(acquire, cleanup, consume){
-  if(!isFuture(acquire)) { invalidFuture('Future.hook', 0, acquire); }
-  if(arguments.length === 1) { return partial1(hook$acquire, acquire); }
-  if(arguments.length === 2) { return hook$acquire(acquire, cleanup); }
-  return hook$acquire(acquire, cleanup, consume);
-}
-
-function Node(fn){
-  this._fn = fn;
-}
-
-Node.prototype = Object.create(Core);
-
-Node.prototype._fork = function Node$fork(rej, res){
-  var open = true;
-  this._fn(function Node$done(err, val){
-    if(open){
-      open = false;
-      err ? rej(err) : res(val);
-    }
-  });
-  return function Node$cancel(){ open = false; };
-};
-
-Node.prototype.toString = function Node$toString(){
-  var ref = this;
-  var _fn = ref._fn;
-  return ("Future.node(" + (showf(_fn)) + ")");
-};
-
-function node(f){
-  if(!isFunction(f)) { invalidArgument('Future.node', 0, 'be a function', f); }
-  return new Node(f);
-}
-
-var index$7 = createCommonjsModule(function (module) {
-(function(global, f){
-
-  'use strict';
-
-  /*istanbul ignore next*/
-  if(module && 'object' !== 'undefined'){
-    module.exports = f(index$2, index$5);
-  }else{
-    global.concurrify = f(global.sanctuaryTypeClasses, global.sanctuaryTypeIdentifiers);
-  }
-
-}(/*istanbul ignore next*/(commonjsGlobal || window || commonjsGlobal), function(Z, type){
-
-  'use strict';
-
-  var $alt = 'fantasy-land/alt';
-  var $ap = 'fantasy-land/ap';
-  var $map = 'fantasy-land/map';
-  var $of = 'fantasy-land/of';
-  var $zero = 'fantasy-land/zero';
-  var $$type = '@@type';
-
-  var ordinal = ['first', 'second', 'third', 'fourth', 'fifth'];
-
-  function isFunction(f){
-    return typeof f === 'function';
-  }
-
-  function isBinary(f){
-    return f.length >= 2;
-  }
-
-  function isApplicativeRepr(Repr){
-    try{
-      return Z.Applicative.test(Z.of(Repr));
-    }catch(_){
-      return false;
-    }
-  }
-
-  function invalidArgument(it, at, expected, actual){
-    throw new TypeError(
-      it
-      + ' expects its '
-      + ordinal[at]
-      + ' argument to '
-      + expected
-      + '\n  Actual: '
-      + Z.toString(actual)
-    );
-  }
-
-  function invalidContext(it, actual, an){
-    throw new TypeError(
-      it + ' was invoked outside the context of a ' + an + '. \n  Called on: ' + Z.toString(actual)
-    );
-  }
-
-  //       getTypeIdentifier :: TypeRepresentative -> TypeIdentifier
-  function getTypeIdentifier(Repr){
-    return Repr[$$type] || Repr.name || 'Anonymous';
-  }
-
-  //       generateTypeIdentifier :: TypeIdentifier -> TypeIdentifier
-  function generateTypeIdentifier(identifier){
-    var o = type.parse(identifier);
-    return (o.namespace || 'concurrify') + '/Concurrent' + o.name + '@' + o.version;
-  }
-
-  //concurrify :: Applicative m
-  //           => (TypeRep m, m a, (m a, m a) -> m a, (m a, m (a -> b)) -> m b)
-  //           -> Concurrently m
-  return function concurrify(Repr, zero, alt, ap){
-
-    var INNERTYPE = getTypeIdentifier(Repr);
-    var OUTERTYPE = generateTypeIdentifier(INNERTYPE);
-
-    var INNERNAME = type.parse(INNERTYPE).name;
-    var OUTERNAME = type.parse(OUTERTYPE).name;
-
-    function Concurrently(sequential){
-      this.sequential = sequential;
-    }
-
-    function isInner(x){
-      return x instanceof Repr
-      || (Boolean(x) && x.constructor === Repr)
-      || type(x) === Repr[$$type];
-    }
-
-    function isOuter(x){
-      return x instanceof Concurrently
-      || (Boolean(x) && x.constructor === Concurrently)
-      || type(x) === OUTERTYPE;
-    }
-
-    function construct(x){
-      if(!isInner(x)) { invalidArgument(OUTERNAME, 0, 'be of type "' + INNERNAME + '"', x); }
-      return new Concurrently(x);
-    }
-
-    if(!isApplicativeRepr(Repr)) { invalidArgument('concurrify', 0, 'represent an Applicative', Repr); }
-    if(!isInner(zero)) { invalidArgument('concurrify', 1, 'be of type "' + INNERNAME + '"', zero); }
-    if(!isFunction(alt)) { invalidArgument('concurrify', 2, 'be a function', alt); }
-    if(!isBinary(alt)) { invalidArgument('concurrify', 2, 'be binary', alt); }
-    if(!isFunction(ap)) { invalidArgument('concurrify', 3, 'be a function', ap); }
-    if(!isBinary(ap)) { invalidArgument('concurrify', 3, 'be binary', ap); }
-
-    var proto = Concurrently.prototype = construct.prototype = {constructor: construct};
-
-    construct[$$type] = OUTERTYPE;
-
-    var mzero = new Concurrently(zero);
-    construct[$zero] = function Concurrently$zero(){
-      return mzero;
-    };
-
-    construct[$of] = function Concurrently$of(value){
-      return new Concurrently(Z.of(Repr, value));
-    };
-
-    proto[$map] = function Concurrently$map(mapper){
-      if(!isOuter(this)) { invalidContext(OUTERNAME + '#map', this, OUTERNAME); }
-      if(!isFunction(mapper)) { invalidArgument(OUTERNAME + '#map', 0, 'be a function', mapper); }
-      return new Concurrently(Z.map(mapper, this.sequential));
-    };
-
-    proto[$ap] = function Concurrently$ap(m){
-      if(!isOuter(this)) { invalidContext(OUTERNAME + '#ap', this, OUTERNAME); }
-      if(!isOuter(m)) { invalidArgument(OUTERNAME + '#ap', 0, 'be a ' + OUTERNAME, m); }
-      return new Concurrently(ap(this.sequential, m.sequential));
-    };
-
-    proto[$alt] = function Concurrently$alt(m){
-      if(!isOuter(this)) { invalidContext(OUTERNAME + '#alt', this, OUTERNAME); }
-      if(!isOuter(m)) { invalidArgument(OUTERNAME + '#alt', 0, 'be a ' + OUTERNAME, m); }
-      return new Concurrently(alt(this.sequential, m.sequential));
-    };
-
-    proto.toString = function Concurrently$toString(){
-      if(!isOuter(this)) { invalidContext(OUTERNAME + '#toString', this, OUTERNAME); }
-      return OUTERNAME + '(' + Z.toString(this.sequential) + ')';
-    };
-
-    return construct;
-
+  /*~
+   * stability: experimental
+   * mmodule: null
+   * authors:
+   *   - "@boris-marinov"
+   *
+   * type: |
+   *   () => String
+   */
+  variant.toString = function () {
+    return variantName;
   };
 
-}));
-});
-
-function check$ap$f(f){
-  if(!isFunction(f)) { typeError(
-    'Future#ap expects its first argument to be a Future of a Function'
-    + "\n  Actual: Future.of(" + (show(f)) + ")"
-  ); }
-}
-
-function ParallelAp(mval, mfunc){
-  this._mval = mval;
-  this._mfunc = mfunc;
-}
-
-ParallelAp.prototype = Object.create(Core);
-
-ParallelAp.prototype._fork = function ParallelAp$fork(rej, res){
-  var func, val, okval = false, okfunc = false, rejected = false, c1, c2;
-
-  function ParallelAp$rej(x){
-    if(!rejected){
-      rejected = true;
-      rej(x);
-    }
-  }
-
-  c1 = this._mval._fork(ParallelAp$rej, function ParallelAp$fork$resVal(x){
-    c1 = noop;
-    if(!okval) { return void (okfunc = true, val = x); }
-    res(func(x));
-  });
-  c2 = this._mfunc._fork(ParallelAp$rej, function ParallelAp$fork$resFunc(f){
-    c2 = noop;
-    check$ap$f(f);
-    if(!okfunc) { return void (okval = true, func = f); }
-    res(f(val));
-  });
-
-  return function ParallelAp$fork$cancel(){
-    c1();
-    c2();
+  /*~
+   * stability: experimental
+   * module: null
+   * authors:
+   *   - "@boris-marinov"
+   *
+   * type: |
+   *   (Union).() => String
+   */
+  variant.prototype.toString = function () {
+    return variantName + '(' + plainObjectToString.call(this) + ')';
   };
+
+  // (Node REPL representations)
+  adt.inspect = adt.toString;
+  variant.inspect = variant.toString;
+  variant.prototype.inspect = variant.prototype.toString;
+
+  return variant;
 };
 
-ParallelAp.prototype.toString = function ParallelAp$toString(){
-  return ("new ParallelAp(" + (this._mval.toString()) + ", " + (this._mfunc.toString()) + ")");
+// --[ Exports ]-------------------------------------------------------
+module.exports = debugRepresentation;
+},{"../union":8}],4:[function(require,module,exports){
+'use strict';
+
+//----------------------------------------------------------------------
+//
+// This source file is part of the Folktale project.
+//
+// Licensed under MIT. See LICENCE for full licence information.
+// See CONTRIBUTORS for the list of contributors to the project.
+//
+//----------------------------------------------------------------------
+
+// --[ Dependencies ]---------------------------------------------------
+var assertType = require('../../../helpers/assert-type');
+var flEquals = require('../../../fantasy-land/equals');
+var fl = require('../../../helpers/fantasy-land');
+var provideAliases = require('../../../helpers/provide-fantasy-land-aliases');
+var copyDocs = require('../../../helpers/copy-documentation');
+
+var _require = require('../union'),
+    tagSymbol = _require.tagSymbol,
+    typeSymbol = _require.typeSymbol;
+
+var toString = Object.prototype.toString;
+var prototypeOf = Object.getPrototypeOf;
+
+// --[ Helpers ]--------------------------------------------------------
+
+/*~
+ * type: (Any) => Boolean
+ */
+var isSetoid = function isSetoid(value) {
+  return value != null && (typeof value[fl.equals] === 'function' || typeof value.equals === 'function');
 };
 
-var Par = index$7(Future$1, never, race, function pap(mval, mfunc){
-  return new ParallelAp(mval, mfunc);
-});
+/*~
+ * type: (Variant, Variant) => Boolean
+ */
+var sameType = function sameType(a, b) {
+  return a[typeSymbol] === b[typeSymbol] && a[tagSymbol] === b[tagSymbol];
+};
 
-Par.of = Par[FL.of];
-Par.zero = Par[FL.zero];
-Par.map = map;
-Par.ap = ap;
-Par.alt = alt;
+var isPlainObject = function isPlainObject(object) {
+  if (Object(object) !== object) return false;
 
-function isParallel(x){
-  return x instanceof Par || index$5(x) === Par['@@type'];
-}
+  return !prototypeOf(object) || !object.toString || toString.call(object) === object.toString();
+};
 
-function seq(par){
-  if(!isParallel(par)) { invalidArgument('Future.seq', 0, 'to be a Par', par); }
-  return par.sequential;
-}
+var deepEquals = function deepEquals(a, b) {
+  if (a === b) return true;
 
-var check$parallel = function (m, i) { return isFuture(m) ? m : invalidFuture(
-  'Future.parallel',
-  'its second argument to be an array of valid Futures. '
-+ "The value at position " + i + " in the array is not a Future",
-  m
-); };
-
-function Parallel(max, futures){
-  this._futures = futures;
-  this._length = futures.length;
-  this._max = Math.min(this._length, max);
-}
-
-Parallel.prototype = Object.create(Core);
-
-Parallel.prototype._fork = function Parallel$_fork(rej, res){
-
-  var ref = this;
-  var _futures = ref._futures;
-  var _length = ref._length;
-  var _max = ref._max;
-  var cancels = new Array(_length), out = new Array(_length);
-  var cursor = 0, running = 0, blocked = false;
-
-  function Parallel$cancel(){
-    for(var n = 0; n < _length; n++) { cancels[n] && cancels[n](); }
+  var leftSetoid = isSetoid(a);
+  var rightSetoid = isSetoid(b);
+  if (leftSetoid) {
+    if (rightSetoid) return flEquals(a, b);else return false;
   }
 
-  function Parallel$run(idx){
-    running++;
-    cancels[idx] = _futures[idx]._fork(function Parallel$rej(reason){
-      cancels[idx] = noop;
-      Parallel$cancel();
-      rej(reason);
-    }, function Parallel$res(value){
-      cancels[idx] = noop;
-      out[idx] = value;
-      running--;
-      if(cursor === _length && running === 0) { res(out); }
-      else if(blocked) { Parallel$drain(); }
+  if (Array.isArray(a) && Array.isArray(b)) {
+    return a.length === b.length && a.every(function (x, i) {
+      return deepEquals(x, b[i]);
     });
   }
 
-  function Parallel$drain(){
-    blocked = false;
-    while(cursor < _length && running < _max) { Parallel$run(cursor++); }
-    blocked = true;
+  if (isPlainObject(a) && isPlainObject(b)) {
+    var keysA = Object.keys(a);
+    var keysB = Object.keys(b);
+    var setB = new Set(keysB);
+    return keysA.length === keysB.length && prototypeOf(a) === prototypeOf(b) && keysA.every(function (k) {
+      return setB.has(k) && a[k] === b[k];
+    });
   }
 
-  Parallel$drain();
-
-  return Parallel$cancel;
-
+  return false;
 };
 
-Parallel.prototype.toString = function Parallel$toString(){
-  return ("Future.parallel(" + (this._max) + ", " + (show(this._futures)) + ")");
+// --[ Implementation ]------------------------------------------------
+/*~
+ * stability: experimental
+ * authors:
+ *   - "@boris-marinov"
+ *
+ * type: |
+ *   (('a, 'a) => Boolean) => (Variant, Union) => Void
+ */
+var createDerivation = function createDerivation(valuesEqual) {
+  /*~
+   * type: ('a, 'a) => Boolean
+   */
+  var equals = function equals(a, b) {
+    // identical objects must be equal
+    if (a === b) return true;
+
+    // we require both values to be setoids if one of them is
+    var leftSetoid = isSetoid(a);
+    var rightSetoid = isSetoid(b);
+    if (leftSetoid) {
+      if (rightSetoid) return flEquals(a, b);else return false;
+    }
+
+    // fall back to the provided equality
+    return valuesEqual(a, b);
+  };
+
+  /*~
+   * type: (Object Any, Object Any, Array String) => Boolean
+   */
+  var compositesEqual = function compositesEqual(a, b, keys) {
+    for (var i = 0; i < keys.length; ++i) {
+      var keyA = a[keys[i]];
+      var keyB = b[keys[i]];
+      if (!equals(keyA, keyB)) {
+        return false;
+      }
+    }
+    return true;
+  };
+
+  var derivation = function derivation(variant, adt) {
+    /*~
+     * stability: experimental
+     * module: null
+     * authors:
+     *   - "@boris-marinov"
+     *   - Quildreen Motta
+     *
+     * type: |
+     *   forall S, a:
+     *     (S a).(S a) => Boolean
+     *   where S is Setoid
+     */
+    variant.prototype.equals = function (value) {
+      assertType(adt)(this[tagSymbol] + '#equals', value);
+      return sameType(this, value) && compositesEqual(this, value, Object.keys(this));
+    };
+    provideAliases(variant.prototype);
+    return variant;
+  };
+  copyDocs(createDerivation, derivation, {
+    type: '(Variant, Union) => Void'
+  });
+
+  return derivation;
 };
 
-var emptyArray = new Resolved([]);
+// --[ Exports ]-------------------------------------------------------
 
-function parallel$max(max, xs){
-  if(!isArray(xs)) { invalidArgument('Future.parallel', 1, 'be an array', xs); }
-  var futures = mapArray(xs, check$parallel);
-  return futures.length === 0 ? emptyArray : new Parallel(max, futures);
-}
+/*~~inheritsMeta: createDerivation */
+module.exports = createDerivation(deepEquals);
 
-function parallel(max, xs){
-  if(!isUnsigned(max)) { invalidArgument('Future.parallel', 0, 'be a positive integer', max); }
-  if(arguments.length === 1) { return partial1(parallel$max, max); }
-  return parallel$max(max, xs);
-}
+module.exports.withCustomComparison = createDerivation;
+},{"../../../fantasy-land/equals":54,"../../../helpers/assert-type":60,"../../../helpers/copy-documentation":61,"../../../helpers/fantasy-land":66,"../../../helpers/provide-fantasy-land-aliases":67,"../union":8}],5:[function(require,module,exports){
+'use strict';
 
-function check$promise$3(p, f){
-  return isThenable(p) ? p : typeError(
-    'Future.tryP expects the function it\'s given to return a Promise/Thenable'
-    + "\n  Actual: " + (show(p)) + "\n  From calling: " + (showf(f))
-  );
-}
+//----------------------------------------------------------------------
+//
+// This source file is part of the Folktale project.
+//
+// Licensed under MIT. See LICENCE for full licence information.
+// See CONTRIBUTORS for the list of contributors to the project.
+//
+//----------------------------------------------------------------------
 
-function TryP(fn){
-  this._fn = fn;
-}
+/*~
+ * stability: experimental
+ * name: module folktale/adt/union/derivations
+ */
+module.exports = {
+  serialization: require('./serialization'),
+  equality: require('./equality'),
+  debugRepresentation: require('./debug-representation')
+};
+},{"./debug-representation":3,"./equality":4,"./serialization":6}],6:[function(require,module,exports){
+'use strict';
 
-TryP.prototype = Object.create(Core);
+function _defineProperty(obj, key, value) { if (key in obj) { Object.defineProperty(obj, key, { value: value, enumerable: true, configurable: true, writable: true }); } else { obj[key] = value; } return obj; }
 
-TryP.prototype._fork = function TryP$fork(rej, res){
-  var ref = this;
-  var _fn = ref._fn;
-  check$promise$3(_fn(), _fn).then(escapeTick(res), escapeTick(rej));
-  return noop;
+//----------------------------------------------------------------------
+//
+// This source file is part of the Folktale project.
+//
+// Licensed under MIT. See LICENCE for full licence information.
+// See CONTRIBUTORS for the list of contributors to the project.
+//
+//----------------------------------------------------------------------
+
+// --[ Dependencies ]---------------------------------------------------
+var _require = require('../union'),
+    tagSymbol = _require.tagSymbol,
+    typeSymbol = _require.typeSymbol;
+
+var mapValues = require('../../../core/object/map-values');
+var values = require('../../../core/object/values');
+var extend = require('../../../helpers/extend');
+
+// --[ Constants ]------------------------------------------------------
+var typeJsonKey = '@@type';
+var tagJsonKey = '@@tag';
+var valueJsonKey = '@@value';
+
+// --[ Helpers ]--------------------------------------------------------
+
+/*~
+ * type: ((Object 'a) => 'b) => ([Object 'a]) => Object 'b
+ */
+var arrayToObject = function arrayToObject(extractKey) {
+  return function (array) {
+    return array.reduce(function (object, element) {
+      object[extractKey(element)] = element;
+      return object;
+    }, {});
+  };
 };
 
-TryP.prototype.toString = function TryP$toString(){
-  var ref = this;
-  var _fn = ref._fn;
-  return ("Future.tryP(" + (show(_fn)) + ")");
+/*~
+ * type: (String) => (Object 'a) => 'a | None
+ */
+var property = function property(propertyName) {
+  return function (object) {
+    return object[propertyName];
+  };
 };
 
-function tryP(f){
-  if(!isFunction(f)) { invalidArgument('Future.tryP', 0, 'be a function', f); }
-  return new TryP(f);
+/*~
+ * type: ([Object 'a]) => Object 'a
+ */
+var indexByType = arrayToObject(property(typeSymbol));
+
+/*~
+ * type: (String, String) => Bool
+ */
+var assertType = function assertType(given, expected) {
+  if (expected !== given) {
+    throw new TypeError('\n       The JSON structure was generated from ' + expected + '.\n       You are trying to parse it as ' + given + '. \n    ');
+  }
+};
+
+/*~
+ * type: |
+ *   type JSONSerialisation = {
+ *     "@@type":  String,
+ *     "@@tag":   String,
+ *     "@@value": Object Any
+ *   }
+ *   type JSONParser = {
+ *     fromJSON: (JSONSerialisation, Array JSONParser) => Variant
+ *   }
+ *
+ *   (Object JSONParser) => (JSONSerialisation) => Any
+ */
+var parseValue = function parseValue(parsers) {
+  return function (value) {
+    if (value !== null && typeof value[typeJsonKey] === 'string') {
+      var type = value[typeJsonKey];
+      if (parsers[type]) {
+        return parsers[type].fromJSON(value, parsers, true);
+      } else {
+        return value;
+      }
+    } else {
+      return value;
+    }
+  };
+};
+
+/*~
+ * type: ('a) => JSON
+ */
+var serializeValue = function serializeValue(value) {
+  return value === undefined ? null : value !== null && typeof value.toJSON === 'function' ? value.toJSON() : /* otherwise */value;
+};
+
+// --[ Implementation ]-------------------------------------------------
+
+/*~
+ * stability: experimental
+ * authors:
+ *   - "@boris-marinov"
+ *
+ * type: |
+ *   (Variant, ADT) => Void
+ */
+var serialization = function serialization(variant, adt) {
+  var typeName = adt[typeSymbol];
+  var tagName = variant.prototype[tagSymbol];
+
+  /*~
+   * stability: experimental
+   * module: null
+   * authors:
+   *   - "@boris-marinov"
+   *
+   * type: |
+   *   type JSONSerialisation = {
+   *     "@@type":  String,
+   *     "@@tag":   String,
+   *     "@@value": Object Any
+   *   }
+   *
+   *   Variant . () => JSONSerialisation
+   */
+  variant.prototype.toJSON = function () {
+    var _ref;
+
+    return _ref = {}, _defineProperty(_ref, typeJsonKey, typeName), _defineProperty(_ref, tagJsonKey, tagName), _defineProperty(_ref, valueJsonKey, mapValues(this, serializeValue)), _ref;
+  };
+
+  /*~
+   * stability: experimental
+   * module: null
+   * authors:
+   *   - "@boris-marinov"
+   *
+   * type: |
+   *   type JSONSerialisation = {
+   *     "@@type":  String,
+   *     "@@tag":   String,
+   *     "@@value": Object Any
+   *   }
+   *   type JSONParser = {
+   *     fromJSON: (JSONSerialisation, Array JSONParser) => Variant
+   *   }
+   *
+   *   (JSONSerialisation, Array JSONParser) => Variant
+   */
+  adt.fromJSON = function (value) {
+    var parsers = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : _defineProperty({}, typeName, adt);
+    var keysIndicateType = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : false;
+
+    var valueTypeName = value[typeJsonKey];
+    var valueTagName = value[tagJsonKey];
+    var valueContents = value[valueJsonKey];
+    assertType(typeName, valueTypeName);
+    var parsersByType = keysIndicateType ? parsers : /*otherwise*/indexByType(values(parsers));
+
+    var parsedValue = mapValues(valueContents, parseValue(parsersByType));
+    return extend(Object.create(adt[valueTagName].prototype), parsedValue);
+  };
+};
+
+// --[ Exports ]--------------------------------------------------------
+module.exports = serialization;
+},{"../../../core/object/map-values":45,"../../../core/object/values":47,"../../../helpers/extend":65,"../union":8}],7:[function(require,module,exports){
+'use strict';
+
+//----------------------------------------------------------------------
+//
+// This source file is part of the Folktale project.
+//
+// Licensed under MIT. See LICENCE for full licence information.
+// See CONTRIBUTORS for the list of contributors to the project.
+//
+//----------------------------------------------------------------------
+
+/*~
+ * stability: experimental
+ * name: module folktale/adt/union
+ */
+module.exports = {
+  union: require('./union'),
+  derivations: require('./derivations')
+};
+},{"./derivations":5,"./union":8}],8:[function(require,module,exports){
+'use strict';
+
+function _defineEnumerableProperties(obj, descs) { for (var key in descs) { var desc = descs[key]; desc.configurable = desc.enumerable = true; if ("value" in desc) desc.writable = true; Object.defineProperty(obj, key, desc); } return obj; }
+
+function _defineProperty(obj, key, value) { if (key in obj) { Object.defineProperty(obj, key, { value: value, enumerable: true, configurable: true, writable: true }); } else { obj[key] = value; } return obj; }
+
+//----------------------------------------------------------------------
+//
+// This source file is part of the Folktale project.
+//
+// Licensed under MIT. See LICENCE for full licence information.
+// See CONTRIBUTORS for the list of contributors to the project.
+//
+//----------------------------------------------------------------------
+
+// --[ Dependencies ]---------------------------------------------------
+var warnDeprecation = require('../../helpers/warn-deprecation');
+var extend = require('../../helpers/extend');
+
+// --[ Constants and Aliases ]------------------------------------------
+var TYPE = Symbol.for('@@folktale:adt:type');
+var TAG = Symbol.for('@@folktale:adt:tag');
+var META = Symbol.for('@@meta:magical');
+
+var keys = Object.keys;
+
+// --[ Helpers ]--------------------------------------------------------
+
+//
+// Returns an array of own enumerable values in an object.
+//
+function values(object) {
+  return keys(object).map(function (key) {
+    return object[key];
+  });
 }
 
-if(typeof Object.create !== 'function') { error('Please polyfill Object.create to use Fluture'); }
-if(typeof Object.assign !== 'function') { error('Please polyfill Object.assign to use Fluture'); }
-if(typeof Array.isArray !== 'function') { error('Please polyfill Array.isArray to use Fluture'); }
+//
+// Transforms own enumerable key/value pairs.
+//
+function mapObject(object, transform) {
+  return keys(object).reduce(function (result, key) {
+    result[key] = transform(key, object[key]);
+    return result;
+  }, {});
+}
 
-var index$1 = Object.assign(Future$1, dispatchers, {
-  Future: Future$1,
-  after: after,
-  attempt: attempt,
-  cache: cache,
-  do: go,
-  encase: encase,
-  encase2: encase2,
-  encase3: encase3,
-  encaseN: encaseN,
-  encaseN2: encaseN2,
-  encaseN3: encaseN3,
-  encaseP: encaseP,
-  encaseP2: encaseP2,
-  encaseP3: encaseP3,
-  go: go,
-  hook: hook,
-  isFuture: isFuture,
-  isNever: isNever,
-  never: never,
-  node: node,
-  of: of,
-  Par: Par,
-  parallel: parallel,
-  reject: reject,
-  rejectAfter: rejectAfter,
-  seq: seq,
-  try: attempt,
-  tryP: tryP,
+// --[ Variant implementation ]-----------------------------------------
+
+//
+// Defines the variants given a set of patterns and an ADT namespace.
+//
+function defineVariants(typeId, patterns, adt) {
+  return mapObject(patterns, function (name, constructor) {
+    var _constructor, _ref, _extend, _mutatorMap, _tag, _type, _constructor2, _extend2, _mutatorMap2;
+
+    // ---[ Variant Internals ]-----------------------------------------
+    function InternalConstructor() {}
+    InternalConstructor.prototype = Object.create(adt);
+
+    extend(InternalConstructor.prototype, (_extend = {}, _defineProperty(_extend, TAG, name), _constructor = 'constructor', _mutatorMap = {}, _mutatorMap[_constructor] = _mutatorMap[_constructor] || {}, _mutatorMap[_constructor].get = function () {
+      return constructor;
+    }, _ref = 'is' + name, _mutatorMap[_ref] = _mutatorMap[_ref] || {}, _mutatorMap[_ref].get = function () {
+      warnDeprecation('.is' + name + ' is deprecated. Use ' + name + '.hasInstance(value)\ninstead to check if a value belongs to the ADT variant.');
+      return true;
+    }, _defineProperty(_extend, 'matchWith', function matchWith(pattern) {
+      return pattern[name](this);
+    }), _defineEnumerableProperties(_extend, _mutatorMap), _extend));
+
+    function makeInstance() {
+      var result = new InternalConstructor(); // eslint-disable-line prefer-const
+      extend(result, constructor.apply(undefined, arguments) || {});
+      return result;
+    }
+
+    extend(makeInstance, (_extend2 = {}, _defineProperty(_extend2, META, constructor[META]), _tag = 'tag', _mutatorMap2 = {}, _mutatorMap2[_tag] = _mutatorMap2[_tag] || {}, _mutatorMap2[_tag].get = function () {
+      return name;
+    }, _type = 'type', _mutatorMap2[_type] = _mutatorMap2[_type] || {}, _mutatorMap2[_type].get = function () {
+      return typeId;
+    }, _constructor2 = 'constructor', _mutatorMap2[_constructor2] = _mutatorMap2[_constructor2] || {}, _mutatorMap2[_constructor2].get = function () {
+      return constructor;
+    }, _defineProperty(_extend2, 'prototype', InternalConstructor.prototype), _defineProperty(_extend2, 'hasInstance', function hasInstance(value) {
+      return Boolean(value) && adt.hasInstance(value) && value[TAG] === name;
+    }), _defineEnumerableProperties(_extend2, _mutatorMap2), _extend2));
+
+    return makeInstance;
+  });
+}
+
+// --[ ADT Implementation ]--------------------------------------------
+
+/*~
+ * authors:
+ *   - Quildreen Motta
+ *
+ * stability: experimental
+ * type: |
+ *   (String, Object (Array String)) => Union
+ */
+var union = function union(typeId, patterns) {
+  var _extend3;
+
+  var UnionNamespace = Object.create(Union);
+  var variants = defineVariants(typeId, patterns, UnionNamespace);
+
+  extend(UnionNamespace, variants, (_extend3 = {}, _defineProperty(_extend3, TYPE, typeId), _defineProperty(_extend3, 'variants', values(variants)), _defineProperty(_extend3, 'hasInstance', function hasInstance(value) {
+    return Boolean(value) && value[TYPE] === this[TYPE];
+  }), _extend3));
+
+  return UnionNamespace;
+};
+
+/*~ ~belongsTo : union */
+var Union = {
+  /*~
+   * type: |
+   *   Union . (...(Variant, Union) => Any) => Union
+   */
+  derive: function derive() {
+    var _this = this;
+
+    for (var _len = arguments.length, derivations = Array(_len), _key = 0; _key < _len; _key++) {
+      derivations[_key] = arguments[_key];
+    }
+
+    derivations.forEach(function (derivation) {
+      _this.variants.forEach(function (variant) {
+        return derivation(variant, _this);
+      });
+    });
+    return this;
+  }
+};
+
+// --[ Exports ]--------------------------------------------------------
+union.Union = Union;
+union.typeSymbol = TYPE;
+union.tagSymbol = TAG;
+
+module.exports = union;
+},{"../../helpers/extend":65,"../../helpers/warn-deprecation":71}],9:[function(require,module,exports){
+'use strict';
+
+function _defineProperty(obj, key, value) { if (key in obj) { Object.defineProperty(obj, key, { value: value, enumerable: true, configurable: true, writable: true }); } else { obj[key] = value; } return obj; }
+
+//----------------------------------------------------------------------
+//
+// This source file is part of the Folktale project.
+//
+// Licensed under MIT. See LICENCE for full licence information.
+// See CONTRIBUTORS for the list of contributors to the project.
+//
+//----------------------------------------------------------------------
+
+// --[ Dependencies ]--------------------------------------------------
+var define = require('../../helpers/define');
+var thunk = require('../../helpers/thunk');
+
+var Future = thunk(function (_) {
+  return require('./_future');
 });
 
-return index$1;
+var _require = require('./_execution-state'),
+    Pending = _require.Pending,
+    Cancelled = _require.Cancelled,
+    Rejected = _require.Rejected,
+    Resolved = _require.Resolved;
 
-}());
+// --[ Helpers ]-------------------------------------------------------
+
+/*~
+ * type: |
+ *   ('a: Deferred 'f 's, ExecutionState 'f 's) => Void :: mutates 'a
+ */
+
+
+var moveToState = function moveToState(deferred, newState) {
+  if (!Pending.hasInstance(deferred._state)) {
+    var description = newState.matchWith({
+      Resolved: function Resolved(_) {
+        return 'resolved';
+      },
+      Rejected: function Rejected(_) {
+        return 'rejected';
+      },
+      Cancelled: function Cancelled(_) {
+        return 'cancelled';
+      }
+    });
+    throw new Error('Only pending deferreds can be ' + description + ', this deferred is already ' + description + '.');
+  }
+
+  deferred._state = newState;
+
+  var listeners = deferred._listeners;
+
+  var _loop = function _loop(i) {
+    newState.matchWith({
+      Resolved: function Resolved(_ref) {
+        var value = _ref.value;
+        return listeners[i].onResolved(value);
+      },
+      Rejected: function Rejected(_ref2) {
+        var reason = _ref2.reason;
+        return listeners[i].onRejected(reason);
+      },
+      Cancelled: function Cancelled(_) {
+        return listeners[i].onCancelled();
+      }
+    });
+  };
+
+  for (var i = 0; i < listeners.length; ++i) {
+    _loop(i);
+  }
+  deferred._listeners = [];
+};
+
+// --[ Implementation ]------------------------------------------------
+/*~
+ * stability: experimental
+ */
+function Deferred() {
+  define(this, '_state', Pending());
+  define(this, '_listeners', []);
+}
+
+Deferred.prototype = _defineProperty({
+  // ---[ State and configuration ]------------------------------------
+  /*~
+   * isRequired: true
+   * type: |
+   *   get (Deferred 'f 's) => ExecutionState 'f 's
+   */
+  get _state() {
+    throw new TypeError('Deferred.prototype is abstract and does not implement ._state.');
+  },
+
+  /*~
+   * isRequired: true
+   * type: |
+   *   get (Deferred 'f 's) => Array (DeferredListener 'f 's)
+   */
+  get _listeners() {
+    throw new TypeError('Deferred.prototype is abstract and does not implement ._listeners');
+  },
+
+  // ---[ Resolving a deferred ]---------------------------------------
+  /*~
+   * type: |
+   *   ('a: Deferred 'f 's).('s) => 'a :: mutates 'a
+   */
+  resolve: function resolve(value) {
+    moveToState(this, Resolved(value));
+    return this;
+  },
+
+
+  /*~
+   * type: |
+   *   ('a: Deferred 'f 's).('f) => 'a :: mutates 'a
+   */
+  reject: function reject(reason) {
+    moveToState(this, Rejected(reason));
+    return this;
+  },
+
+
+  /*~
+   * type: |
+   *   ('a: Deferred 'f 's).() => 'a :: mutates 'a
+   */
+  cancel: function cancel() {
+    moveToState(this, Cancelled());
+    return this;
+  },
+
+
+  /*~
+   * type: |
+   *   ('a: Deferred 'f 's).() => 'a :: mutates 'a
+   */
+  maybeCancel: function maybeCancel() {
+    if (Pending.hasInstance(this._state)) {
+      this.cancel();
+    }
+    return this;
+  },
+
+
+  // ---[ Reacting to events in a deferred ]---------------------------
+  /*~
+   * type: |
+   *   ('a: Deferred 'f 's).(DeferredListener 'f 's) => Void
+   */
+  listen: function listen(pattern) {
+    var _this = this;
+
+    this._state.matchWith({
+      Pending: function Pending(_) {
+        return _this._listeners.push(pattern);
+      },
+      Cancelled: function Cancelled(_) {
+        return pattern.onCancelled();
+      },
+      Resolved: function Resolved(_ref3) {
+        var value = _ref3.value;
+        return pattern.onResolved(value);
+      },
+      Rejected: function Rejected(_ref4) {
+        var reason = _ref4.reason;
+        return pattern.onRejected(reason);
+      }
+    });
+    return this;
+  },
+
+
+  // ---[ Working with deferred values ]-------------------------------
+  /*~
+   * type: |
+   *   (Deferred 'f 's).() => Promise 'f 's
+   */
+  promise: function promise() {
+    var _this2 = this;
+
+    return new Promise(function (resolve, reject) {
+      _this2.listen({
+        onCancelled: function onCancelled(_) {
+          return reject(Cancelled());
+        },
+        onResolved: resolve,
+        onRejected: reject
+      });
+    });
+  },
+
+
+  /*~
+   * type: |
+   *   (Deferred 'f 's).() => Future 'f 's
+   */
+  future: function future() {
+    var future = new (Future())(); // eslint-disable-line prefer-const
+    this.listen({
+      onCancelled: function onCancelled(_) {
+        return moveToState(future, Cancelled());
+      },
+      onRejected: function onRejected(reason) {
+        return moveToState(future, Rejected(reason));
+      },
+      onResolved: function onResolved(value) {
+        return moveToState(future, Resolved(value));
+      }
+    });
+
+    return future;
+  },
+
+
+  // ---[ Debugging ]--------------------------------------------------
+  /*~
+   * type: |
+   *   (Deferred 'f 's).() => String
+   */
+  toString: function toString() {
+    var listeners = this._listeners.length;
+    var state = this._state;
+
+    return 'folktale:Deferred(' + state + ', ' + listeners + ' listeners)';
+  },
+
+
+  /*~
+   * type: |
+   *   (Deferred 'f 's).() => String
+   */
+  inspect: function inspect() {
+    return this.toString();
+  }
+}, Symbol.toStringTag, 'folktale:Deferred');
+
+// --[ Exports ]-------------------------------------------------------
+module.exports = Deferred;
+},{"../../helpers/define":64,"../../helpers/thunk":68,"./_execution-state":10,"./_future":11}],10:[function(require,module,exports){
+'use strict';
+
+//----------------------------------------------------------------------
+//
+// This source file is part of the Folktale project.
+//
+// Licensed under MIT. See LICENCE for full licence information.
+// See CONTRIBUTORS for the list of contributors to the project.
+//
+//----------------------------------------------------------------------
+
+// --[ Dependencies ]--------------------------------------------------
+var _require = require('../../adt/union'),
+    union = _require.union,
+    derivations = _require.derivations;
+
+var equality = derivations.equality,
+    debugRepresentation = derivations.debugRepresentation;
+
+// --[ Implementation ]------------------------------------------------
+
+/*~ stability: experimental */
+
+var ExecutionState = union('folktale:ExecutionState', {
+  /*~
+   */
+  Pending: function Pending() {
+    return {};
+  },
+
+
+  /*~
+   */
+  Cancelled: function Cancelled() {
+    return {};
+  },
+
+
+  /*~
+   */
+  Resolved: function Resolved(value) {
+    return { value: value };
+  },
+
+
+  /*~
+   */
+  Rejected: function Rejected(reason) {
+    return { reason: reason };
+  }
+}).derive(equality, debugRepresentation);
+
+// --[ Exports ]-------------------------------------------------------
+module.exports = ExecutionState;
+},{"../../adt/union":7}],11:[function(require,module,exports){
+'use strict';
+
+var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
+
+function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
+
+//----------------------------------------------------------------------
+//
+// This source file is part of the Folktale project.
+//
+// Licensed under MIT. See LICENCE for full licence information.
+// See CONTRIBUTORS for the list of contributors to the project.
+//
+//----------------------------------------------------------------------
+
+// --[ Dependencies ]--------------------------------------------------
+var define = require('../../helpers/define');
+var provideAliases = require('../../helpers/provide-fantasy-land-aliases');
+var Deferred = require('./_deferred');
+
+var _require = require('./_execution-state'),
+    Pending = _require.Pending,
+    Resolved = _require.Resolved,
+    Rejected = _require.Rejected;
+
+// --[ Implementation ]------------------------------------------------
+
+/*~
+ * stability: experimental
+ */
+
+
+var Future = function () {
+  function Future() {
+    _classCallCheck(this, Future);
+
+    define(this, '_state', Pending());
+    define(this, '_listeners', []);
+  }
+
+  // ---[ State and configuration ]------------------------------------
+  /*~
+   * isRequired: true
+   * type: |
+   *   get (Future 'f 's) => ExecutionState 'f 's
+   */
+
+
+  _createClass(Future, [{
+    key: 'listen',
+
+
+    // ---[ Reacting to Future events ]----------------------------------
+    /*~
+     * stability: experimental
+     * type: |
+     *   (Future 'f 's).(DeferredListener 'f 's) => Future 'f 's
+     */
+    value: function listen(pattern) {
+      var _this = this;
+
+      this._state.matchWith({
+        Pending: function Pending() {
+          return _this._listeners.push(pattern);
+        },
+        Cancelled: function Cancelled() {
+          return pattern.onCancelled();
+        },
+        Resolved: function Resolved(_ref) {
+          var value = _ref.value;
+          return pattern.onResolved(value);
+        },
+        Rejected: function Rejected(_ref2) {
+          var reason = _ref2.reason;
+          return pattern.onRejected(reason);
+        }
+      });
+      return this;
+    }
+
+    // --[ Transforming Futures ]----------------------------------------
+    /*~
+     * stability: experimental
+     * type: |
+     *   (Future 'f 's).(('s) => Future 's2) => Future 'f 's2
+     */
+
+  }, {
+    key: 'chain',
+    value: function chain(transformation) {
+      var deferred = new Deferred(); // eslint-disable-line prefer-const
+      this.listen({
+        onCancelled: function onCancelled() {
+          return deferred.cancel();
+        },
+        onRejected: function onRejected(reason) {
+          return deferred.reject(reason);
+        },
+        onResolved: function onResolved(value) {
+          transformation(value).listen({
+            onCancelled: function onCancelled() {
+              return deferred.cancel();
+            },
+            onRejected: function onRejected(reason) {
+              return deferred.reject(reason);
+            },
+            onResolved: function onResolved(value2) {
+              return deferred.resolve(value2);
+            }
+          });
+        }
+      });
+
+      return deferred.future();
+    }
+
+    /*~
+     * stability: experimental
+     * type: |
+     *   (Future 'f 's).(('s) => 's2) => Future 'f 's2
+     */
+
+  }, {
+    key: 'map',
+    value: function map(transformation) {
+      return this.chain(function (value) {
+        return Future.of(transformation(value));
+      });
+    }
+
+    /*~
+     * stability: experimental
+     * type: |
+     *   (Future 'f 's).(Future 'f (('s) => 's2)) => Future 'f 's2
+     */
+
+  }, {
+    key: 'apply',
+    value: function apply(future) {
+      return this.chain(function (fn) {
+        return future.map(fn);
+      });
+    }
+
+    /*~
+     * stability: experimental
+     * type: |
+     *   (Future 'f 's).(('f) => 'f2, ('s) => 's2) => Future 'f2 's2
+     */
+
+  }, {
+    key: 'bimap',
+    value: function bimap(rejectionTransformation, successTransformation) {
+      var deferred = new Deferred(); // eslint-disable-line prefer-const
+      this.listen({
+        onCancelled: function onCancelled() {
+          return deferred.cancel();
+        },
+        onRejected: function onRejected(reason) {
+          return deferred.reject(rejectionTransformation(reason));
+        },
+        onResolved: function onResolved(value) {
+          return deferred.resolve(successTransformation(value));
+        }
+      });
+
+      return deferred.future();
+    }
+
+    /*~
+     * stability: experimental
+     * type: |
+     *   (Future 'f 's).(('f) => 'f2) => Future 'f2 's
+     */
+
+  }, {
+    key: 'mapRejected',
+    value: function mapRejected(transformation) {
+      return this.bimap(transformation, function (x) {
+        return x;
+      });
+    }
+
+    // ---[ Recovering from errors ]-------------------------------------
+    /*~
+     * stability: experimental
+     * type: |
+     *   (Future 'f 's).(('f) => Future 'f2 's2) => Future 'f2 's
+     */
+
+  }, {
+    key: 'recover',
+    value: function recover(handler) {
+      var deferred = new Deferred(); // eslint-disable-line prefer-const
+      this.listen({
+        onCancelled: function onCancelled() {
+          return deferred.cancel();
+        },
+        onResolved: function onResolved(value) {
+          return deferred.resolve(value);
+        },
+        onRejected: function onRejected(reason) {
+          handler(reason).listen({
+            onCancelled: function onCancelled() {
+              return deferred.cancel();
+            },
+            onResolved: function onResolved(value) {
+              return deferred.resolve(value);
+            },
+            onRejected: function onRejected(newReason) {
+              return deferred.reject(newReason);
+            }
+          });
+        }
+      });
+
+      return deferred.future();
+    }
+
+    /*~
+     * stability: experimental
+     * type: |
+     *   forall a, b, c, d:
+     *     type Pattern = { r |
+     *       Cancelled: ()  => Future c d,
+     *       Resolved:  (b) => Future c d,
+     *       Rejected:  (a) => Future c d
+     *     }
+     *
+     *     (Future a b).(Pattern) => Future c d
+     */
+
+  }, {
+    key: 'willMatchWith',
+    value: function willMatchWith(pattern) {
+      var deferred = new Deferred(); // eslint-disable-line prefer-const
+      var resolve = function resolve(handler) {
+        return function (value) {
+          return handler(value).listen({
+            onCancelled: function onCancelled() {
+              return deferred.cancel();
+            },
+            onResolved: function onResolved(newValue) {
+              return deferred.resolve(newValue);
+            },
+            onRejected: function onRejected(reason) {
+              return deferred.reject(reason);
+            }
+          });
+        };
+      };
+      this.listen({
+        onCancelled: resolve(pattern.Cancelled),
+        onResolved: resolve(pattern.Resolved),
+        onRejected: resolve(pattern.Rejected)
+      });
+
+      return deferred.future();
+    }
+
+    /*~
+     * stability: experimental
+     * type: |
+     *   (Future 'f 's).() => Future 's 'f
+     */
+
+  }, {
+    key: 'swap',
+    value: function swap() {
+      var deferred = new Deferred(); // eslint-disable-line prefer-const
+      this.listen({
+        onCancelled: function onCancelled() {
+          return deferred.cancel();
+        },
+        onRejected: function onRejected(reason) {
+          return deferred.resolve(reason);
+        },
+        onResolved: function onResolved(value) {
+          return deferred.reject(value);
+        }
+      });
+
+      return deferred.future();
+    }
+
+    // ---[ Debugging ]--------------------------------------------------
+    /*~
+     * stability: experimental
+     * type: |
+     *   (Future 'f 's).() => String
+     */
+
+  }, {
+    key: 'toString',
+    value: function toString() {
+      var listeners = this._listeners.length;
+      var state = this._state;
+
+      return 'folktale:Future(' + state + ', ' + listeners + ' listeners)';
+    }
+
+    /*~
+     * stability: experimental
+     * type: |
+     *   (Future 'f 's).() => String
+     */
+
+  }, {
+    key: 'inspect',
+    value: function inspect() {
+      return this.toString();
+    }
+
+    /*~
+     * stability: experimental
+     * type: |
+     *   forall e, v:
+     *     (Future e v).() => Promise v e
+     */
+
+  }, {
+    key: 'toPromise',
+    value: function toPromise() {
+      return require('../../conversions/future-to-promise')(this);
+    }
+  }, {
+    key: '_state',
+    get: function get() {
+      throw new TypeError('Future.prototype._state should be implemented in an inherited object.');
+    }
+
+    /*~
+     * isRequired: true
+     * type: |
+     *   get (Future 'f 's) => Array (DeferredListener 'f 's)
+     */
+
+  }, {
+    key: '_listeners',
+    get: function get() {
+      throw new TypeError('Future.prototype._listeners should be implemented in an inherited object.');
+    }
+  }]);
+
+  return Future;
+}();
+
+// ---[ Constructing futures ]-----------------------------------------
+
+
+Object.assign(Future, {
+  /*~
+   * stability: experimental
+   * type: |
+   *   forall a, b:
+   *     (Future).(b) => Future a b
+   */
+  of: function of(value) {
+    var result = new Future(); // eslint-disable-line prefer-const
+    result._state = Resolved(value);
+    return result;
+  },
+
+
+  /*~
+   * stability: experimental
+   * type: |
+   *   forall a, b: (Future).(a) => Future a b
+   */
+  rejected: function rejected(reason) {
+    var result = new Future(); // eslint-disable-line prefer-const
+    result._state = Rejected(reason);
+    return result;
+  },
+
+
+  /*~
+   * stability: experimental
+   * type: |
+   *   forall e, v: (Promise v e) => Future e v
+   */
+  fromPromise: function fromPromise(aPromise) {
+    return require('../../conversions/promise-to-future')(aPromise);
+  }
+});
+
+provideAliases(Future);
+provideAliases(Future.prototype);
+
+// --[ Exports ]-------------------------------------------------------
+module.exports = Future;
+},{"../../conversions/future-to-promise":21,"../../conversions/promise-to-future":29,"../../helpers/define":64,"../../helpers/provide-fantasy-land-aliases":67,"./_deferred":9,"./_execution-state":10}],12:[function(require,module,exports){
+'use strict';
+
+//----------------------------------------------------------------------
+//
+// This source file is part of the Folktale project.
+//
+// Licensed under MIT. See LICENCE for full licence information.
+// See CONTRIBUTORS for the list of contributors to the project.
+//
+//----------------------------------------------------------------------
+
+var Future = require('./_future');
+
+/*~
+ * stability: experimental
+ * name: module folktale/concurrency/future
+ */
+module.exports = {
+  of: Future.of,
+  rejected: Future.rejected,
+  fromPromise: Future.fromPromise,
+  _Deferred: require('./_deferred'),
+  _ExecutionState: require('./_execution-state'),
+  _Future: Future
+};
+},{"./_deferred":9,"./_execution-state":10,"./_future":11}],13:[function(require,module,exports){
+'use strict';
+
+//----------------------------------------------------------------------
+//
+// This source file is part of the Folktale project.
+//
+// Licensed under MIT. See LICENCE for full licence information.
+// See CONTRIBUTORS for the list of contributors to the project.
+//
+//----------------------------------------------------------------------
+
+
+/*~
+ * stability: experimental
+ * name: module folktale/concurrency
+ */
+module.exports = {
+  future: require('./future'),
+  task: require('./task')
+};
+},{"./future":12,"./task":17}],14:[function(require,module,exports){
+"use strict";
+
+var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
+
+function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
+
+//----------------------------------------------------------------------
+//
+// This source file is part of the Folktale project.
+//
+// Licensed under MIT. See LICENCE for full licence information.
+// See CONTRIBUTORS for the list of contributors to the project.
+//
+//----------------------------------------------------------------------
+
+/*~ stability: experimental */
+var TaskExecution = function () {
+  /*~*/
+  function TaskExecution(task, deferred) {
+    _classCallCheck(this, TaskExecution);
+
+    this._task = task;
+    this._deferred = deferred;
+  }
+
+  /*~*/
+
+
+  _createClass(TaskExecution, [{
+    key: "cancel",
+    value: function cancel() {
+      this._deferred.maybeCancel();
+      return this;
+    }
+
+    /*~*/
+
+  }, {
+    key: "listen",
+    value: function listen(pattern) {
+      this._deferred.listen(pattern);
+      return this;
+    }
+
+    /*~*/
+
+  }, {
+    key: "promise",
+    value: function promise() {
+      return this._deferred.promise();
+    }
+
+    /*~*/
+
+  }, {
+    key: "future",
+    value: function future() {
+      return this._deferred.future();
+    }
+  }]);
+
+  return TaskExecution;
+}();
+
+module.exports = TaskExecution;
+},{}],15:[function(require,module,exports){
+'use strict';
+
+var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
+
+function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
+
+//----------------------------------------------------------------------
+//
+// This source file is part of the Folktale project.
+//
+// Licensed under MIT. See LICENCE for full licence information.
+// See CONTRIBUTORS for the list of contributors to the project.
+//
+//----------------------------------------------------------------------
+
+var provideAliases = require('../../helpers/provide-fantasy-land-aliases');
+var defer = require('../../helpers/defer');
+var Deferred = require('../future/_deferred');
+var TaskExecution = require('./_task-execution');
+
+var noop = function noop() {};
+
+/*~ stability: experimental */
+
+var Task = function () {
+  /*~
+   * stability: experimental
+   * type: |
+   *   forall value, reason:
+   *     new (
+   *       ({
+   *          resolve: (value) => Void,
+   *          reject: (reason) => Void,
+   *          cancel: () => Void,
+   *          cleanup: (() => Void) => Void,
+   *          onCancelled: (() => Void) => Void,
+   *          get isCancelled: Boolean
+   *        }) => Void
+   *     ) => Task value reason
+   */
+  function Task(computation) {
+    _classCallCheck(this, Task);
+
+    this._computation = computation;
+  }
+
+  /*~
+   * stability: experimental
+   * type: |
+   *   forall e, v1, v2:
+   *     (Task e v1).((v1) => Task e v2) => Task e v2
+   */
+
+
+  _createClass(Task, [{
+    key: 'chain',
+    value: function chain(transformation) {
+      var _this = this;
+
+      return new Task(function (resolver) {
+        var execution = _this.run();
+        resolver.onCancelled(function () {
+          return execution.cancel();
+        });
+
+        execution.listen({
+          onCancelled: resolver.cancel,
+          onRejected: resolver.reject,
+          onResolved: function onResolved(value) {
+            transformation(value).run().listen({
+              onCancelled: resolver.cancel,
+              onRejected: resolver.reject,
+              onResolved: resolver.resolve
+            });
+          }
+        });
+      });
+    }
+
+    /*~
+     * stability: experimental
+     * type: |
+     *   forall e, v1, v2:
+     *     (Task e v1).((v1) => v2) => Task e v2
+     */
+
+  }, {
+    key: 'map',
+    value: function map(transformation) {
+      var _this2 = this;
+
+      return new Task(function (resolver) {
+        var execution = _this2.run();
+        resolver.onCancelled(function () {
+          return execution.cancel();
+        });
+
+        execution.listen({
+          onCancelled: resolver.cancel,
+          onRejected: resolver.reject,
+          onResolved: function onResolved(value) {
+            return resolver.resolve(transformation(value));
+          }
+        });
+      });
+    }
+
+    /*~
+     * stability: experimental
+     * type: |
+     *   forall e1, e2, v:
+     *     (Task e1 v).((e1) => e2) => Task e2 v
+     */
+
+  }, {
+    key: 'mapRejected',
+    value: function mapRejected(transformation) {
+      var _this3 = this;
+
+      return new Task(function (resolver) {
+        var execution = _this3.run();
+        resolver.onCancelled(function () {
+          return execution.cancel();
+        });
+
+        execution.listen({
+          onCancelled: resolver.cancel,
+          onRejected: function onRejected(reason) {
+            return resolver.reject(transformation(reason));
+          },
+          onResolved: resolver.resolve
+        });
+      });
+    }
+
+    /*~
+     * stability: experimental
+     * type: |
+     *   forall e, v1, v2:
+     *     (Task e ((v1) => v2)).(Task e v1) => Task e v2
+     */
+
+  }, {
+    key: 'apply',
+    value: function apply(task) {
+      return this.chain(function (f) {
+        return task.map(f);
+      });
+    }
+
+    /*~
+     * stability: experimental
+     * type: |
+     *   forall e1, e2, v1, v2:
+     *     (Task e1 v1).((e1) => e2, (v1) => v2) => Task e2 v2
+     */
+
+  }, {
+    key: 'bimap',
+    value: function bimap(rejectionTransformation, successTransformation) {
+      var _this4 = this;
+
+      return new Task(function (resolver) {
+        var execution = _this4.run();
+        resolver.onCancelled(function () {
+          return execution.cancel();
+        });
+
+        execution.listen({
+          onCancelled: resolver.cancel,
+          onRejected: function onRejected(reason) {
+            return resolver.reject(rejectionTransformation(reason));
+          },
+          onResolved: function onResolved(value) {
+            return resolver.resolve(successTransformation(value));
+          }
+        });
+      });
+    }
+
+    /*~
+     * stability: experimental
+     * type: |
+     *   forall e1, e2, v1, v2:
+     *     type Pattern = { row |
+     *       Cancelled: ()  => Task e2 v2,
+     *       Resolved:  (b) => Task e2 v2,
+     *       Rejected:  (a) => Task e2 v2
+     *     }
+     *
+     *     (Task e1 v1).(Pattern) => Task e2 v2
+     */
+
+  }, {
+    key: 'willMatchWith',
+    value: function willMatchWith(pattern) {
+      var _this5 = this;
+
+      return new Task(function (resolver) {
+        var execution = _this5.run();
+        resolver.onCancelled(function () {
+          return execution.cancel();
+        });
+
+        var resolve = function resolve(handler) {
+          return function (value) {
+            return handler(value).run().listen({
+              onCancelled: resolver.cancel,
+              onRejected: resolver.reject,
+              onResolved: resolver.resolve
+            });
+          };
+        };
+        execution.listen({
+          onCancelled: resolve(function (_) {
+            return pattern.Cancelled();
+          }),
+          onRejected: resolve(pattern.Rejected),
+          onResolved: resolve(pattern.Resolved)
+        });
+      });
+    }
+
+    /*~
+     * stability: experimental
+     * type: |
+     *   forall e, v: (Task e v).() => Task v e
+     */
+
+  }, {
+    key: 'swap',
+    value: function swap() {
+      var _this6 = this;
+
+      return new Task(function (resolver) {
+        var execution = _this6.run(); // eslint-disable-line prefer-const
+        resolver.onCancelled(function () {
+          return execution.cancel();
+        });
+
+        execution.listen({
+          onCancelled: resolver.cancel,
+          onRejected: resolver.resolve,
+          onResolved: resolver.reject
+        });
+      });
+    }
+
+    /*~
+     * stability: experimental
+     * type: |
+     *   forall e, e2, v:
+     *     (Task e v).((e) => Task e2 v) => Task e2 v
+     */
+
+  }, {
+    key: 'orElse',
+    value: function orElse(handler) {
+      var _this7 = this;
+
+      return new Task(function (resolver) {
+        var execution = _this7.run();
+        resolver.onCancelled(function () {
+          return execution.cancel();
+        });
+
+        execution.listen({
+          onCancelled: resolver.cancel,
+          onResolved: resolver.resolve,
+          onRejected: function onRejected(reason) {
+            handler(reason).run().listen({
+              onCancelled: resolver.cancel,
+              onRejected: resolver.reject,
+              onResolved: resolver.resolve
+            });
+          }
+        });
+      });
+    }
+
+    /*~
+     * stability: experimental
+     * type: |
+     *   forall e, v:
+     *     (Task e v).(Task e v) => Task e v
+     */
+
+  }, {
+    key: 'or',
+    value: function or(that) {
+      var _this8 = this;
+
+      return new Task(function (resolver) {
+        var thisExecution = _this8.run(); // eslint-disable-line prefer-const
+        var thatExecution = that.run(); // eslint-disable-line prefer-const
+        var done = false;
+
+        resolver.onCancelled(function () {
+          thisExecution.cancel();
+          thatExecution.cancel();
+        });
+
+        var guard = function guard(fn, execution) {
+          return function (value) {
+            if (!done) {
+              done = true;
+              execution.cancel();
+              fn(value);
+            }
+          };
+        };
+
+        thisExecution.listen({
+          onRejected: guard(resolver.reject, thatExecution),
+          onCancelled: guard(resolver.cancel, thatExecution),
+          onResolved: guard(resolver.resolve, thatExecution)
+        });
+
+        thatExecution.listen({
+          onRejected: guard(resolver.reject, thisExecution),
+          onCancelled: guard(resolver.cancel, thisExecution),
+          onResolved: guard(resolver.resolve, thisExecution)
+        });
+      });
+    }
+
+    /*~
+     * stability: experimental
+     * type: |
+     *   forall e, v1, v2:
+     *     (Task e v1).(Task e v2) => Task e (v1, v2)
+     */
+
+  }, {
+    key: 'and',
+    value: function and(that) {
+      var _this9 = this;
+
+      return new Task(function (resolver) {
+        // eslint-disable-line max-statements
+        var thisExecution = _this9.run(); // eslint-disable-line prefer-const
+        var thatExecution = that.run(); // eslint-disable-line prefer-const
+        var valueLeft = null;
+        var valueRight = null;
+        var doneLeft = false;
+        var doneRight = false;
+        var cancelled = false;
+
+        resolver.onCancelled(function () {
+          thisExecution.cancel();
+          thatExecution.cancel();
+        });
+
+        var guardResolve = function guardResolve(setter) {
+          return function (value) {
+            if (cancelled) return;
+
+            setter(value);
+            if (doneLeft && doneRight) {
+              resolver.resolve([valueLeft, valueRight]);
+            }
+          };
+        };
+
+        var guardRejection = function guardRejection(fn, execution) {
+          return function (value) {
+            if (cancelled) return;
+
+            cancelled = true;
+            execution.cancel();
+            fn(value);
+          };
+        };
+
+        thisExecution.listen({
+          onRejected: guardRejection(resolver.reject, thatExecution),
+          onCancelled: guardRejection(resolver.cancel, thatExecution),
+          onResolved: guardResolve(function (x) {
+            valueLeft = x;
+            doneLeft = true;
+          })
+        });
+
+        thatExecution.listen({
+          onRejected: guardRejection(resolver.reject, thisExecution),
+          onCancelled: guardRejection(resolver.cancel, thisExecution),
+          onResolved: guardResolve(function (x) {
+            valueRight = x;
+            doneRight = true;
+          })
+        });
+      });
+    }
+
+    /*~
+     * stability: experimental
+     * type: |
+     *   forall e, v: (Task e v).() => TaskExecution e v
+     */
+
+  }, {
+    key: 'run',
+    value: function run() {
+      var deferred = new Deferred(); // eslint-disable-line prefer-const
+      var cleanups = [];
+      var cancellations = [];
+      var isCancelled = false;
+      var done = false;
+
+      deferred.listen({
+        onCancelled: function onCancelled(_) {
+          done = true;
+          isCancelled = true;
+          cancellations.forEach(function (f) {
+            return f();
+          });
+          cleanups.forEach(function (f) {
+            return f();
+          });
+          cancellations = [];
+          cleanups = [];
+        },
+
+        onResolved: function onResolved(_value) {
+          done = true;
+          cleanups.forEach(function (f) {
+            return f();
+          });
+          cleanups = [];
+          cancellations = [];
+        },
+
+        onRejected: function onRejected(_reason) {
+          done = true;
+          cleanups.forEach(function (f) {
+            return f();
+          });
+          cleanups = [];
+          cancellations = [];
+        }
+      });
+
+      var resources = this._computation({
+        reject: function reject(error) {
+          deferred.reject(error);
+        },
+        resolve: function resolve(value) {
+          deferred.resolve(value);
+        },
+        cancel: function cancel(_) {
+          deferred.maybeCancel();
+        },
+
+        get isCancelled() {
+          return isCancelled;
+        },
+        cleanup: function cleanup(f) {
+          if (done) {
+            throw new Error('Can\'t attach a cleanup handler after the task is settled.');
+          }
+          cleanups.push(f);
+        },
+        onCancelled: function onCancelled(f) {
+          if (done) {
+            throw new Error('Can\'t attach a cancellation handler after the task is settled.');
+          }
+          cancellations.push(f);
+        }
+      });
+
+      return new TaskExecution(this, deferred);
+    }
+  }]);
+
+  return Task;
+}();
+
+Object.assign(Task, {
+  /*~
+   * stability: experimental
+   * type: |
+   *   forall e, v: (v) => Task e v
+   */
+  of: function of(value) {
+    return new Task(function (resolver) {
+      return resolver.resolve(value);
+    });
+  },
+
+
+  /*~
+   * stability: experimental
+   * type: |
+   *   forall e, v: (e) => Task e v
+   */
+  rejected: function rejected(reason) {
+    return new Task(function (resolver) {
+      return resolver.reject(reason);
+    });
+  }
+});
+
+provideAliases(Task);
+provideAliases(Task.prototype);
+
+module.exports = Task;
+},{"../../helpers/defer":62,"../../helpers/provide-fantasy-land-aliases":67,"../future/_deferred":9,"./_task-execution":14}],16:[function(require,module,exports){
+'use strict';
+
+//----------------------------------------------------------------------
+//
+// This source file is part of the Folktale project.
+//
+// Licensed under MIT. See LICENCE for full licence information.
+// See CONTRIBUTORS for the list of contributors to the project.
+//
+//----------------------------------------------------------------------
+
+var Task = require('./_task');
+
+/*~
+ * stability: experimental
+ * type: |
+ *   forall v, e: (GeneratorInstance [Task e v Any]) => Any => Task e [v] Any
+ */
+var nextGeneratorValue = function nextGeneratorValue(generator) {
+  return function (value) {
+    var _generator$next = generator.next(value),
+        task = _generator$next.value,
+        done = _generator$next.done;
+
+    return !done ? task.chain(nextGeneratorValue(generator)
+    /* else */) : task;
+  };
+};
+
+/*~
+ * stability: experimental
+ * type: |
+ *   forall v, e: (Generator [Task e v Any]) => Task e [v] Any
+ */
+var taskDo = function taskDo(generatorFn) {
+  return new Task(function (resolver) {
+    return resolver.resolve(generatorFn());
+  }).chain(function (generator) {
+    return nextGeneratorValue(generator)();
+  });
+};
+
+module.exports = taskDo;
+},{"./_task":15}],17:[function(require,module,exports){
+'use strict';
+
+//----------------------------------------------------------------------
+//
+// This source file is part of the Folktale project.
+//
+// Licensed under MIT. See LICENCE for full licence information.
+// See CONTRIBUTORS for the list of contributors to the project.
+//
+//----------------------------------------------------------------------
+
+var Task = require('./_task');
+
+/*~
+ * stability: experimental
+ * name: module folktale/concurrency/task
+ */
+module.exports = {
+  of: Task.of,
+  rejected: Task.rejected,
+  task: require('./task'),
+  waitAny: require('./wait-any'),
+  waitAll: require('./wait-all'),
+  do: require('./do'),
+  _Task: Task,
+  _TaskExecution: require('./_task-execution'),
+
+  /*~
+   * stability: experimental
+   * type: |
+   *    forall s, e:
+   *      ((Any..., (e, s) => Void) => Void)
+   *      => (Any...)
+   *      => Task e s
+   */
+  fromNodeback: function fromNodeback(aNodeback) {
+    return require('../../conversions/nodeback-to-task')(aNodeback);
+  },
+
+
+  /*~
+   * stability: experimental
+   * type: |
+   *   forall e, v:
+   *     ((Any...) => Promise v e) => (Any...) => Task e v
+   */
+  fromPromised: function fromPromised(aPromiseFn) {
+    return require('../../conversions/promised-to-task')(aPromiseFn);
+  }
+};
+},{"../../conversions/nodeback-to-task":25,"../../conversions/promised-to-task":30,"./_task":15,"./_task-execution":14,"./do":16,"./task":18,"./wait-all":19,"./wait-any":20}],18:[function(require,module,exports){
+'use strict';
+
+//----------------------------------------------------------------------
+//
+// This source file is part of the Folktale project.
+//
+// Licensed under MIT. See LICENCE for full licence information.
+// See CONTRIBUTORS for the list of contributors to the project.
+//
+//----------------------------------------------------------------------
+
+var Task = require('./_task');
+
+var noop = function noop() {};
+
+/*~
+ * stability: experimental
+ * type: |
+ *   forall value, reason:
+ *     (
+ *       ({
+ *          resolve: (value) => Void,
+ *          reject: (reason) => Void,
+ *          cancel: () => Void,
+ *          cleanup: (() => Void) => Void,
+ *          onCancelled: (() => Void) => Void,
+ *          get isCancelled: Boolean
+ *        }) => Void
+ *     ) => Task reason value
+ */
+var task = function task(computation) {
+  return new Task(computation);
+};
+
+module.exports = task;
+},{"./_task":15}],19:[function(require,module,exports){
+'use strict';
+
+var _slicedToArray = function () { function sliceIterator(arr, i) { var _arr = []; var _n = true; var _d = false; var _e = undefined; try { for (var _i = arr[Symbol.iterator](), _s; !(_n = (_s = _i.next()).done); _n = true) { _arr.push(_s.value); if (i && _arr.length === i) break; } } catch (err) { _d = true; _e = err; } finally { try { if (!_n && _i["return"]) _i["return"](); } finally { if (_d) throw _e; } } return _arr; } return function (arr, i) { if (Array.isArray(arr)) { return arr; } else if (Symbol.iterator in Object(arr)) { return sliceIterator(arr, i); } else { throw new TypeError("Invalid attempt to destructure non-iterable instance"); } }; }();
+
+function _toConsumableArray(arr) { if (Array.isArray(arr)) { for (var i = 0, arr2 = Array(arr.length); i < arr.length; i++) { arr2[i] = arr[i]; } return arr2; } else { return Array.from(arr); } }
+
+//----------------------------------------------------------------------
+//
+// This source file is part of the Folktale project.
+//
+// Licensed under MIT. See LICENCE for full licence information.
+// See CONTRIBUTORS for the list of contributors to the project.
+//
+//----------------------------------------------------------------------
+
+var _require = require('./_task'),
+    of = _require.of;
+
+/*~
+ * stability: experimental
+ * type: |
+ *   forall v, e: ([Task e v Any]) => Task e [v] Any
+ */
+
+
+var waitAll = function waitAll(tasks) {
+  return tasks.reduce(function (a, b) {
+    return a.and(b).map(function (_ref) {
+      var _ref2 = _slicedToArray(_ref, 2),
+          xs = _ref2[0],
+          x = _ref2[1];
+
+      return [].concat(_toConsumableArray(xs), [x]);
+    });
+  }, of([]));
+};
+
+module.exports = waitAll;
+},{"./_task":15}],20:[function(require,module,exports){
+'use strict';
+
+//----------------------------------------------------------------------
+//
+// This source file is part of the Folktale project.
+//
+// Licensed under MIT. See LICENCE for full licence information.
+// See CONTRIBUTORS for the list of contributors to the project.
+//
+//----------------------------------------------------------------------
+
+
+/*~
+ * stability: experimental
+ * type: |
+ *   forall v, e: ([Task e v Any]) => Task e v Any
+ */
+var waitAny = function waitAny(tasks) {
+  if (tasks.length === 0) {
+    throw new Error('Task.waitAny() requires a non-empty array of tasks.');
+  }
+
+  return tasks.reduce(function (a, b) {
+    return a.or(b);
+  });
+};
+
+module.exports = waitAny;
+},{}],21:[function(require,module,exports){
+'use strict';
+
+//----------------------------------------------------------------------
+//
+// This source file is part of the Folktale project.
+//
+// Licensed under MIT. See LICENCE for full licence information.
+// See CONTRIBUTORS for the list of contributors to the project.
+//
+//----------------------------------------------------------------------
+
+var _require = require('../concurrency/future/_execution-state'),
+    Cancelled = _require.Cancelled;
+
+/*~
+ * stability: experimental
+ * type: |
+ *   forall e, v:
+ *     (Future e v) => Promise v e
+ */
+
+
+var futureToPromise = function futureToPromise(aFuture) {
+  return new Promise(function (resolve, reject) {
+    aFuture.listen({
+      onResolved: function onResolved(value) {
+        return resolve(value);
+      },
+      onRejected: function onRejected(error) {
+        return reject(error);
+      },
+      onCancelled: function onCancelled() {
+        return reject(Cancelled());
+      }
+    });
+  });
+};
+
+module.exports = futureToPromise;
+},{"../concurrency/future/_execution-state":10}],22:[function(require,module,exports){
+'use strict';
+
+//----------------------------------------------------------------------
+//
+// This source file is part of the Folktale project.
+//
+// Licensed under MIT. See LICENCE for full licence information.
+// See CONTRIBUTORS for the list of contributors to the project.
+//
+//----------------------------------------------------------------------
+
+/*~
+ * stability: stable
+ * name: module folktale/conversions
+ */
+module.exports = {
+  resultToValidation: require('./result-to-validation'),
+  resultToMaybe: require('./result-to-maybe'),
+  validationToResult: require('./validation-to-result'),
+  validationToMaybe: require('./validation-to-maybe'),
+  maybeToValidation: require('./maybe-to-validation'),
+  maybeToResult: require('./maybe-to-result'),
+  nullableToValidation: require('./nullable-to-validation'),
+  nullableToResult: require('./nullable-to-result'),
+  nullableToMaybe: require('./nullable-to-maybe'),
+  nodebackToTask: require('./nodeback-to-task'),
+  futureToPromise: require('./future-to-promise'),
+  promiseToFuture: require('./promise-to-future'),
+  promisedToTask: require('./promised-to-task')
+};
+},{"./future-to-promise":21,"./maybe-to-result":23,"./maybe-to-validation":24,"./nodeback-to-task":25,"./nullable-to-maybe":26,"./nullable-to-result":27,"./nullable-to-validation":28,"./promise-to-future":29,"./promised-to-task":30,"./result-to-maybe":31,"./result-to-validation":32,"./validation-to-maybe":33,"./validation-to-result":34}],23:[function(require,module,exports){
+'use strict';
+
+//----------------------------------------------------------------------
+//
+// This source file is part of the Folktale project.
+//
+// Licensed under MIT. See LICENCE for full licence information.
+// See CONTRIBUTORS for the list of contributors to the project.
+//
+//----------------------------------------------------------------------
+
+var _require = require('../result/result'),
+    Error = _require.Error,
+    Ok = _require.Ok;
+
+/*~
+ * stability: stable
+ * authors:
+ *   - "@boris-marinov"
+ *
+ * type: |
+ *   forall a, b:
+ *     (Maybe a, b) => Result b a
+ */
+
+
+var maybeToResult = function maybeToResult(aMaybe, failureValue) {
+  return aMaybe.matchWith({
+    Nothing: function Nothing() {
+      return Error(failureValue);
+    },
+    Just: function Just(_ref) {
+      var value = _ref.value;
+      return Ok(value);
+    }
+  });
+};
+
+module.exports = maybeToResult;
+},{"../result/result":76}],24:[function(require,module,exports){
+'use strict';
+
+//----------------------------------------------------------------------
+//
+// This source file is part of the Folktale project.
+//
+// Licensed under MIT. See LICENCE for full licence information.
+// See CONTRIBUTORS for the list of contributors to the project.
+//
+//----------------------------------------------------------------------
+
+var _require = require('../validation/validation'),
+    Success = _require.Success,
+    Failure = _require.Failure;
+
+/*~
+ * stability: stable
+ * authors:
+ *   - "@boris-marinov"
+ *
+ * type: |
+ *   forall a, b:
+ *     (Maybe a, b) => Validation b a
+ */
+
+
+var maybeToValidation = function maybeToValidation(aMaybe, failureValue) {
+  return aMaybe.matchWith({
+    Nothing: function Nothing() {
+      return Failure(failureValue);
+    },
+    Just: function Just(_ref) {
+      var value = _ref.value;
+      return Success(value);
+    }
+  });
+};
+
+module.exports = maybeToValidation;
+},{"../validation/validation":80}],25:[function(require,module,exports){
+'use strict';
+
+//----------------------------------------------------------------------
+//
+// This source file is part of the Folktale project.
+//
+// Licensed under MIT. See LICENCE for full licence information.
+// See CONTRIBUTORS for the list of contributors to the project.
+//
+//----------------------------------------------------------------------
+
+var _require = require('../concurrency/task'),
+    task = _require.task;
+
+/*~
+ * stability: experimental
+ * authors:
+ *   - "@rpearce"
+ * type: |
+ *    forall s, e, r:
+ *    ((Any..., (e, s) => Void) => Void)
+ *    => (Any...)
+ *    => Task e s r
+ */
+
+var nodebackToTask = function nodebackToTask(fn) {
+  return function () {
+    for (var _len = arguments.length, args = Array(_len), _key = 0; _key < _len; _key++) {
+      args[_key] = arguments[_key];
+    }
+
+    return task(function (r) {
+      return fn.apply(undefined, args.concat([function (err, data) {
+        return err ? r.reject(err) : r.resolve(data);
+      }]));
+    });
+  };
+};
+
+module.exports = nodebackToTask;
+},{"../concurrency/task":17}],26:[function(require,module,exports){
+'use strict';
+
+//----------------------------------------------------------------------
+//
+// This source file is part of the Folktale project.
+//
+// Licensed under MIT. See LICENCE for full licence information.
+// See CONTRIBUTORS for the list of contributors to the project.
+//
+//----------------------------------------------------------------------
+
+var _require = require('../maybe/maybe'),
+    Nothing = _require.Nothing,
+    Just = _require.Just;
+
+/*~
+ * stability: stable
+ * authors:
+ *   - Quildreen Motta
+ *
+ * type: |
+ *   forall a:
+ *     (a or None) => Maybe a
+ */
+
+
+var nullableToMaybe = function nullableToMaybe(a) {
+  return a != null ? Just(a) : /*else*/Nothing();
+};
+
+module.exports = nullableToMaybe;
+},{"../maybe/maybe":74}],27:[function(require,module,exports){
+'use strict';
+
+//----------------------------------------------------------------------
+//
+// This source file is part of the Folktale project.
+//
+// Licensed under MIT. See LICENCE for full licence information.
+// See CONTRIBUTORS for the list of contributors to the project.
+//
+//----------------------------------------------------------------------
+
+var _require = require('../result/result'),
+    Error = _require.Error,
+    Ok = _require.Ok;
+
+/*~
+ * stability: stable
+ * authors:
+ *   - "@boris-marinov"
+ *
+ * type: |
+ *   forall a:
+ *     (a or None) => Result None a
+ */
+
+
+var nullableToResult = function nullableToResult(a) {
+  return a != null ? Ok(a) : /*else*/Error(a);
+};
+
+module.exports = nullableToResult;
+},{"../result/result":76}],28:[function(require,module,exports){
+'use strict';
+
+//----------------------------------------------------------------------
+//
+// This source file is part of the Folktale project.
+//
+// Licensed under MIT. See LICENCE for full licence information.
+// See CONTRIBUTORS for the list of contributors to the project.
+//
+//----------------------------------------------------------------------
+
+var _require = require('../validation/validation'),
+    Success = _require.Success,
+    Failure = _require.Failure;
+
+/*~
+ * stability: stable
+ * authors:
+ *   - "@boris-marinov"
+ *
+ * type: |
+ *   forall a, b:
+ *     (a or None, b) => Validation b a
+ */
+
+
+var nullableToValidation = function nullableToValidation(a, fallbackValue) {
+  return a != null ? Success(a) : /*else*/Failure(fallbackValue);
+};
+
+module.exports = nullableToValidation;
+},{"../validation/validation":80}],29:[function(require,module,exports){
+'use strict';
+
+//----------------------------------------------------------------------
+//
+// This source file is part of the Folktale project.
+//
+// Licensed under MIT. See LICENCE for full licence information.
+// See CONTRIBUTORS for the list of contributors to the project.
+//
+//----------------------------------------------------------------------
+
+var _require = require('../concurrency/future/_execution-state'),
+    Cancelled = _require.Cancelled;
+
+var Deferred = require('../concurrency/future/_deferred');
+
+/*~
+ * stability: experimental
+ * type: |
+ *   forall e, v:
+ *     (Promise v e) => Future e v
+ */
+var promiseToFuture = function promiseToFuture(aPromise) {
+  var deferred = new Deferred();
+  aPromise.then(function (value) {
+    return deferred.resolve(value);
+  }, function (error) {
+    if (Cancelled.hasInstance(error)) {
+      deferred.cancel();
+    } else {
+      deferred.reject(error);
+    }
+  });
+  return deferred.future();
+};
+
+module.exports = promiseToFuture;
+},{"../concurrency/future/_deferred":9,"../concurrency/future/_execution-state":10}],30:[function(require,module,exports){
+'use strict';
+
+//----------------------------------------------------------------------
+//
+// This source file is part of the Folktale project.
+//
+// Licensed under MIT. See LICENCE for full licence information.
+// See CONTRIBUTORS for the list of contributors to the project.
+//
+//----------------------------------------------------------------------
+
+var _require = require('../concurrency/task'),
+    task = _require.task;
+
+/*~
+ * stability: experimental
+ * type: |
+ *   forall e, v, r:
+ *     ((Any...) => Promise v e) => (Any...) => Task e v r
+ */
+
+
+var promisedToTask = function promisedToTask(aPromiseFn) {
+  return function () {
+    for (var _len = arguments.length, args = Array(_len), _key = 0; _key < _len; _key++) {
+      args[_key] = arguments[_key];
+    }
+
+    return task(function (resolver) {
+      aPromiseFn.apply(undefined, args).then(function (value) {
+        return resolver.resolve(value);
+      }, function (error) {
+        return resolver.reject(error);
+      });
+    });
+  };
+};
+
+module.exports = promisedToTask;
+},{"../concurrency/task":17}],31:[function(require,module,exports){
+'use strict';
+
+//----------------------------------------------------------------------
+//
+// This source file is part of the Folktale project.
+//
+// Licensed under MIT. See LICENCE for full licence information.
+// See CONTRIBUTORS for the list of contributors to the project.
+//
+//----------------------------------------------------------------------
+
+var _require = require('../maybe/maybe'),
+    Just = _require.Just,
+    Nothing = _require.Nothing;
+
+/*~
+ * stability: stable
+ * authors:
+ *   - "@boris-marinov"
+ *
+ * type: |
+ *   forall a, b:
+ *     (Result a b) => Maybe b
+ */
+
+
+var resultToMaybe = function resultToMaybe(aResult) {
+  return aResult.matchWith({
+    Error: function Error(_ref) {
+      var _ = _ref.value;
+      return Nothing();
+    },
+    Ok: function Ok(_ref2) {
+      var value = _ref2.value;
+      return Just(value);
+    }
+  });
+};
+
+module.exports = resultToMaybe;
+},{"../maybe/maybe":74}],32:[function(require,module,exports){
+'use strict';
+
+//----------------------------------------------------------------------
+//
+// This source file is part of the Folktale project.
+//
+// Licensed under MIT. See LICENCE for full licence information.
+// See CONTRIBUTORS for the list of contributors to the project.
+//
+//----------------------------------------------------------------------
+
+var _require = require('../validation/validation'),
+    Success = _require.Success,
+    Failure = _require.Failure;
+
+/*~
+ * stability: stable
+ * authors:
+ *   - "@boris-marinov"
+ *
+ * type: |
+ *   forall a, b:
+ *     (Result a b) => Validation a b
+ */
+
+
+var resultToValidation = function resultToValidation(aResult) {
+  return aResult.matchWith({
+    Error: function Error(_ref) {
+      var value = _ref.value;
+      return Failure(value);
+    },
+    Ok: function Ok(_ref2) {
+      var value = _ref2.value;
+      return Success(value);
+    }
+  });
+};
+
+module.exports = resultToValidation;
+},{"../validation/validation":80}],33:[function(require,module,exports){
+'use strict';
+
+//----------------------------------------------------------------------
+//
+// This source file is part of the Folktale project.
+//
+// Licensed under MIT. See LICENCE for full licence information.
+// See CONTRIBUTORS for the list of contributors to the project.
+//
+//----------------------------------------------------------------------
+
+var _require = require('../maybe/maybe'),
+    Just = _require.Just,
+    Nothing = _require.Nothing;
+
+/*~
+ * stability: stable
+ * authors:
+ *   - "@boris-marinov"
+ *
+ * type: |
+ *   forall a, b:
+ *     (Validation a b) => Maybe b
+ */
+
+
+var validationToMaybe = function validationToMaybe(aValidation) {
+  return aValidation.matchWith({
+    Failure: function Failure() {
+      return Nothing();
+    },
+    Success: function Success(_ref) {
+      var value = _ref.value;
+      return Just(value);
+    }
+  });
+};
+
+module.exports = validationToMaybe;
+},{"../maybe/maybe":74}],34:[function(require,module,exports){
+'use strict';
+
+//----------------------------------------------------------------------
+//
+// This source file is part of the Folktale project.
+//
+// Licensed under MIT. See LICENCE for full licence information.
+// See CONTRIBUTORS for the list of contributors to the project.
+//
+//----------------------------------------------------------------------
+
+var _require = require('../result/result'),
+    Error = _require.Error,
+    Ok = _require.Ok;
+
+/*~
+ * stability: stable
+ * authors:
+ *   - "@boris-marinov"
+ *
+ * type: |
+ *   forall a, b:
+ *      (Validation a b) => Result a b
+ */
+
+
+var validationToResult = function validationToResult(aValidation) {
+  return aValidation.matchWith({
+    Failure: function Failure(_ref) {
+      var value = _ref.value;
+      return Error(value);
+    },
+    Success: function Success(_ref2) {
+      var value = _ref2.value;
+      return Ok(value);
+    }
+  });
+};
+
+module.exports = validationToResult;
+},{"../result/result":76}],35:[function(require,module,exports){
+'use strict';
+
+//----------------------------------------------------------------------
+//
+// This source file is part of the Folktale project.
+//
+// Licensed under MIT. See LICENCE for full licence information.
+// See CONTRIBUTORS for the list of contributors to the project.
+//
+//----------------------------------------------------------------------
+
+/*~
+ * stability: stable
+ * name: module folktale/core
+ */
+module.exports = {
+  lambda: require('./lambda'),
+  object: require('./object')
+};
+},{"./lambda":40,"./object":43}],36:[function(require,module,exports){
+"use strict";
+
+//----------------------------------------------------------------------
+//
+// This source file is part of the Folktale project.
+//
+// Licensed under MIT. See LICENCE for full licence information.
+// See CONTRIBUTORS for the list of contributors to the project.
+//
+//----------------------------------------------------------------------
+
+/*~
+ * stability: stable
+ * authors:
+ *   - Quildreen Motta
+ *
+ * signature: compose(f, g)(value)
+ * type: |
+ *   (('b) => 'c, ('a) => 'b) => (('a) => 'c)
+ */
+var compose = function compose(f, g) {
+  return function (value) {
+    return f(g(value));
+  };
+};
+
+// --[ Convenience ]---------------------------------------------------
+
+/*~
+ * stability: stable
+ * authors:
+ *   - Quildreen Motta
+ *
+ * type: |
+ *   (('b) => 'c) . (('a) => 'b) => (('a) => 'c)
+ */
+compose.infix = function (that) {
+  return compose(that, this);
+};
+
+/*~
+ * stability: stable
+ * authors:
+ *   - Quildreen Motta
+ *
+ * type: |
+ *   (Function...) -> Function
+ */
+compose.all = function () {
+  for (var _len = arguments.length, fns = Array(_len), _key = 0; _key < _len; _key++) {
+    fns[_key] = arguments[_key];
+  }
+
+  /* eslint-disable no-magic-numbers */
+  if (fns.length < 1) {
+    // eslint-disable-next-line prefer-rest-params
+    throw new TypeError("compose.all requires at least one argument, " + arguments.length + " given.");
+  }
+  return fns.reduce(compose);
+}; /* eslint-enable no-magic-numbers */
+
+// --[ Exports ]-------------------------------------------------------
+module.exports = compose;
+},{}],37:[function(require,module,exports){
+"use strict";
+
+//----------------------------------------------------------------------
+//
+// This source file is part of the Folktale project.
+//
+// Licensed under MIT. See LICENCE for full licence information.
+// See CONTRIBUTORS for the list of contributors to the project.
+//
+//----------------------------------------------------------------------
+
+/*~
+ * stability: stable
+ * authors:
+ *   - Quildreen Motta
+ *
+ * type: |
+ *   ('a) => ('b) => 'a
+ */
+var constant = function constant(value) {
+  return function (_) {
+    return value;
+  };
+};
+
+// --[ Exports ]-------------------------------------------------------
+module.exports = constant;
+},{}],38:[function(require,module,exports){
+"use strict";
+
+function _toConsumableArray(arr) { if (Array.isArray(arr)) { for (var i = 0, arr2 = Array(arr.length); i < arr.length; i++) { arr2[i] = arr[i]; } return arr2; } else { return Array.from(arr); } }
+
+//----------------------------------------------------------------------
+//
+// This source file is part of the Folktale project.
+//
+// Licensed under MIT. See LICENCE for full licence information.
+// See CONTRIBUTORS for the list of contributors to the project.
+//
+//----------------------------------------------------------------------
+
+/*~
+ * stability: experimental
+ * authors:
+ *   - Quildreen Motta
+ *
+ * type: |
+ *   (Number, (Any...) => 'a) => Any... => 'a or ((Any...) => 'a)
+ */
+var curry = function curry(arity, fn) {
+  var curried = function curried(oldArgs) {
+    return function () {
+      for (var _len = arguments.length, newArgs = Array(_len), _key = 0; _key < _len; _key++) {
+        newArgs[_key] = arguments[_key];
+      }
+
+      var allArgs = oldArgs.concat(newArgs);
+      var argCount = allArgs.length;
+
+      return argCount < arity ? curried(allArgs) : /* otherwise */fn.apply(undefined, _toConsumableArray(allArgs));
+    };
+  };
+
+  return curried([]);
+};
+
+// --[ Exports ]-------------------------------------------------------
+module.exports = curry;
+},{}],39:[function(require,module,exports){
+"use strict";
+
+//----------------------------------------------------------------------
+//
+// This source file is part of the Folktale project.
+//
+// Licensed under MIT. See LICENCE for full licence information.
+// See CONTRIBUTORS for the list of contributors to the project.
+//
+//----------------------------------------------------------------------
+
+/*~
+ * stability: stable
+ * authors:
+ *   - Quildreen Motta
+ *
+ * type: |
+ *   ('a) => 'a
+ */
+var identity = function identity(value) {
+  return value;
+};
+
+// --[ Exports ]-------------------------------------------------------
+module.exports = identity;
+},{}],40:[function(require,module,exports){
+'use strict';
+
+//----------------------------------------------------------------------
+//
+// This source file is part of the Folktale project.
+//
+// Licensed under MIT. See LICENCE for full licence information.
+// See CONTRIBUTORS for the list of contributors to the project.
+//
+//----------------------------------------------------------------------
+
+/*~
+ * stability: stable
+ * name: module folktale/core/lambda
+ */
+module.exports = {
+  identity: require('./identity'),
+  constant: require('./constant'),
+  curry: require('./curry'),
+  compose: require('./compose'),
+  partialize: require('./partialize')
+};
+},{"./compose":36,"./constant":37,"./curry":38,"./identity":39,"./partialize":41}],41:[function(require,module,exports){
+"use strict";
+
+//----------------------------------------------------------------------
+//
+// This source file is part of the Folktale project.
+//
+// Licensed under MIT. See LICENCE for full licence information.
+// See CONTRIBUTORS for the list of contributors to the project.
+//
+//----------------------------------------------------------------------
+
+var hole = {};
+
+/*~
+ * stability: experimental
+ * authors:
+ *   - Quildreen Motta
+ *
+ * type: |
+ *   (Number, (Any... => Any)) => ((hole | Any)...) => Any :: (throw TypeError)
+ */
+var partialize = function partialize(arity, fn) {
+  return function () {
+    for (var _len = arguments.length, args = Array(_len), _key = 0; _key < _len; _key++) {
+      args[_key] = arguments[_key];
+    }
+
+    //  eslint-disable-line max-statements
+    /* eslint-disable no-magic-numbers */
+    if (args.length < arity) {
+      throw new TypeError("The partial function takes at least " + arity + " arguments, but was given " + args.length + ".");
+    }
+
+    // Figure out if we have holes
+    var holes = 0;
+    for (var i = 0; i < args.length; ++i) {
+      if (args[i] === hole) {
+        holes += 1;
+      }
+    }
+
+    if (holes > 0) {
+      return partialize(holes, function () {
+        // eslint-disable-line max-statements
+        var realArgs = []; // eslint-disable-line prefer-const
+        var argIndex = 0;
+
+        for (var _i = 0; _i < args.length; ++_i) {
+          var arg = args[_i];
+          if (arg === hole) {
+            realArgs.push(arguments.length <= argIndex ? undefined : arguments[argIndex]);
+            argIndex += 1;
+          } else {
+            realArgs.push(arg);
+          }
+        }
+
+        return fn.apply(undefined, realArgs);
+      });
+    } else {
+      return fn.apply(undefined, args);
+    }
+  };
+}; /* eslint-enable no-magic-numbers */
+
+// ---[ Special Values ]-----------------------------------------------
+/*~ stability: experimental */
+partialize.hole = hole;
+
+// --[ Exports ]-------------------------------------------------------
+module.exports = partialize;
+},{}],42:[function(require,module,exports){
+"use strict";
+
+var _slicedToArray = function () { function sliceIterator(arr, i) { var _arr = []; var _n = true; var _d = false; var _e = undefined; try { for (var _i = arr[Symbol.iterator](), _s; !(_n = (_s = _i.next()).done); _n = true) { _arr.push(_s.value); if (i && _arr.length === i) break; } } catch (err) { _d = true; _e = err; } finally { try { if (!_n && _i["return"]) _i["return"](); } finally { if (_d) throw _e; } } return _arr; } return function (arr, i) { if (Array.isArray(arr)) { return arr; } else if (Symbol.iterator in Object(arr)) { return sliceIterator(arr, i); } else { throw new TypeError("Invalid attempt to destructure non-iterable instance"); } }; }();
+
+//----------------------------------------------------------------------
+//
+// This source file is part of the Folktale project.
+//
+// Licensed under MIT. See LICENCE for full licence information.
+// See CONTRIBUTORS for the list of contributors to the project.
+//
+//----------------------------------------------------------------------
+
+var define = Object.defineProperty;
+
+/*~
+ * stability: stable
+ * authors:
+ *   - Quildreen Motta
+ *
+ * complexity : O(n), n is the length of the array
+ * type: |
+ *   (Array (String or Symbol, 'a)) => Object 'a
+ */
+var fromPairs = function fromPairs(pairs) {
+  return pairs.reduce(function (r, _ref) {
+    var _ref2 = _slicedToArray(_ref, 2),
+        k = _ref2[0],
+        v = _ref2[1];
+
+    return define(r, k, { value: v,
+      writable: true,
+      enumerable: true,
+      configurable: true
+    });
+  }, {});
+};
+
+// --[ Exports ]-------------------------------------------------------
+module.exports = fromPairs;
+},{}],43:[function(require,module,exports){
+'use strict';
+
+//----------------------------------------------------------------------
+//
+// This source file is part of the Folktale project.
+//
+// Licensed under MIT. See LICENCE for full licence information.
+// See CONTRIBUTORS for the list of contributors to the project.
+//
+//----------------------------------------------------------------------
+
+/*~
+ * stability: stable
+ * name: module folktale/core/object
+ */
+module.exports = {
+  mapEntries: require('./map-entries'),
+  mapValues: require('./map-values'),
+  values: require('./values'),
+  toPairs: require('./to-pairs'),
+  fromPairs: require('./from-pairs')
+};
+},{"./from-pairs":42,"./map-entries":44,"./map-values":45,"./to-pairs":46,"./values":47}],44:[function(require,module,exports){
+"use strict";
+
+var _slicedToArray = function () { function sliceIterator(arr, i) { var _arr = []; var _n = true; var _d = false; var _e = undefined; try { for (var _i = arr[Symbol.iterator](), _s; !(_n = (_s = _i.next()).done); _n = true) { _arr.push(_s.value); if (i && _arr.length === i) break; } } catch (err) { _d = true; _e = err; } finally { try { if (!_n && _i["return"]) _i["return"](); } finally { if (_d) throw _e; } } return _arr; } return function (arr, i) { if (Array.isArray(arr)) { return arr; } else if (Symbol.iterator in Object(arr)) { return sliceIterator(arr, i); } else { throw new TypeError("Invalid attempt to destructure non-iterable instance"); } }; }();
+
+//----------------------------------------------------------------------
+//
+// This source file is part of the Folktale project.
+//
+// Licensed under MIT. See LICENCE for full licence information.
+// See CONTRIBUTORS for the list of contributors to the project.
+//
+//----------------------------------------------------------------------
+
+var hasOwnProperty = Object.prototype.hasOwnProperty;
+
+/*~
+ * stability: stable
+ * authors:
+ *   - Quildreen Motta
+ *
+ * complexity : O(n), n is the number of own enumerable properties
+ * type: |
+ *   (
+ *     object    : Object 'a,
+ *     transform : ((String, 'a)) => (String, 'b),
+ *     define    : (('x : Object 'b), String, 'b) => Object 'b :: mutates 'x
+ *   ) => Object 'b
+ */
+var mapEntries = function mapEntries(object, transform, define) {
+  return Object.keys(object).reduce(function (result, key) {
+    var _transform = transform([key, object[key]]),
+        _transform2 = _slicedToArray(_transform, 2),
+        newKey = _transform2[0],
+        newValue = _transform2[1];
+
+    return define(result, newKey, newValue);
+  }, {});
+};
+
+// --[ Convenience ]---------------------------------------------------
+/*~
+ * stability: stable
+ * authors:
+ *   - Quildreen Motta
+ *
+ * complexity : O(n), n is the number of own enumerable properties
+ * type: |
+ *   (Object 'a, ((String, 'a)) => (String, 'b)) => Object 'b
+ */
+mapEntries.overwrite = function (object, transform) {
+  return mapEntries(object, transform, function (result, key, value) {
+    result[key] = value;
+    return result;
+  });
+};
+
+/*~
+ * stability: stable
+ * authors:
+ *   - Quildreen Motta
+ *
+ * throws:
+ *   Error: when the transform returns duplicate property names.
+ *
+ * complexity : O(n), n is the number of own enumerable properties
+ * type: |
+ *   (Object 'a, ((String, 'a)) => (String, 'b)) => Object 'b :: throws Error
+ */
+mapEntries.unique = function (object, transform) {
+  return mapEntries(object, transform, function (result, key, value) {
+    if (hasOwnProperty.call(result, key)) {
+      throw new Error("The property " + key + " already exists in the resulting object.");
+    }
+    result[key] = value;
+    return result;
+  });
+};
+
+// --[ Exports ]-------------------------------------------------------
+module.exports = mapEntries;
+},{}],45:[function(require,module,exports){
+"use strict";
+
+//----------------------------------------------------------------------
+//
+// This source file is part of the Folktale project.
+//
+// Licensed under MIT. See LICENCE for full licence information.
+// See CONTRIBUTORS for the list of contributors to the project.
+//
+//----------------------------------------------------------------------
+
+/*~
+ * stability: stable
+ * authors:
+ *   - Quildreen Motta
+ *
+ * complexity: O(n), n is the number of own enumerable properties.
+ * type: |
+ *   (Object 'a, ('a) => 'b) => Object 'b
+ */
+var mapValues = function mapValues(object, transformation) {
+  var keys = Object.keys(object);
+  var result = {};
+
+  for (var i = 0; i < keys.length; ++i) {
+    var key = keys[i];
+    result[key] = transformation(object[key]);
+  }
+
+  return result;
+};
+
+// --[ Convenience ]---------------------------------------------------
+
+/*~
+ * stability: stable
+ * authors:
+ *   - Quildreen Motta
+ *
+ * complexity: O(n), n is the number of own enumerable properties.
+ * type: |
+ *   (Object 'a) . (('a) => 'b) => Object 'b
+ */
+mapValues.infix = function (transformation) {
+  return mapValues(this, transformation);
+};
+
+// --[ Exports ]-------------------------------------------------------
+module.exports = mapValues;
+},{}],46:[function(require,module,exports){
+"use strict";
+
+//----------------------------------------------------------------------
+//
+// This source file is part of the Folktale project.
+//
+// Licensed under MIT. See LICENCE for full licence information.
+// See CONTRIBUTORS for the list of contributors to the project.
+//
+//----------------------------------------------------------------------
+
+
+/*~
+ * stability : stable
+ * authors:
+ *   - Quildreen Motta
+ *
+ * complexity : O(n), n is the number of own enumerable properties
+ * type: |
+ *   (Object 'a) => Array (String or Symbol, 'a)
+ */
+var toPairs = function toPairs(object) {
+  return Object.keys(object).map(function (k) {
+    return [k, object[k]];
+  });
+};
+
+// --[ Exports ]-------------------------------------------------------
+module.exports = toPairs;
+},{}],47:[function(require,module,exports){
+"use strict";
+
+//----------------------------------------------------------------------
+//
+// This source file is part of the Folktale project.
+//
+// Licensed under MIT. See LICENCE for full licence information.
+// See CONTRIBUTORS for the list of contributors to the project.
+//
+//----------------------------------------------------------------------
+
+/*~
+ * stability : stable
+ * authors:
+ *   - Quildreen Motta
+ *
+ * complexity : O(n), n is the number of own enumerable properties.
+ * type: |
+ *   (Object 'a) => Array 'a
+ */
+var values = function values(object) {
+  return Object.keys(object).map(function (k) {
+    return object[k];
+  });
+};
+
+// --[ Exports ]-------------------------------------------------------
+module.exports = values;
+},{}],48:[function(require,module,exports){
+'use strict';
+
+//----------------------------------------------------------------------
+//
+// This source file is part of the Folktale project.
+//
+// Licensed under MIT. See LICENCE for full licence information.
+// See CONTRIBUTORS for the list of contributors to the project.
+//
+//----------------------------------------------------------------------
+
+var _require = require('../helpers/fantasy-land'),
+    ap = _require.ap;
+
+var curry = require('../core/lambda/curry');
+var warn = require('../helpers/warn-deprecated-method')('ap');
+var unsupported = require('../helpers/unsupported-method')('ap');
+
+var isNew = function isNew(a) {
+  return typeof a[ap] === 'function';
+};
+var isOld = function isOld(a) {
+  return typeof a.ap === 'function';
+};
+
+/*~
+ * stability: experimental
+ * authors:
+ *   - "@boris-marinov"
+ *   - Quildreen Motta
+ *
+ * type: |
+ *   forall F, a, b:
+ *     (F (a) => b, F a) => F b
+ *   where F is Apply
+ */
+var apply = function apply(applicativeFunction, applicativeValue) {
+  return isNew(applicativeValue) ? applicativeValue[ap](applicativeFunction) : isOld(applicativeFunction) ? warn(applicativeFunction.ap(applicativeValue)) : /*otherwise*/unsupported(applicativeFunction);
+};
+
+/*~
+ * stability: experimental
+ * authors:
+ *   - "@boris-marinov"
+ *   - Quildreen Motta
+ *
+ * type: |
+ *   forall F, a, b:
+ *     (F (a) => b) => (F a) => F b
+ *   where F is Apply
+ */
+apply.curried = curry(2, apply); // eslint-disable-line no-magic-numbers
+
+
+/*~
+ * stability: experimental
+ * authors:
+ *   - Quildreen Motta
+ *
+ * type: |
+ *   forall F, a, b:
+ *     (F (a) => b).(F a) => F b
+ *   where F is Apply
+ */
+apply.infix = function (applicativeValue) {
+  return apply(this, applicativeValue);
+};
+
+module.exports = apply;
+},{"../core/lambda/curry":38,"../helpers/fantasy-land":66,"../helpers/unsupported-method":69,"../helpers/warn-deprecated-method":70}],49:[function(require,module,exports){
+'use strict';
+
+//----------------------------------------------------------------------
+//
+// This source file is part of the Folktale project.
+//
+// Licensed under MIT. See LICENCE for full licence information.
+// See CONTRIBUTORS for the list of contributors to the project.
+//
+//----------------------------------------------------------------------
+
+var _require = require('../helpers/fantasy-land'),
+    flBimap = _require.bimap;
+
+var curry = require('../core/lambda/curry');
+var warn = require('../helpers/warn-deprecated-method')('bimap');
+var unsupported = require('../helpers/unsupported-method')('bimap');
+
+var isNew = function isNew(a) {
+  return typeof a[flBimap] === 'function';
+};
+var isOld = function isOld(a) {
+  return typeof a.bimap === 'function';
+};
+
+/*~
+ * stability: experimental
+ * authors:
+ *   - "@boris-marinov"
+ *   - Quildreen Motta
+ *
+ * type: |
+ *   forall F, a, b, c, d:
+ *     (F a b, (a) => c, (b) => d) => F c d
+ *   where F is Bifunctor
+ */
+var bimap = function bimap(bifunctor, transformLeft, transformRight) {
+  return isNew(bifunctor) ? bifunctor[flBimap](transformLeft, transformRight) : isOld(bifunctor) ? warn(bifunctor.bimap(transformLeft, transformRight)) : /*otherwise*/unsupported(bifunctor);
+};
+
+/*~
+ * stability: experimental
+ * authors:
+ *   - "@boris-marinov"
+ *   - Quildreen Motta
+ *
+ * type: |
+ *   forall F, a, b, c, d:
+ *     ((a) => c) => ((b) => d) => (F a b) => F c d
+ *   where F is Bifunctor
+ */
+bimap.curried = curry(3, function (transformLeft, transformRight, bifunctor) {
+  return (// eslint-disable-line no-magic-numbers
+    bimap(bifunctor, transformLeft, transformRight)
+  );
+});
+
+/*~
+ * stability: experimental
+ * authors:
+ *   - Quildreen Motta
+ *
+ * type: |
+ *   forall F, a, b, c, d:
+ *     (F a b).((a) => c, (b) => d) => F c d
+ *   where F is Bifunctor
+ */
+bimap.infix = function (transformLeft, transformRight) {
+  return bimap(this, transformLeft, transformRight);
+};
+
+module.exports = bimap;
+},{"../core/lambda/curry":38,"../helpers/fantasy-land":66,"../helpers/unsupported-method":69,"../helpers/warn-deprecated-method":70}],50:[function(require,module,exports){
+'use strict';
+
+//----------------------------------------------------------------------
+//
+// This source file is part of the Folktale project.
+//
+// Licensed under MIT. See LICENCE for full licence information.
+// See CONTRIBUTORS for the list of contributors to the project.
+//
+//----------------------------------------------------------------------
+
+var _require = require('../helpers/fantasy-land'),
+    flChain = _require.chain;
+
+var curry = require('../core/lambda/curry');
+var warn = require('../helpers/warn-deprecated-method')('chain');
+var unsupported = require('../helpers/unsupported-method')('chain');
+
+var isNew = function isNew(a) {
+  return typeof a[flChain] === 'function';
+};
+var isOld = function isOld(a) {
+  return typeof a.chain === 'function';
+};
+
+/*~
+ * stability: experimental
+ * authors:
+ *   - "@boris-marinov"
+ *   - Quildreen Motta
+ *
+ * type: |
+ *   forall C, a, b:
+ *     (C a, (a) => C b) => C b
+ *   where C is Chain
+ */
+var chain = function chain(monad, transformation) {
+  return isNew(monad) ? monad[flChain](transformation) : isOld(monad) ? warn(monad.chain(transformation)) : /*otherwise*/unsupported(monad);
+};
+
+/*~
+ * stability: experimental
+ * authors:
+ *   - "@boris-marinov"
+ *   - Quildreen Motta
+ *
+ * type: |
+ *   forall C, a, b:
+ *     ((a) => C b) => (C a) => C b
+ *   where C is Chain
+ */
+chain.curried = curry(2, function (transformation, monad) {
+  return (// eslint-disable-line no-magic-numbers
+    chain(monad, transformation)
+  );
+});
+
+/*~
+ * stability: experimental
+ * authors:
+ *   - Quildreen Motta
+ *
+ * type: |
+ *   forall C, a, b:
+ *     (C a).((a) => C b) => C b
+ *   where C is Chain
+ */
+chain.infix = function (transformation) {
+  return chain(this, transformation);
+};
+
+module.exports = chain;
+},{"../core/lambda/curry":38,"../helpers/fantasy-land":66,"../helpers/unsupported-method":69,"../helpers/warn-deprecated-method":70}],51:[function(require,module,exports){
+'use strict';
+
+//----------------------------------------------------------------------
+//
+// This source file is part of the Folktale project.
+//
+// Licensed under MIT. See LICENCE for full licence information.
+// See CONTRIBUTORS for the list of contributors to the project.
+//
+//----------------------------------------------------------------------
+
+var _require = require('../helpers/fantasy-land'),
+    flConcat = _require.concat;
+
+var curry = require('../core/lambda/curry');
+var warn = require('../helpers/warn-deprecated-method')('concat');
+var unsupported = require('../helpers/unsupported-method')('concat');
+
+var isNewSemigroup = function isNewSemigroup(a) {
+  return typeof a[flConcat] === 'function';
+};
+var isOldSemigroup = function isOldSemigroup(a) {
+  return typeof a.concat === 'function';
+};
+
+/*~
+ * stability: experimental
+ * authors:
+ *   - "@boris-marinov"
+ *   - Quildreen Motta
+ *
+ * type: |
+ *   forall S, a:
+ *     (S a, S a) => S a
+ *   where S is Semigroup
+ */
+var concat = function concat(semigroupLeft, semigroupRight) {
+  return isNewSemigroup(semigroupLeft) ? semigroupLeft[flConcat](semigroupRight) : isOldSemigroup(semigroupLeft) ? warn(semigroupLeft.concat(semigroupRight)) : /*otherwise*/unsupported(semigroupLeft);
+};
+
+/*~
+ * stability: experimental
+ * authors:
+ *   - "@boris-marinov"
+ *   - Quildreen Motta
+ *
+ * type: |
+ *   forall S, a:
+ *     (S a) => (S a) => S a
+ *   where S is Semigroup
+ */
+concat.curried = curry(2, function (semigroupRight, semigroupLeft) {
+  return (// eslint-disable-line no-magic-numbers
+    concat(semigroupLeft, semigroupRight)
+  );
+});
+
+/*~
+ * stability: experimental
+ * authors:
+ *   - Quildreen Motta
+ *
+ * type: |
+ *   forall S, a:
+ *     (S a).(S a) => S a
+ *   where S is Semigroup
+ */
+concat.infix = function (aSemigroup) {
+  return concat(this, aSemigroup);
+};
+
+module.exports = concat;
+},{"../core/lambda/curry":38,"../helpers/fantasy-land":66,"../helpers/unsupported-method":69,"../helpers/warn-deprecated-method":70}],52:[function(require,module,exports){
+'use strict';
+
+//----------------------------------------------------------------------
+//
+// This source file is part of the Folktale project.
+//
+// Licensed under MIT. See LICENCE for full licence information.
+// See CONTRIBUTORS for the list of contributors to the project.
+//
+//----------------------------------------------------------------------
+
+
+/*~
+ * stability: experimental
+ * name: module folktale/fantasy-land/curried
+ */
+module.exports = {
+  apply: require('./apply').curried,
+  bimap: require('./bimap').curried,
+  chain: require('./chain').curried,
+  concat: require('./concat').curried,
+  empty: require('./empty').curried,
+  equals: require('./equals').curried,
+  map: require('./map').curried,
+  of: require('./of').curried
+};
+},{"./apply":48,"./bimap":49,"./chain":50,"./concat":51,"./empty":53,"./equals":54,"./map":57,"./of":58}],53:[function(require,module,exports){
+'use strict';
+
+//----------------------------------------------------------------------
+//
+// This source file is part of the Folktale project.
+//
+// Licensed under MIT. See LICENCE for full licence information.
+// See CONTRIBUTORS for the list of contributors to the project.
+//
+//----------------------------------------------------------------------
+
+var _require = require('../helpers/fantasy-land'),
+    flEmpty = _require.empty;
+
+var curry = require('../core/lambda/curry');
+var warn = require('../helpers/warn-deprecated-method')('empty');
+var unsupported = require('../helpers/unsupported-method')('empty');
+
+var isNew = function isNew(a) {
+  return typeof a[flEmpty] === 'function';
+};
+var isCtorNew = function isCtorNew(a) {
+  return typeof a.constructor[flEmpty] === 'function';
+};
+var isOld = function isOld(a) {
+  return typeof a.empty === 'function';
+};
+var isCtorOld = function isCtorOld(a) {
+  return typeof a.constructor.empty === 'function';
+};
+
+/*~
+ * stability: experimental
+ * authors:
+ *   - "@boris-marinov"
+ *   - Quildreen Motta
+ *
+ * type: |
+ *   forall M, a:
+ *     (M) => M a
+ *   where M is Monoid
+ */
+var empty = function empty(monoid) {
+  return isNew(monoid) ? monoid[flEmpty]() : isCtorNew(monoid) ? monoid.constructor[flEmpty]() : isOld(monoid) ? warn(monoid.empty()) : isCtorOld(monoid) ? warn(monoid.constructor.empty()) : /*otherwise*/unsupported(monoid);
+};
+
+/*~
+ * stability: experimental
+ * authors:
+ *   - "@boris-marinov"
+ *   - Quildreen Motta
+ *
+ * type: |
+ *   forall M, a:
+ *     (M) => M a
+ *   where M is Monoid
+ */
+empty.curried = curry(1, empty); // eslint-disable-line no-magic-numbers
+
+
+/*~
+ * stability: experimental
+ * authors:
+ *   - Quildreen Motta
+ *
+ * type: |
+ *   forall M, a:
+ *     (M).() => M a
+ *   where M is Monoid
+ */
+empty.infix = function () {
+  return empty(this);
+};
+
+module.exports = empty;
+},{"../core/lambda/curry":38,"../helpers/fantasy-land":66,"../helpers/unsupported-method":69,"../helpers/warn-deprecated-method":70}],54:[function(require,module,exports){
+'use strict';
+
+//----------------------------------------------------------------------
+//
+// This source file is part of the Folktale project.
+//
+// Licensed under MIT. See LICENCE for full licence information.
+// See CONTRIBUTORS for the list of contributors to the project.
+//
+//----------------------------------------------------------------------
+
+var _require = require('../helpers/fantasy-land'),
+    flEquals = _require.equals;
+
+var curry = require('../core/lambda/curry');
+var warn = require('../helpers/warn-deprecated-method')('equals');
+var unsupported = require('../helpers/unsupported-method')('equals');
+
+var isNew = function isNew(a) {
+  return typeof a[flEquals] === 'function';
+};
+var isOld = function isOld(a) {
+  return typeof a.equals === 'function';
+};
+
+/*~
+ * stability: experimental
+ * authors:
+ *   - "@boris-marinov"
+ *   - Quildreen Motta
+ *
+ * type: |
+ *   forall S, a:
+ *     (S a, S a) => Boolean
+ *   where S is Setoid
+ */
+var equals = function equals(setoidLeft, setoidRight) {
+  return isNew(setoidLeft) ? setoidLeft[flEquals](setoidRight) : isOld(setoidLeft) ? warn(setoidLeft.equals(setoidRight)) : /*otherwise*/unsupported(setoidLeft);
+};
+
+/*~
+ * stability: experimental
+ * authors:
+ *   - "@boris-marinov"
+ *   - Quildreen Motta
+ *
+ * type: |
+ *   forall S, a:
+ *     (S a) => (S a) => Boolean
+ *   where S is Setoid
+ */
+equals.curried = curry(2, function (setoidRight, setoidLeft) {
+  return (// eslint-disable-line no-magic-numbers
+    equals(setoidLeft, setoidRight)
+  );
+});
+
+/*~
+ * stability: experimental
+ * authors:
+ *   - Quildreen Motta
+ *
+ * type: |
+ *   forall S, a:
+ *     (S a).(S a) => Boolean
+ *   where S is Setoid
+ */
+equals.infix = function (aSetoid) {
+  return equals(this, aSetoid);
+};
+
+module.exports = equals;
+},{"../core/lambda/curry":38,"../helpers/fantasy-land":66,"../helpers/unsupported-method":69,"../helpers/warn-deprecated-method":70}],55:[function(require,module,exports){
+'use strict';
+
+//----------------------------------------------------------------------
+//
+// This source file is part of the Folktale project.
+//
+// Licensed under MIT. See LICENCE for full licence information.
+// See CONTRIBUTORS for the list of contributors to the project.
+//
+//----------------------------------------------------------------------
+
+/*~
+ * stability: experimental
+ * name: module folktale/fantasy-land
+ */
+module.exports = {
+  apply: require('./apply'),
+  concat: require('./concat'),
+  chain: require('./chain'),
+  empty: require('./empty'),
+  map: require('./map'),
+  of: require('./of'),
+  equals: require('./equals'),
+  bimap: require('./bimap'),
+  curried: require('./curried'),
+  infix: require('./infix')
+};
+},{"./apply":48,"./bimap":49,"./chain":50,"./concat":51,"./curried":52,"./empty":53,"./equals":54,"./infix":56,"./map":57,"./of":58}],56:[function(require,module,exports){
+'use strict';
+
+//----------------------------------------------------------------------
+//
+// This source file is part of the Folktale project.
+//
+// Licensed under MIT. See LICENCE for full licence information.
+// See CONTRIBUTORS for the list of contributors to the project.
+//
+//----------------------------------------------------------------------
+
+
+/*~
+ * stability: experimental
+ * name: module folktale/fantasy-land/infix
+ */
+module.exports = {
+  apply: require('./apply').infix,
+  bimap: require('./bimap').infix,
+  chain: require('./chain').infix,
+  concat: require('./concat').infix,
+  empty: require('./empty').infix,
+  equals: require('./equals').infix,
+  map: require('./map').infix,
+  of: require('./of').infix
+};
+},{"./apply":48,"./bimap":49,"./chain":50,"./concat":51,"./empty":53,"./equals":54,"./map":57,"./of":58}],57:[function(require,module,exports){
+'use strict';
+
+//----------------------------------------------------------------------
+//
+// This source file is part of the Folktale project.
+//
+// Licensed under MIT. See LICENCE for full licence information.
+// See CONTRIBUTORS for the list of contributors to the project.
+//
+//----------------------------------------------------------------------
+
+var _require = require('../helpers/fantasy-land'),
+    flMap = _require.map;
+
+var curry = require('../core/lambda/curry');
+var warn = require('../helpers/warn-deprecated-method')('map');
+var unsupported = require('../helpers/unsupported-method')('map');
+
+var isNew = function isNew(a) {
+  return typeof a[flMap] === 'function';
+};
+var isOld = function isOld(a) {
+  return typeof a.map === 'function';
+};
+
+/*~
+ * stability: experimental
+ * authors:
+ *   - "@boris-marinov"
+ *   - Quildreen Motta
+ *
+ * type: |
+ *   forall F, a, b:
+ *     (F a, (a) => b) => F b
+ *   where F is Functor
+ */
+var map = function map(functor, transformation) {
+  return isNew(functor) ? functor[flMap](transformation) : isOld(functor) ? warn(functor.map(transformation)) : /*otherwise*/unsupported(functor);
+};
+
+/*~
+ * stability: experimental
+ * authors:
+ *   - "@boris-marinov"
+ *   - Quildreen Motta
+ *
+ * type: |
+ *   forall F, a, b:
+ *     ((a) => b) => (F a) => F b
+ *   where F is Functor
+ */
+map.curried = curry(2, function (transformation, functor) {
+  return (// eslint-disable-line no-magic-numbers
+    map(functor, transformation)
+  );
+});
+
+/*~
+ * stability: experimental
+ * authors:
+ *   - Quildreen Motta
+ *
+ * type: |
+ *   forall F, a, b:
+ *     (F a).((a) => b) => F b
+ *   where F is Functor
+ */
+map.infix = function (transformation) {
+  return map(this, transformation);
+};
+
+module.exports = map;
+},{"../core/lambda/curry":38,"../helpers/fantasy-land":66,"../helpers/unsupported-method":69,"../helpers/warn-deprecated-method":70}],58:[function(require,module,exports){
+'use strict';
+
+//----------------------------------------------------------------------
+//
+// This source file is part of the Folktale project.
+//
+// Licensed under MIT. See LICENCE for full licence information.
+// See CONTRIBUTORS for the list of contributors to the project.
+//
+//----------------------------------------------------------------------
+
+var _require = require('../helpers/fantasy-land'),
+    flOf = _require.of;
+
+var curry = require('../core/lambda/curry');
+var warn = require('../helpers/warn-deprecated-method')('of');
+var unsupported = require('../helpers/unsupported-method')('of');
+
+var isNew = function isNew(a) {
+  return typeof a[flOf] === 'function';
+};
+var isCtorNew = function isCtorNew(a) {
+  return typeof a.constructor[flOf] === 'function';
+};
+var isOld = function isOld(a) {
+  return typeof a.of === 'function';
+};
+var isCtorOld = function isCtorOld(a) {
+  return typeof a.constructor.of === 'function';
+};
+
+/*~
+ * stability: experimental
+ * authors:
+ *   - "@boris-marinov"
+ *   - Quildreen Motta
+ *
+ * type: |
+ *   forall F, a:
+ *     (F, a) => F a
+ *   where F is Applicative
+ */
+var of = function of(applicative, value) {
+  return isNew(applicative) ? applicative[flOf](value) : isCtorNew(applicative) ? applicative.constructor[flOf](value) : isOld(applicative) ? warn(applicative.of(value)) : isCtorOld(applicative) ? warn(applicative.constructor.of(value)) : /*otherwise*/unsupported(applicative);
+};
+
+/*~
+ * stability: experimental
+ * authors:
+ *   - "@boris-marinov"
+ *   - Quildreen Motta
+ *
+ * type: |
+ *   forall F, a:
+ *     (F) => (a) => F a
+ *   where F is Applicative
+ */
+of.curried = curry(2, of); // eslint-disable-line no-magic-numbers
+
+
+/*~
+ * stability: experimental
+ * authors:
+ *   - Quildreen Motta
+ *
+ * type: |
+ *   forall F, a:
+ *     (F).(a) => F a
+ *   where F is Applicative
+ */
+of.infix = function (value) {
+  return of(this, value);
+};
+
+module.exports = of;
+},{"../core/lambda/curry":38,"../helpers/fantasy-land":66,"../helpers/unsupported-method":69,"../helpers/warn-deprecated-method":70}],59:[function(require,module,exports){
+'use strict';
+
+//----------------------------------------------------------------------
+//
+// This source file is part of the Folktale project.
+//
+// Licensed under MIT. See LICENCE for full licence information.
+// See CONTRIBUTORS for the list of contributors to the project.
+//
+//----------------------------------------------------------------------
+
+module.exports = function (method, transformation) {
+  if (typeof transformation !== 'function') {
+    throw new TypeError(method + ' expects a function, but was given ' + transformation + '.');
+  }
+};
+},{}],60:[function(require,module,exports){
+(function (process){
+'use strict';
+
+//----------------------------------------------------------------------
+//
+// This source file is part of the Folktale project.
+//
+// Licensed under MIT. See LICENCE for full licence information.
+// See CONTRIBUTORS for the list of contributors to the project.
+//
+//----------------------------------------------------------------------
+
+var _require = require('../adt/union/union'),
+    typeSymbol = _require.typeSymbol;
+
+module.exports = function (type) {
+  return function (method, value) {
+    var typeName = type[typeSymbol];
+    if (process.env.FOLKTALE_ASSERTIONS !== 'none' && !type.isPrototypeOf(value)) {
+      console.warn(typeName + '.' + method + ' expects a value of the same type, but was given ' + value + '.');
+
+      if (process.env.FOLKTALE_ASSERTIONS !== 'minimal') {
+        console.warn('\nThis could mean that you\'ve provided the wrong value to the method, in\nwhich case this is a bug in your program, and you should try to track\ndown why the wrong value is getting here.\n\nBut this could also mean that you have more than one ' + typeName + ' library\ninstantiated in your program. This is not **necessarily** a bug, it\ncould happen for several reasons:\n\n 1) You\'re loading the library in Node, and Node\'s cache didn\'t give\n    you back the same instance you had previously requested.\n\n 2) You have more than one Code Realm in your program, and objects\n    created from the same library, in different realms, are interacting.\n\n 3) You have a version conflict of folktale libraries, and objects\n    created from different versions of the library are interacting.\n\nIf your situation fits the cases (1) or (2), you are okay, as long as\nthe objects originate from the same version of the library. Folktale\ndoes not rely on reference checking, only structural checking. However\nyou\'ll want to watch out if you\'re modifying the ' + typeName + '\'s prototype,\nbecause you\'ll have more than one of them, and you\'ll want to make\nsure you do the same change in all of them \u2014 ideally you shouldn\'t\nbe modifying the object, though.\n\nIf your situation fits the case (3), you are *probably* okay if the\nversion difference isn\'t a major one. However, at this point the\nbehaviour of your program using ' + typeName + ' is undefined, and you should\ntry looking into why the version conflict is happening.\n\nParametric modules can help ensuring your program only has a single\ninstance of the folktale library. Check out the Folktale Architecture\ndocumentation for more information.\n      ');
+      }
+    }
+  };
+};
+}).call(this,require('_process'))
+},{"../adt/union/union":8,"_process":1}],61:[function(require,module,exports){
+(function (process){
+'use strict';
+
+//----------------------------------------------------------------------
+//
+// This source file is part of the Folktale project.
+//
+// Licensed under MIT. See LICENCE for full licence information.
+// See CONTRIBUTORS for the list of contributors to the project.
+//
+//----------------------------------------------------------------------
+
+var mm = Symbol.for('@@meta:magical');
+
+var copyDocumentation = function copyDocumentation(source, target) {
+  var extensions = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : {};
+
+  if (process.env.FOLKTALE_DOCS !== 'false') {
+    target[mm] = Object.assign({}, source[mm] || {}, extensions);
+  }
+};
+
+module.exports = copyDocumentation;
+}).call(this,require('_process'))
+},{"_process":1}],62:[function(require,module,exports){
+(function (process){
+'use strict';
+
+//----------------------------------------------------------------------
+//
+// This source file is part of the Folktale project.
+//
+// Licensed under MIT. See LICENCE for full licence information.
+// See CONTRIBUTORS for the list of contributors to the project.
+//
+//----------------------------------------------------------------------
+
+/* eslint-disable no-magic-numbers, max-statements-per-line */
+var defer = typeof setImmediate !== 'undefined' ? function (f) {
+            return setImmediate(f);
+} : typeof process !== 'undefined' ? function (f) {
+            return process.nextTick(f);
+} : /* otherwise */function (f) {
+            return setTimeout(f, 0);
+};
+/* eslint-enable no-magic-numbers, max-statements-per-line */
+
+module.exports = defer;
+}).call(this,require('_process'))
+},{"_process":1}],63:[function(require,module,exports){
+'use strict';
+
+//----------------------------------------------------------------------
+//
+// This source file is part of the Folktale project.
+//
+// Licensed under MIT. See LICENCE for full licence information.
+// See CONTRIBUTORS for the list of contributors to the project.
+//
+//----------------------------------------------------------------------
+
+var copyDocs = require('./copy-documentation');
+
+var defineAdtMethod = function defineAdtMethod(adt, definitions) {
+  Object.keys(definitions).forEach(function (name) {
+    var methods = definitions[name];
+    adt.variants.forEach(function (variant) {
+      var method = methods[variant.tag];
+      if (!method) {
+        throw new TypeError('Method ' + name + ' not defined for ' + variant.tag);
+      }
+      copyDocs(methods, method);
+      variant.prototype[name] = method;
+    });
+  });
+};
+
+module.exports = defineAdtMethod;
+},{"./copy-documentation":61}],64:[function(require,module,exports){
+"use strict";
+
+//----------------------------------------------------------------------
+//
+// This source file is part of the Folktale project.
+//
+// Licensed under MIT. See LICENCE for full licence information.
+// See CONTRIBUTORS for the list of contributors to the project.
+//
+//----------------------------------------------------------------------
+
+var defineProperty = Object.defineProperty;
+
+function define(object, name, value) {
+  defineProperty(object, name, {
+    value: value,
+    writable: true,
+    enumerable: false,
+    configurable: true
+  });
+}
+
+module.exports = define;
+},{}],65:[function(require,module,exports){
+'use strict';
+
+//----------------------------------------------------------------------
+//
+// This source file is part of the Folktale project.
+//
+// Licensed under MIT. See LICENCE for full licence information.
+// See CONTRIBUTORS for the list of contributors to the project.
+//
+//----------------------------------------------------------------------
+
+var keys = Object.keys;
+var symbols = Object.getOwnPropertySymbols;
+var defineProperty = Object.defineProperty;
+var property = Object.getOwnPropertyDescriptor;
+
+/*
+ * Extends an objects with own enumerable key/value pairs from other sources.
+ *
+ * This is used to define objects for the ADTs througout this file, and there
+ * are some important differences from Object.assign:
+ *
+ *   - This code is only concerned with own enumerable property *names*.
+ *   - Additionally this code copies all own symbols (important for tags).
+ *
+ * When copying, this function copies **whole property descriptors**, which
+ * means getters/setters are not executed during the copying. The only
+ * exception is when the property name is `prototype`, which is not
+ * configurable in functions by default.
+ *
+ * This code only special cases `prototype` because any other non-configurable
+ * property is considered an error, and should crash the program so it can be
+ * fixed.
+ */
+function extend(target) {
+  for (var _len = arguments.length, sources = Array(_len > 1 ? _len - 1 : 0), _key = 1; _key < _len; _key++) {
+    sources[_key - 1] = arguments[_key];
+  }
+
+  sources.forEach(function (source) {
+    keys(source).forEach(function (key) {
+      if (key === 'prototype') {
+        target[key] = source[key];
+      } else {
+        defineProperty(target, key, property(source, key));
+      }
+    });
+    symbols(source).forEach(function (symbol) {
+      defineProperty(target, symbol, property(source, symbol));
+    });
+  });
+  return target;
+}
+
+module.exports = extend;
+},{}],66:[function(require,module,exports){
+'use strict';
+
+//----------------------------------------------------------------------
+//
+// This source file is part of the Folktale project.
+//
+// Licensed under MIT. See LICENCE for full licence information.
+// See CONTRIBUTORS for the list of contributors to the project.
+//
+//----------------------------------------------------------------------
+
+module.exports = {
+  equals: 'fantasy-land/equals',
+  concat: 'fantasy-land/concat',
+  empty: 'fantasy-land/empty',
+  map: 'fantasy-land/map',
+  ap: 'fantasy-land/ap',
+  of: 'fantasy-land/of',
+  reduce: 'fantasy-land/reduce',
+  traverse: 'fantasy-land/traverse',
+  chain: 'fantasy-land/chain',
+  chainRec: 'fantasy-land/chainRec',
+  extend: 'fantasy-land/extend',
+  extract: 'fantasy-land/extract',
+  bimap: 'fantasy-land/bimap',
+  promap: 'fantasy-land/promap'
+};
+},{}],67:[function(require,module,exports){
+'use strict';
+
+//----------------------------------------------------------------------
+//
+// This source file is part of the Folktale project.
+//
+// Licensed under MIT. See LICENCE for full licence information.
+// See CONTRIBUTORS for the list of contributors to the project.
+//
+//----------------------------------------------------------------------
+
+
+var aliases = {
+  equals: {
+    /*~
+     * module: null
+     * type: |
+     *   ('S 'a).('S 'a) => Boolean
+     *   where 'S is Setoid
+     */
+    'fantasy-land/equals': function fantasyLandEquals(that) {
+      return this.equals(that);
+    }
+  },
+
+  concat: {
+    /*~
+     * module: null
+     * type: |
+     *   ('S 'a).('S 'a) => 'S 'a
+     *   where 'S is Semigroup
+     */
+    'fantasy-land/concat': function fantasyLandConcat(that) {
+      return this.concat(that);
+    }
+  },
+
+  empty: {
+    /*~
+     * module: null
+     * type: |
+     *   ('M).() => 'M a
+     *   where 'M is Monoid
+     */
+    'fantasy-land/empty': function fantasyLandEmpty() {
+      return this.empty();
+    }
+  },
+
+  map: {
+    /*~
+     * module: null
+     * type: |
+     *   ('F 'a).(('a) => 'b) => 'F 'b
+     *   where 'F is Functor
+     */
+    'fantasy-land/map': function fantasyLandMap(transformation) {
+      return this.map(transformation);
+    }
+  },
+
+  apply: {
+    /*~
+     * module: null
+     * type: |
+     *   ('F ('a) => b).('F 'a) => 'F 'b
+     *   where 'F is Apply
+     */
+    ap: function ap(that) {
+      return this.apply(that);
+    },
+
+
+    /*~
+     * module: null
+     * type: |
+     *   ('F 'a).('F ('a) => 'b) => 'F 'b
+     *   where 'F is Apply
+     */
+    'fantasy-land/ap': function fantasyLandAp(that) {
+      return that.apply(this);
+    }
+  },
+
+  of: {
+    /*~
+     * module: null
+     * type: |
+     *   forall F, a:
+     *     (F).(a) => F a
+     *   where F is Applicative
+     */
+    'fantasy-land/of': function fantasyLandOf(value) {
+      return this.of(value);
+    }
+  },
+
+  reduce: {
+    /*~
+     * module: null
+     * type: |
+     *   forall F, a, b:
+     *     (F a).((b, a) => b, b) => b
+     *   where F is Foldable
+     */
+    'fantasy-land/reduce': function fantasyLandReduce(combinator, initial) {
+      return this.reduce(combinator, initial);
+    }
+  },
+
+  traverse: {
+    /*~
+     * module: null
+     * type: |
+     *   forall F, T, a, b:
+     *     (T a).((a) => F b, (c) => F c) => F (T b)
+     *   where F is Apply, T is Traversable
+     */
+    'fantasy-land/traverse': function fantasyLandTraverse(transformation, lift) {
+      return this.traverse(transformation, lift);
+    }
+  },
+
+  chain: {
+    /*~
+     * module: null
+     * type: |
+     *   forall M, a, b:
+     *     (M a).((a) => M b) => M b
+     *   where M is Chain
+     */
+    'fantasy-land/chain': function fantasyLandChain(transformation) {
+      return this.chain(transformation);
+    }
+  },
+
+  chainRecursively: {
+    /*~
+     * module: null
+     * type: |
+     *   forall M, a, b, c:
+     *     (M).(
+     *       Step:    ((a) => c, (b) => c, a) => M c,
+     *       Initial: a
+     *     ) => M b
+     *   where M is ChainRec
+     */
+    chainRec: function chainRec(step, initial) {
+      return this.chainRecursively(step, initial);
+    },
+
+
+    /*~
+     * module: null
+     * type: |
+     *   forall M, a, b, c:
+     *     (M).(
+     *       Step:    ((a) => c, (b) => c, a) => M c,
+     *       Initial: a
+     *     ) => M b
+     *   where M is ChainRec
+     */
+    'fantasy-land/chainRec': function fantasyLandChainRec(step, initial) {
+      return this.chainRecursively(step, initial);
+    }
+  },
+
+  extend: {
+    /*~
+     * module: null
+     * type: |
+     *   forall W, a, b:
+     *     (W a).((W a) => b) => W b
+     *   where W is Extend
+     */
+    'fantasy-land/extend': function fantasyLandExtend(transformation) {
+      return this.extend(transformation);
+    }
+  },
+
+  extract: {
+    /*~
+     * module: null
+     * type: |
+     *   forall W, a, b:
+     *     (W a).() => a
+     *   where W is Comonad
+     */
+    'fantasy-land/extract': function fantasyLandExtract() {
+      return this.extract();
+    }
+  },
+
+  bimap: {
+    /*~
+     * module: null
+     * type: |
+     *   forall F, a, b, c, d:
+     *     (F a b).((a) => c, (b) => d) => F c d
+     *   where F is Bifunctor
+     */
+    'fantasy-land/bimap': function fantasyLandBimap(f, g) {
+      return this.bimap(f, g);
+    }
+  },
+
+  promap: {
+    /*~
+     * module: null
+     * type: |
+     *   forall P, a, b, c, d:
+     *     (P a b).((c) => a, (b) => d) => P c d
+     */
+    'fantasy-land/promap': function fantasyLandPromap(f, g) {
+      return this.promap(f, g);
+    }
+  }
+};
+
+var provideAliases = function provideAliases(structure) {
+  Object.keys(aliases).forEach(function (method) {
+    if (typeof structure[method] === 'function') {
+      Object.keys(aliases[method]).forEach(function (alias) {
+        structure[alias] = aliases[method][alias];
+      });
+    }
+  });
+};
+
+module.exports = provideAliases;
+},{}],68:[function(require,module,exports){
+"use strict";
+
+//----------------------------------------------------------------------
+//
+// This source file is part of the Folktale project.
+//
+// Licensed under MIT. See LICENCE for full licence information.
+// See CONTRIBUTORS for the list of contributors to the project.
+//
+//----------------------------------------------------------------------
+
+function thunk(fn) {
+  var value = void 0;
+  var computed = false;
+
+  return function () {
+    if (computed) {
+      return value;
+    } else {
+      computed = true;
+      value = fn();
+      return value;
+    }
+  };
+}
+
+module.exports = thunk;
+},{}],69:[function(require,module,exports){
+"use strict";
+
+//----------------------------------------------------------------------
+//
+// This source file is part of the Folktale project.
+//
+// Licensed under MIT. See LICENCE for full licence information.
+// See CONTRIBUTORS for the list of contributors to the project.
+//
+//----------------------------------------------------------------------
+
+module.exports = function (methodName) {
+  return function (object) {
+    throw new TypeError(object + " does not have a method '" + methodName + "'.");
+  };
+};
+},{}],70:[function(require,module,exports){
+'use strict';
+
+//----------------------------------------------------------------------
+//
+// This source file is part of the Folktale project.
+//
+// Licensed under MIT. See LICENCE for full licence information.
+// See CONTRIBUTORS for the list of contributors to the project.
+//
+//----------------------------------------------------------------------
+
+var deprecated = require('./warn-deprecation');
+
+module.exports = function (methodName) {
+  return function (result) {
+    deprecated('Type.' + methodName + '() is being deprecated in favour of Type[\'fantasy-land/' + methodName + '\'](). \n    Your data structure is using the old-style fantasy-land methods,\n    and these won\'t be supported in Folktale 3');
+    return result;
+  };
+};
+},{"./warn-deprecation":71}],71:[function(require,module,exports){
+(function (process){
+'use strict';
+
+//----------------------------------------------------------------------
+//
+// This source file is part of the Folktale project.
+//
+// Licensed under MIT. See LICENCE for full licence information.
+// See CONTRIBUTORS for the list of contributors to the project.
+//
+//----------------------------------------------------------------------
+
+var BLAME_FUNCTION_INDEX = 3; // [current, parent, *error*, caller to blame, …]
+
+function warnDeprecation(reason) {
+  // eslint-disable-line max-statements
+  if (process.env.FOLKTALE_ASSERTIONS !== 'none') {
+    var stack = new Error('').stack;
+    var offender = void 0;
+    if (stack) {
+      var lines = stack.split('\n');
+      offender = lines[BLAME_FUNCTION_INDEX];
+    }
+
+    if (offender) {
+      console.warn(reason + '\n    Blame: ' + offender.trim());
+    } else {
+      console.warn(reason);
+    }
+  }
+}
+
+module.exports = warnDeprecation;
+}).call(this,require('_process'))
+},{"_process":1}],72:[function(require,module,exports){
+'use strict';
+
+//----------------------------------------------------------------------
+//
+// This source file is part of the Folktale project.
+//
+// Licensed under MIT. See LICENCE for full licence information.
+// See CONTRIBUTORS for the list of contributors to the project.
+//
+//----------------------------------------------------------------------
+
+/*~
+ * stability: stable
+ * name: module folktale
+ */
+module.exports = {
+  adt: require('./adt'),
+  concurrency: require('./concurrency'),
+  conversions: require('./conversions'),
+  core: require('./core'),
+  fantasyLand: require('./fantasy-land'),
+  maybe: require('./maybe'),
+  result: require('./result'),
+  validation: require('./validation')
+};
+},{"./adt":2,"./concurrency":13,"./conversions":22,"./core":35,"./fantasy-land":55,"./maybe":73,"./result":75,"./validation":79}],73:[function(require,module,exports){
+'use strict';
+
+var _module$exports;
+
+function _defineProperty(obj, key, value) { if (key in obj) { Object.defineProperty(obj, key, { value: value, enumerable: true, configurable: true, writable: true }); } else { obj[key] = value; } return obj; }
+
+//----------------------------------------------------------------------
+//
+// This source file is part of the Folktale project.
+//
+// Licensed under MIT. See LICENCE for full licence information.
+// See CONTRIBUTORS for the list of contributors to the project.
+//
+//----------------------------------------------------------------------
+
+
+var Maybe = require('./maybe');
+
+var _require = require('../adt/union/union'),
+    typeSymbol = _require.typeSymbol;
+
+/*~
+ * stability: stable
+ * authors:
+ *   - "@boris-marinov"
+ *   - Quildreen Motta
+ *
+ * name: module folktale/maybe
+ */
+
+
+module.exports = (_module$exports = {
+  Just: Maybe.Just,
+  Nothing: Maybe.Nothing,
+  hasInstance: Maybe.hasInstance,
+  of: Maybe.of,
+  empty: Maybe.empty,
+  fromJSON: Maybe.fromJSON
+}, _defineProperty(_module$exports, typeSymbol, Maybe[typeSymbol]), _defineProperty(_module$exports, 'fantasy-land/of', Maybe['fantasy-land/of']), _defineProperty(_module$exports, 'fromNullable', function fromNullable(aNullable) {
+  return require('../conversions/nullable-to-maybe')(aNullable);
+}), _defineProperty(_module$exports, 'fromResult', function fromResult(aResult) {
+  return require('../conversions/result-to-maybe')(aResult);
+}), _defineProperty(_module$exports, 'fromValidation', function fromValidation(aValidation) {
+  return require('../conversions/validation-to-maybe')(aValidation);
+}), _module$exports);
+},{"../adt/union/union":8,"../conversions/nullable-to-maybe":26,"../conversions/result-to-maybe":31,"../conversions/validation-to-maybe":33,"./maybe":74}],74:[function(require,module,exports){
+'use strict';
+
+//----------------------------------------------------------------------
+//
+// This source file is part of the Folktale project.
+//
+// Licensed under MIT. See LICENCE for full licence information.
+// See CONTRIBUTORS for the list of contributors to the project.
+//
+//----------------------------------------------------------------------
+
+var assertType = require('../helpers/assert-type');
+var assertFunction = require('../helpers/assert-function');
+
+var _require = require('../adt/union'),
+    union = _require.union,
+    derivations = _require.derivations;
+
+var provideAliases = require('../helpers/provide-fantasy-land-aliases');
+var warnDeprecation = require('../helpers/warn-deprecation');
+var adtMethods = require('../helpers/define-adt-methods');
+var extend = require('../helpers/extend');
+
+var equality = derivations.equality,
+    debugRepresentation = derivations.debugRepresentation,
+    serialization = derivations.serialization;
+
+/*~ stability: stable */
+
+var Maybe = union('folktale:Maybe', {
+  /*~
+   * type: |
+   *   forall a: () => Maybe a
+   */
+  Nothing: function Nothing() {},
+
+
+  /*~
+   * type: |
+   *   forall a: (a) => Maybe a
+   */
+  Just: function Just(value) {
+    return { value: value };
+  }
+}).derive(equality, debugRepresentation, serialization);
+
+var Nothing = Maybe.Nothing,
+    _Just = Maybe.Just;
+
+var assertMaybe = assertType(Maybe);
+
+extend(_Just.prototype, {
+  /*~
+   * isRequired: true
+   * type: |
+   *   forall a: get (Maybe a) => a
+   */
+  get value() {
+    throw new TypeError('`value` can’t be accessed in an abstract instance of Maybe.Just');
+  }
+});
+
+/*~~belongsTo: Maybe */
+adtMethods(Maybe, {
+  /*~
+   * stability: stable
+   * type: |
+   *   forall a, b: (Maybe a).((a) => b) => Maybe b
+   */
+  map: {
+    /*~*/
+    Nothing: function map(transformation) {
+      assertFunction('Maybe.Nothing#map', transformation);
+      return this;
+    },
+
+    /*~*/
+    Just: function map(transformation) {
+      assertFunction('Maybe.Just#map', transformation);
+      return _Just(transformation(this.value));
+    }
+  },
+
+  /*~
+   * stability: stable
+   * type: |
+   *   forall a, b: (Maybe (a) => b).(Maybe a) => Maybe b
+   */
+  apply: {
+    /*~*/
+    Nothing: function apply(aMaybe) {
+      assertMaybe('Maybe.Nothing#apply', aMaybe);
+      return this;
+    },
+
+    /*~*/
+    Just: function apply(aMaybe) {
+      assertMaybe('Maybe.Just#apply', aMaybe);
+      return aMaybe.map(this.value);
+    }
+  },
+
+  /*~
+   * stability: stable
+   * type: |
+   *   forall a, b: (Maybe a).((a) => Maybe b) => Maybe b
+   */
+  chain: {
+    /*~*/
+    Nothing: function chain(transformation) {
+      assertFunction('Maybe.Nothing#chain', transformation);
+      return this;
+    },
+
+    /*~*/
+    Just: function chain(transformation) {
+      assertFunction('Maybe.Just#chain', transformation);
+      return transformation(this.value);
+    }
+  },
+
+  /*~
+   * type: |
+   *   forall a: (Maybe a).() => a :: (throws TypeError)
+   */
+  unsafeGet: {
+    /*~*/
+    Nothing: function unsafeGet() {
+      throw new TypeError('Can\'t extract the value of a Nothing.\n\n    Since Nothing holds no values, it\'s not possible to extract one from them.\n    You might consider switching from Maybe#get to Maybe#getOrElse, or some other method\n    that is not partial.\n      ');
+    },
+
+    /*~*/
+    Just: function unsafeGet() {
+      return this.value;
+    }
+  },
+
+  /*~
+   * type: |
+   *   forall a: (Maybe a).(a) => a
+   */
+  getOrElse: {
+    /*~*/
+    Nothing: function getOrElse(_default) {
+      return _default;
+    },
+
+    /*~*/
+    Just: function getOrElse(_default) {
+      return this.value;
+    }
+  },
+
+  /*~
+   * type: |
+   *   forall a: (Maybe a).((a) => Maybe a) => Maybe a
+   */
+  orElse: {
+    /*~*/
+    Nothing: function orElse(handler) {
+      assertFunction('Maybe.Nothing#orElse', handler);
+      return handler(this.value);
+    },
+
+    /*~*/
+    Just: function orElse(handler) {
+      assertFunction('Maybe.Nothing#orElse', handler);
+      return this;
+    }
+  },
+
+  /*~
+   * authors:
+   *   - "@diasbruno"
+   * type: |
+   *   forall a: (Maybe a).(Maybe a) => Maybe a
+   *   where a is Semigroup
+   */
+  concat: {
+    /*~*/
+    Nothing: function concat(aMaybe) {
+      assertMaybe('Maybe.Nothing#concat', aMaybe);
+      return aMaybe;
+    },
+
+    /*~*/
+    Just: function concat(aMaybe) {
+      var _this = this;
+
+      assertMaybe('Maybe.Just#concat', aMaybe);
+      return aMaybe.matchWith({
+        Nothing: function Nothing() {
+          return _Just(_this.value);
+        },
+        Just: function Just(a) {
+          return _Just(_this.value.concat(a.value));
+        }
+      });
+    }
+  },
+
+  /*~
+   * deprecated:
+   *   since: 2.0.0
+   *   replacedBy: .matchWith(pattern)
+   *
+   * type: |
+   *   forall a, b:
+   *     (Maybe a).({
+   *       Nothing: () => b,
+   *       Just: (a) => b
+   *     }) => b
+   */
+  cata: {
+    /*~*/
+    Nothing: function cata(pattern) {
+      warnDeprecation('`.cata(pattern)` is deprecated. Use `.matchWith(pattern)` instead.');
+      return pattern.Nothing();
+    },
+
+    /*~*/
+    Just: function cata(pattern) {
+      warnDeprecation('`.cata(pattern)` is deprecated. Use `.matchWith(pattern)` instead.');
+      return pattern.Just(this.value);
+    }
+  },
+
+  /*~
+   * type: |
+   *   forall a, b: (Maybe a).(() => b, (a) => b) => b
+   */
+  fold: {
+    /*~*/
+    Nothing: function Nothing(transformNothing, transformJust) {
+      assertFunction('Maybe.Nothing#fold', transformNothing);
+      assertFunction('Maybe.Nothing#fold', transformJust);
+      return transformNothing();
+    },
+
+    /*~*/
+    Just: function Just(transformNothing, transformJust) {
+      assertFunction('Maybe.Just#fold', transformNothing);
+      assertFunction('Maybe.Just#fold', transformJust);
+      return transformJust(this.value);
+    }
+  },
+
+  /*~
+   * stability: experimental
+   * type: |
+   *   forall a: (Maybe a).((a) => Boolean) => Maybe a
+   */
+  filter: {
+    /*~*/
+    Nothing: function filter(predicate) {
+      assertFunction('Maybe.Nothing#filter', predicate);
+      return this;
+    },
+
+    /*~*/
+    Just: function filter(predicate) {
+      assertFunction('Maybe.Just#filter', predicate);
+      return predicate(this.value) ? this : Nothing();
+    }
+  }
+});
+
+Object.assign(Maybe, {
+  /*~
+   * stability: stable
+   * type: |
+   *   forall a: (a) => Maybe a
+   */
+  of: function of(value) {
+    return _Just(value);
+  },
+
+
+  /*~
+   * authors:
+   *   - "@diasbruno"
+   * type: |
+   *   forall a: () => Maybe a
+   */
+  empty: function empty() {
+    return Nothing();
+  },
+
+
+  /*~
+   * deprecated:
+   *   since: 2.0.0
+   *   replacedBy: .unsafeGet()
+   * type: |
+   *   forall a: (Maybe a).() => a :: (throws TypeError)
+   */
+  'get': function get() {
+    warnDeprecation('`.get()` is deprecated, and has been renamed to `.unsafeGet()`.');
+    return this.unsafeGet();
+  },
+
+
+  /*~
+   * stability: experimental
+   * type: |
+   *   forall a, b: (Maybe a).(b) => Result b a
+   */
+  toResult: function toResult(fallbackValue) {
+    return require('../conversions/maybe-to-result')(this, fallbackValue);
+  },
+
+
+  /*~
+   * stability: experimental
+   * type: |
+   *   forall a, b: (Maybe a).(b) => Result b a
+   */
+  toValidation: function toValidation(fallbackValue) {
+    return require('../conversions/maybe-to-validation')(this, fallbackValue);
+  }
+});
+
+provideAliases(_Just.prototype);
+provideAliases(Nothing.prototype);
+provideAliases(Maybe);
+
+module.exports = Maybe;
+},{"../adt/union":7,"../conversions/maybe-to-result":23,"../conversions/maybe-to-validation":24,"../helpers/assert-function":59,"../helpers/assert-type":60,"../helpers/define-adt-methods":63,"../helpers/extend":65,"../helpers/provide-fantasy-land-aliases":67,"../helpers/warn-deprecation":71}],75:[function(require,module,exports){
+'use strict';
+
+var _module$exports;
+
+function _defineProperty(obj, key, value) { if (key in obj) { Object.defineProperty(obj, key, { value: value, enumerable: true, configurable: true, writable: true }); } else { obj[key] = value; } return obj; }
+
+//----------------------------------------------------------------------
+//
+// This source file is part of the Folktale project.
+//
+// Licensed under MIT. See LICENCE for full licence information.
+// See CONTRIBUTORS for the list of contributors to the project.
+//
+//----------------------------------------------------------------------
+
+var Result = require('./result');
+
+var _require = require('../adt/union/union'),
+    typeSymbol = _require.typeSymbol;
+
+/*~
+ * stability: stable
+ * name: module folktale/result
+ */
+
+
+module.exports = (_module$exports = {
+  Error: Result.Error,
+  Ok: Result.Ok,
+  hasInstance: Result.hasInstance,
+  of: Result.of,
+  fromJSON: Result.fromJSON
+}, _defineProperty(_module$exports, typeSymbol, Result[typeSymbol]), _defineProperty(_module$exports, 'try', require('./try')), _defineProperty(_module$exports, 'fromNullable', function fromNullable(aNullable) {
+  return require('../conversions/nullable-to-result')(aNullable);
+}), _defineProperty(_module$exports, 'fromValidation', function fromValidation(aValidation) {
+  return require('../conversions/validation-to-result')(aValidation);
+}), _defineProperty(_module$exports, 'fromMaybe', function fromMaybe(aMaybe, failureValue) {
+  return require('../conversions/maybe-to-result')(aMaybe, failureValue);
+}), _module$exports);
+},{"../adt/union/union":8,"../conversions/maybe-to-result":23,"../conversions/nullable-to-result":27,"../conversions/validation-to-result":34,"./result":76,"./try":77}],76:[function(require,module,exports){
+'use strict';
+
+//----------------------------------------------------------------------
+//
+// This source file is part of the Folktale project.
+//
+// Licensed under MIT. See LICENCE for full licence information.
+// See CONTRIBUTORS for the list of contributors to the project.
+//
+//----------------------------------------------------------------------
+
+var assertType = require('../helpers/assert-type');
+var assertFunction = require('../helpers/assert-function');
+
+var _require = require('../adt/union'),
+    union = _require.union,
+    derivations = _require.derivations;
+
+var provideAliases = require('../helpers/provide-fantasy-land-aliases');
+var adtMethods = require('../helpers/define-adt-methods');
+var extend = require('../helpers/extend');
+var warnDeprecation = require('../helpers/warn-deprecation');
+
+var equality = derivations.equality,
+    debugRepresentation = derivations.debugRepresentation,
+    serialization = derivations.serialization;
+
+/*~ stability: experimental */
+
+var Result = union('folktale:Result', {
+  /*~
+   * stability: experimental
+   * type: |
+   *   forall a, b: (a) => Result a b
+   */
+  Error: function Error(value) {
+    return { value: value };
+  },
+
+
+  /*~
+   * stability: experimental
+   * type: |
+   *   forall a, b: (b) => Result a b
+   */
+  Ok: function Ok(value) {
+    return { value: value };
+  }
+}).derive(equality, debugRepresentation, serialization);
+
+var Error = Result.Error,
+    Ok = Result.Ok;
+
+
+var assertResult = assertType(Result);
+
+extend(Error.prototype, {
+  /*~
+   * isRequired: true
+   * type: |
+   *   forall a, b: get (Result a b) => a
+   */
+  get value() {
+    throw new TypeError('`value` can’t be accessed in an abstract instance of Result.Error');
+  }
+});
+
+extend(Ok.prototype, {
+  /*~
+   * isRequired: true
+   * type: |
+   *   forall a, b: get (Result a b) => b
+   */
+  get value() {
+    throw new TypeError('`value` can’t be accessed in an abstract instance of Result.Ok');
+  }
+});
+
+/*~
+ * ~belongsTo: Result
+ */
+adtMethods(Result, {
+  /*~
+   * stability: experimental
+   * type: |
+   *   forall a, b, c:
+   *     (Result a b).((b) => c) => Result a c
+   */
+  map: {
+    /*~*/
+    Error: function map(f) {
+      assertFunction('Result.Error#map', f);
+      return this;
+    },
+
+    /*~*/
+    Ok: function map(f) {
+      assertFunction('Result.Ok#map', f);
+      return Ok(f(this.value));
+    }
+  },
+
+  /*~
+   * stability: experimental
+   * type: |
+   *   forall a, b, c:
+   *     (Result a ((b) => c)).(Result a b) => Result a c
+   */
+  apply: {
+    /*~*/
+    Error: function apply(anResult) {
+      assertResult('Result.Error#apply', anResult);
+      return this;
+    },
+
+    /*~*/
+    Ok: function apply(anResult) {
+      assertResult('Result.Ok#apply', anResult);
+      return anResult.map(this.value);
+    }
+  },
+
+  /*~
+   * stability: experimental
+   * type: |
+   *   forall a, b, c:
+   *     (Result a b).((b) => Result a c) => Result a c
+   */
+  chain: {
+    /*~*/
+    Error: function chain(f) {
+      assertFunction('Result.Error#chain', f);
+      return this;
+    },
+
+    /*~*/
+    Ok: function chain(f) {
+      assertFunction('Result.Ok#chain', f);
+      return f(this.value);
+    }
+  },
+
+  /*~
+   * stability: experimental
+   * type: |
+   *   forall a, b: (Result a b).() => b :: throws TypeError
+   */
+  unsafeGet: {
+    /*~*/
+    Error: function unsafeGet() {
+      throw new TypeError('Can\'t extract the value of an Error.\n\nError does not contain a normal value - it contains an error.\nYou might consider switching from Result#unsafeGet to Result#getOrElse,\nor some other method that is not partial.\n      ');
+    },
+
+    /*~*/
+    Ok: function unsafeGet() {
+      return this.value;
+    }
+  },
+
+  /*~
+   * stability: experimental
+   * type: |
+   *   forall a, b: (Result a b).(b) => b
+   */
+  getOrElse: {
+    /*~*/
+    Error: function getOrElse(_default) {
+      return _default;
+    },
+
+    /*~*/
+    Ok: function getOrElse(_default) {
+      return this.value;
+    }
+  },
+
+  /*~
+   * stability: experimental
+   * type: |
+   *   forall a, b, c:
+   *     (Result a b).((a) => Result c b) => Result c b
+   */
+  orElse: {
+    /*~*/
+    Error: function orElse(handler) {
+      assertFunction('Result.Error#orElse', handler);
+      return handler(this.value);
+    },
+
+    /*~*/
+    Ok: function orElse(handler) {
+      assertFunction('Result.Ok#orElse', handler);
+      return this;
+    }
+  },
+
+  /*~
+   * stability: stable
+   * type: |
+   *   forall a, b: (Result a b).(Result a b) => Result a b
+   *   where b is Semigroup
+   */
+  concat: {
+    /*~*/
+    Error: function concat(aResult) {
+      assertResult('Result.Error#concat', aResult);
+      return this;
+    },
+
+    /*~*/
+    Ok: function concat(aResult) {
+      var _this = this;
+
+      assertResult('Result.Ok#concat', aResult);
+      return aResult.map(function (xs) {
+        return _this.value.concat(xs);
+      });
+    }
+  },
+
+  /*~
+   * stability: experimental
+   * type: |
+   *   forall a, b, c:
+   *     (Result a b).((a) => c, (b) => c) => c
+   */
+  fold: {
+    /*~*/
+    Error: function fold(f, g) {
+      assertFunction('Result.Error#fold', f);
+      assertFunction('Result.Error#fold', g);
+      return f(this.value);
+    },
+
+    /*~*/
+    Ok: function fold(f, g) {
+      assertFunction('Result.Ok#fold', f);
+      assertFunction('Result.Ok#fold', g);
+      return g(this.value);
+    }
+  },
+
+  /*~
+   * stability: experimental
+   * type: |
+   *   forall a, b: (Result a b).() => Result b a
+   */
+  swap: {
+    /*~*/
+    Error: function swap() {
+      return Ok(this.value);
+    },
+
+    /*~*/
+    Ok: function swap() {
+      return Error(this.value);
+    }
+  },
+
+  /*~
+   * stability: experimental
+   * type: |
+   *   (Result a b).((a) => c, (b) => d) => Result c d
+   */
+  bimap: {
+    /*~*/
+    Error: function bimap(f, g) {
+      assertFunction('Result.Error#bimap', f);
+      assertFunction('Result.Error#bimap', g);
+      return Error(f(this.value));
+    },
+
+    /*~*/
+    Ok: function bimap(f, g) {
+      assertFunction('Result.Ok#bimap', f);
+      assertFunction('Result.Ok#bimap', g);
+      return Ok(g(this.value));
+    }
+  },
+
+  /*~
+   * stability: experimental
+   * type: |
+   *   forall a, b, c:
+   *     (Result a b).((a) => c) => Result c b
+   */
+  mapError: {
+    /*~*/
+    Error: function mapError(f) {
+      assertFunction('Result.Error#mapError', f);
+      return Error(f(this.value));
+    },
+
+    /*~*/
+    Ok: function mapError(f) {
+      assertFunction('Result.Ok#mapError', f);
+      return this;
+    }
+  },
+
+  /*~
+   * stability: experimental
+   * type: |
+   *   forall a: (Maybe a).((a) => Boolean) => Maybe a
+   */
+  filter: {
+    /*~*/
+    Error: function filter(predicate) {
+      assertFunction('Result.Error#filter', predicate);
+      return this;
+    },
+
+    /*~*/
+    Ok: function filter(predicate) {
+      assertFunction('Result.Ok#filter', predicate);
+      return predicate(this.value) ? this : Error();
+    }
+  }
+});
+
+Object.assign(Result, {
+  /*~
+   * stability: experimental
+   * type: |
+   *   forall a, b: (b) => Result a b
+   */
+  of: function of(value) {
+    return Ok(value);
+  },
+
+
+  /*~
+   * deprecated:
+   *   since: 2.0.0
+   *   replacedBy: .unsafeGet()
+   * type: |
+   *   forall a, b: (Result a b).() => b :: (throws TypeError)
+   */
+  'get': function get() {
+    warnDeprecation('`.get()` is deprecated, and has been renamed to `.unsafeGet()`.');
+    return this.unsafeGet();
+  },
+
+
+  /*~
+   * stability: experimental
+   * type: |
+   *   forall a, b: (Result a b).() => a or b
+   */
+  merge: function merge() {
+    return this.value;
+  },
+
+
+  /*~
+   * stability: experimental
+   * type: |
+   *   forall a, b: (Result a b).() => Validation a b
+   */
+  toValidation: function toValidation() {
+    return require('../conversions/result-to-validation')(this);
+  },
+
+
+  /*~
+   * stability: experimental
+   * type: |
+   *   forall a, b: (Result a b).() => Maybe b
+   */
+  toMaybe: function toMaybe() {
+    return require('../conversions/result-to-maybe')(this);
+  }
+});
+
+provideAliases(Error.prototype);
+provideAliases(Ok.prototype);
+provideAliases(Result);
+
+module.exports = Result;
+},{"../adt/union":7,"../conversions/result-to-maybe":31,"../conversions/result-to-validation":32,"../helpers/assert-function":59,"../helpers/assert-type":60,"../helpers/define-adt-methods":63,"../helpers/extend":65,"../helpers/provide-fantasy-land-aliases":67,"../helpers/warn-deprecation":71}],77:[function(require,module,exports){
+'use strict';
+
+//----------------------------------------------------------------------
+//
+// This source file is part of the Folktale project.
+//
+// Licensed under MIT. See LICENCE for full licence information.
+// See CONTRIBUTORS for the list of contributors to the project.
+//
+//----------------------------------------------------------------------
+
+var _require = require('./result'),
+    Error = _require.Error,
+    Ok = _require.Ok;
+
+/*~
+ * stability: experimental
+ * authors:
+ *   - "@boris-marinov"
+ *
+ * type: |
+ *   forall a, b: (() => b :: throws a) => Result a b
+ */
+
+
+var _try = function _try(f) {
+  try {
+    return Ok(f());
+  } catch (e) {
+    return Error(e);
+  }
+};
+
+module.exports = _try;
+},{"./result":76}],78:[function(require,module,exports){
+'use strict';
+
+//----------------------------------------------------------------------
+//
+// This source file is part of the Folktale project.
+//
+// Licensed under MIT. See LICENCE for full licence information.
+// See CONTRIBUTORS for the list of contributors to the project.
+//
+//----------------------------------------------------------------------
+
+
+var _require = require('./validation'),
+    Success = _require.Success;
+
+/*~
+ * stability: experimental
+ * type: |
+ *   forall a, b: (Array (Validation a b)) => Validation a b
+ *   where a is Semigroup
+ */
+
+
+var collect = function collect(validations) {
+  return validations.reduce(function (a, b) {
+    return a.concat(b);
+  }, Success());
+};
+
+module.exports = collect;
+},{"./validation":80}],79:[function(require,module,exports){
+'use strict';
+
+var _module$exports;
+
+function _defineProperty(obj, key, value) { if (key in obj) { Object.defineProperty(obj, key, { value: value, enumerable: true, configurable: true, writable: true }); } else { obj[key] = value; } return obj; }
+
+//----------------------------------------------------------------------
+//
+// This source file is part of the Folktale project.
+//
+// Licensed under MIT. See LICENCE for full licence information.
+// See CONTRIBUTORS for the list of contributors to the project.
+//
+//----------------------------------------------------------------------
+
+var Validation = require('./validation');
+
+var _require = require('../adt/union/union'),
+    typeSymbol = _require.typeSymbol;
+
+/*~
+ * stability: stable
+ * name: module folktale/validation
+ */
+
+
+module.exports = (_module$exports = {
+  Success: Validation.Success,
+  Failure: Validation.Failure,
+  hasInstance: Validation.hasInstance,
+  of: Validation.of,
+  fromJSON: Validation.fromJSON
+}, _defineProperty(_module$exports, typeSymbol, Validation[typeSymbol]), _defineProperty(_module$exports, 'collect', require('./collect')), _defineProperty(_module$exports, 'fromNullable', function fromNullable(aNullable, fallbackValue) {
+  return require('../conversions/nullable-to-validation')(aNullable, fallbackValue);
+}), _defineProperty(_module$exports, 'fromResult', function fromResult(aResult) {
+  return require('../conversions/result-to-validation')(aResult);
+}), _defineProperty(_module$exports, 'fromMaybe', function fromMaybe(aMaybe, fallbackValue) {
+  return require('../conversions/maybe-to-validation')(aMaybe, fallbackValue);
+}), _module$exports);
+},{"../adt/union/union":8,"../conversions/maybe-to-validation":24,"../conversions/nullable-to-validation":28,"../conversions/result-to-validation":32,"./collect":78,"./validation":80}],80:[function(require,module,exports){
+'use strict';
+
+//----------------------------------------------------------------------
+//
+// This source file is part of the Folktale project.
+//
+// Licensed under MIT. See LICENCE for full licence information.
+// See CONTRIBUTORS for the list of contributors to the project.
+//
+//----------------------------------------------------------------------
+
+var assertType = require('../helpers/assert-type');
+var assertFunction = require('../helpers/assert-function');
+
+var _require = require('../adt/union'),
+    union = _require.union,
+    derivations = _require.derivations;
+
+var provideAliases = require('../helpers/provide-fantasy-land-aliases');
+var adtMethods = require('../helpers/define-adt-methods');
+var extend = require('../helpers/extend');
+var warnDeprecation = require('../helpers/warn-deprecation');
+
+var equality = derivations.equality,
+    debugRepresentation = derivations.debugRepresentation,
+    serialization = derivations.serialization;
+
+/*~ stability: experimental */
+
+var Validation = union('folktale:Validation', {
+  /*~
+   * type: |
+   *   forall a, b: (a) => Validation a b
+   */
+  Failure: function Failure(value) {
+    return { value: value };
+  },
+
+
+  /*~
+   * type: |
+   *   forall a, b: (b) => Validation a b
+   */
+  Success: function Success(value) {
+    return { value: value };
+  }
+}).derive(equality, debugRepresentation, serialization);
+
+var Success = Validation.Success,
+    Failure = Validation.Failure;
+
+var assertValidation = assertType(Validation);
+
+extend(Failure.prototype, {
+  /*~
+   * isRequired: true
+   * type: |
+   *   forall a, b: get (Validation a b) => a
+   */
+  get value() {
+    throw new TypeError('`value` can’t be accessed in an abstract instance of Validation.Failure');
+  }
+});
+
+extend(Success.prototype, {
+  /*~
+   * isRequired: true
+   * type: |
+   *   forall a, b: get (Validation a b) => b
+   */
+  get value() {
+    throw new TypeError('`value` can’t be accessed in an abstract instance of Validation.Success');
+  }
+});
+
+/*~~belongsTo: Validation */
+adtMethods(Validation, {
+  /*~
+   * type: |
+   *   forall a, b, c: (Validation a b).((b) => c) => Validation a c
+   */
+  map: {
+    /*~*/
+    Failure: function map(transformation) {
+      assertFunction('Validation.Failure#map', transformation);
+      return this;
+    },
+
+    /*~*/
+    Success: function map(transformation) {
+      assertFunction('Validation.Success#map', transformation);
+      return Success(transformation(this.value));
+    }
+  },
+
+  /*~
+   * type: |
+   *   forall a, b, c: (Validation (b) => c).(Validation a b) => Validation a c
+   */
+  apply: {
+    /*~*/
+    Failure: function apply(aValidation) {
+      assertValidation('Failure#apply', aValidation);
+      return Failure.hasInstance(aValidation) ? Failure(this.value.concat(aValidation.value)) : /* otherwise */this;
+    },
+
+    /*~*/
+    Success: function apply(aValidation) {
+      assertValidation('Success#apply', aValidation);
+      return Failure.hasInstance(aValidation) ? aValidation : /* otherwise */aValidation.map(this.value);
+    }
+  },
+
+  /*~
+   * type: |
+   *   forall a, b: (Validation a b).() => b :: throws TypeError
+   */
+  unsafeGet: {
+    /*~*/
+    Failure: function unsafeGet() {
+      throw new TypeError('Can\'t extract the value of a Failure.\n\n    Failure does not contain a normal value - it contains an error.\n    You might consider switching from Validation#get to Validation#getOrElse, or some other method\n    that is not partial.\n      ');
+    },
+
+    /*~*/
+    Success: function unsafeGet() {
+      return this.value;
+    }
+  },
+
+  /*~
+   * type: |
+   *   forall a, b: (Validation a b).(b) => b
+   */
+  getOrElse: {
+    /*~*/
+    Failure: function getOrElse(_default) {
+      return _default;
+    },
+
+    /*~*/
+    Success: function getOrElse(_default) {
+      return this.value;
+    }
+  },
+
+  /*~
+   * type: |
+   *   forall a, b, c:
+   *     (Validation a b).((a) => Validation c b) => Validation c b
+   */
+  orElse: {
+    /*~*/
+    Failure: function orElse(handler) {
+      assertFunction('Validation.Failure#orElse', handler);
+      return handler(this.value);
+    },
+
+    /*~*/
+    Success: function orElse(handler) {
+      assertFunction('Validation.Success#orElse', handler);
+      return this;
+    }
+  },
+
+  /*~
+   * type: |
+   *   forall a, b:
+   *     (Validation a b).(Validation a b) => Validation a b
+   *   where a is Semigroup
+   */
+  concat: {
+    /*~*/
+    Failure: function concat(aValidation) {
+      assertValidation('Validation.Failure#concat', aValidation);
+      if (Failure.hasInstance(aValidation)) {
+        return Failure(this.value.concat(aValidation.value));
+      } else {
+        return this;
+      }
+    },
+
+    /*~*/
+    Success: function concat(aValidation) {
+      assertValidation('Validation.Success#concat', aValidation);
+      return aValidation;
+    }
+  },
+
+  /*~
+   * type: |
+   *   forall a, b, c:
+   *     (Validation a b).((a) => c, (b) => c) => c
+   */
+  fold: {
+    /*~*/
+    Failure: function fold(failureTransformation, successTransformation) {
+      assertFunction('Validation.Failure#fold', failureTransformation);
+      assertFunction('Validation.Failure#fold', successTransformation);
+      return failureTransformation(this.value);
+    },
+
+    /*~*/
+    Success: function fold(failureTransformation, successTransformation) {
+      assertFunction('Validation.Success#fold', failureTransformation);
+      assertFunction('Validation.Success#fold', successTransformation);
+      return successTransformation(this.value);
+    }
+  },
+
+  /*~
+   * type: |
+   *   forall a, b: (Validation a b).() => Validation b a
+   */
+  swap: {
+    /*~*/
+    Failure: function swap() {
+      return Success(this.value);
+    },
+
+    /*~*/
+    Success: function swap() {
+      return Failure(this.value);
+    }
+  },
+
+  /*~
+   * type: |
+   *   forall a, b, c, d:
+   *     (Validation a b).((a) => c, (b) => d) => Validation c d
+   */
+  bimap: {
+    /*~*/
+    Failure: function bimap(failureTransformation, successTransformation) {
+      assertFunction('Validation.Failure#fold', failureTransformation);
+      assertFunction('Validation.Failure#fold', successTransformation);
+      return Failure(failureTransformation(this.value));
+    },
+
+    /*~*/
+    Success: function bimap(failureTransformation, successTransformation) {
+      assertFunction('Validation.Success#fold', failureTransformation);
+      assertFunction('Validation.Success#fold', successTransformation);
+      return Success(successTransformation(this.value));
+    }
+  },
+
+  /*~
+   * type: |
+   *   forall a, b, c:
+   *     (Validation a b).((a) => c) Validation c b
+   */
+  mapFailure: {
+    /*~*/
+    Failure: function mapFailure(transformation) {
+      assertFunction('Validation.Failure#mapFailure', transformation);
+      return Failure(transformation(this.value));
+    },
+
+    /*~*/
+    Success: function mapFailure(transformation) {
+      assertFunction('Validation.Failure#mapFailure', transformation);
+      return this;
+    }
+  }
+});
+
+Object.assign(Validation, {
+  /*~
+   * type: |
+   *   forall a, b: (b) => Validation a b
+   */
+  of: function of(value) {
+    return Success(value);
+  },
+
+
+  /*~
+   * type: |
+   *   forall a, b: (Validation a b).() => b :: throws TypeError
+   */
+  'get': function get() {
+    warnDeprecation('`.get()` is deprecated, and has been renamed to `.unsafeGet()`.');
+    return this.unsafeGet();
+  },
+
+
+  /*~
+   * type: |
+   *   forall a, b: (Validation a b).() => a or b
+   */
+  merge: function merge() {
+    return this.value;
+  },
+
+
+  /*~
+   * type: |
+   *   forall a, b: (Validation a b).() => Result a b
+   */
+  toResult: function toResult() {
+    return require('../conversions/validation-to-result')(this);
+  },
+
+
+  /*~
+   * type: |
+   *   forall a, b: (Validation a b).() => Maybe b
+   */
+  toMaybe: function toMaybe() {
+    return require('../conversions/validation-to-maybe')(this);
+  }
+});
+
+provideAliases(Success.prototype);
+provideAliases(Failure.prototype);
+provideAliases(Validation);
+
+module.exports = Validation;
+},{"../adt/union":7,"../conversions/validation-to-maybe":33,"../conversions/validation-to-result":34,"../helpers/assert-function":59,"../helpers/assert-type":60,"../helpers/define-adt-methods":63,"../helpers/extend":65,"../helpers/provide-fantasy-land-aliases":67,"../helpers/warn-deprecation":71}]},{},[72])(72)
+});

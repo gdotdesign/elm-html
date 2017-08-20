@@ -1,5 +1,15 @@
 'use strict'
 
+class Process {
+  constructor (method) {
+    this.method = method
+  }
+
+  call (callback) {
+    return this.method(callback)
+  }
+}
+
 /* global Inferno, _elm_lang$core$Native_List */
 
 /*
@@ -17,7 +27,7 @@ class Program {
     this.root = rootComponent
 
     this.listeners = new Map()
-    this.processes = new Set()
+    this.processes = new Map()
     this.ids = new Set()
     this.map = new Map()
 
@@ -50,36 +60,52 @@ class Program {
     // and maybe a promise
     var data = instance.component.update(msg)(instance.data)
 
-    // If there is a promise, schedule an update after it resolves
+    // Process side effects (2. array of the tuple)
     _elm_lang$core$Native_List
-        .toArray(data._1)
-        .map(function (promise) {
-          promise.fork(console.error, function (resultMsg) {
-            if (resultMsg instanceof Process) {
-              var pid = _gdotdesign$elm_html$Native_Uid.uid()
-              // TODO:
-              //   - abort it when component is removed
-              //   - add "processes" to Component to start processes when injected
-              var cancel = resultMsg
-                .call(function(processMsg) {
-                  this.update(processMsg, id)
-                }.bind(this))
-                .value(function(){
-                  this.processes.delete(pid)
-                }.bind(this))
-              this.processes.add(pid, cancel)
-              // this.update(resultMsg.msg(resultMsg), id)
+        .toArray(data.effects)
+        .map(function (task) {
+          var label = ""
+
+          if (task.label) {
+            if (tagger) {
+              label = id + "::" + tagger("").ctor + "::" + task.label
             } else {
-              this.update(resultMsg, id)
+              label = id + "::" + task.label
             }
-          }.bind(this))
+          }
+
+          if (task instanceof Cancellation) {
+            if (this.processes.has(label)){
+              this.processes.get(label)()
+              this.processes.delete(label)
+            }
+          } else {
+            var handler = task.run()
+
+            if (label) {
+              this.processes.set(label, function(){ handler.cancel() })
+            }
+
+            handler.future().map(function(value){
+              if (value instanceof Process) {
+                var processTask = value.call(function(a) { this.update(a, id) }.bind(this))
+                var processHandler = processTask.run()
+                if (label) {
+                  this.processes.set(label, function(){ processHandler.cancel() })
+                }
+              } else {
+                this.update(value, id)
+              }
+            }.bind(this))
+
+          }
         }.bind(this))
 
     // Update the map with the new data
     this.map.set(
       id,
       { component: instance.component,
-        data: data._0 }
+        data: data.model }
     )
 
     // Notify listener parent
@@ -87,9 +113,10 @@ class Program {
     var listener = this.map.get(listenerId)
     if (instance.component.listener && listener) {
       _elm_lang$core$Native_List
-        .toArray(data._2)
+        .toArray(data.events)
         .map(function (promise) {
-          promise.fork(console.error, function (msg) {
+          var handler = promise.run()
+          handler.future().map(function (msg) {
             this.update(instance.component.listener(msg), listenerId)
           }.bind(this))
         }.bind(this))

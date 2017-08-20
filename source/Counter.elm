@@ -11,6 +11,7 @@ type alias Model =
 type Msg
   = Increment
   | Decrement
+  | ClearTimeout
 
 
 type Event
@@ -41,6 +42,10 @@ update msg model =
           |> emit Incremented
           |> emit Changed
 
+    ClearTimeout ->
+      return model
+        |> andThen (Task.cancel "timeout")
+
 
 delayedDecrement : Task Msg
 delayedDecrement =
@@ -50,6 +55,7 @@ delayedDecrement =
         Task.delay 1000
         |> Task.map (\() -> Debug.log "" Decrement)
       )
+    |> Task.label "timeout"
 
 
 view : Model -> Html Msg
@@ -63,6 +69,10 @@ view model =
     , node "button"
       [ on "click" (\value -> Increment) ]
       [ text "+"]
+    , text "|"
+    , node "button"
+      [ on "click" (\value -> ClearTimeout) ]
+      [ text "clear decrement timeout" ]
     ]
 
 
