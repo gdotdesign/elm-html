@@ -22,17 +22,7 @@ var _gdotdesign$elm_html$Native_Html = (function () { // eslint-disable-line
     }
   }
 
-  function controlledComponent (comp, model, listener) {
-    return {
-      update: comp.update,
-      listener: listener,
-      view: comp.view,
-      model: model
-    }
-  }
-
   return {
-    controlledComponent: F3(controlledComponent),
     component: F3(component),
     program: program
   }

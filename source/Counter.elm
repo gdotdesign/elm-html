@@ -1,6 +1,6 @@
 module Counter exposing (..)
 
-import Plank exposing (Component, Html, Update, node, text, on, return, emit, thenEmit, andThen)
+import Rumble.Html exposing (Component, Html, Update, node, text, on, return, emit, thenEmit, andThen)
 import Rumble.Task as Task exposing (Task)
 
 type alias Model =
@@ -11,7 +11,6 @@ type alias Model =
 type Msg
   = Increment
   | Decrement
-  | ClearTimeout
 
 
 type Event
@@ -42,20 +41,10 @@ update msg model =
           |> emit Incremented
           |> emit Changed
 
-    ClearTimeout ->
-      return model
-        |> andThen (Task.cancel "timeout")
-
 
 delayedDecrement : Task Msg
 delayedDecrement =
-  Task.delay 1000
-    |> Task.andThen
-      ( \() ->
-        Task.delay 1000
-        |> Task.map (\() -> Debug.log "" Decrement)
-      )
-    |> Task.label "timeout"
+  Task.delay 1000 Decrement
 
 
 view : Model -> Html Msg
@@ -69,10 +58,6 @@ view model =
     , node "button"
       [ on "click" (\value -> Increment) ]
       [ text "+"]
-    , text "|"
-    , node "button"
-      [ on "click" (\value -> ClearTimeout) ]
-      [ text "clear decrement timeout" ]
     ]
 
 

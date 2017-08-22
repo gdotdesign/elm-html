@@ -1,7 +1,6 @@
 module NestedCounter exposing (..)
 
-import Plank exposing (Component, Update, Html, node, text, on, return, emit, mount)
-
+import Rumble.Html exposing (Component, Update, Html, node, text, on, return, emit, mount)
 import Counter
 
 type alias Model =

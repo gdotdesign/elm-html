@@ -27,7 +27,6 @@ class Program {
     this.root = rootComponent
 
     this.listeners = new Map()
-    this.processes = new Map()
     this.ids = new Set()
     this.map = new Map()
 
@@ -47,14 +46,12 @@ class Program {
      @param {ElmObject} msg - The message for the component at the branch
      @param {String} id - The id of the component
   */
-  update (msg, id, tagger) {
+  update (msg, id) {
     // Don't update anything if the component doesn't own the data
     if (!this.map.has(id)) { return }
 
     // Get the instance
     var instance = this.map.get(id)
-
-    if (tagger) { msg = tagger(msg) }
 
     // Update the component the, return value contains the updated data
     // and maybe a promise
@@ -64,41 +61,9 @@ class Program {
     _elm_lang$core$Native_List
         .toArray(data.effects)
         .map(function (task) {
-          var label = ""
-
-          if (task.label) {
-            if (tagger) {
-              label = id + "::" + tagger("").ctor + "::" + task.label
-            } else {
-              label = id + "::" + task.label
-            }
-          }
-
-          if (task instanceof Cancellation) {
-            if (this.processes.has(label)){
-              this.processes.get(label)()
-              this.processes.delete(label)
-            }
-          } else {
-            var handler = task.run()
-
-            if (label) {
-              this.processes.set(label, function(){ handler.cancel() })
-            }
-
-            handler.future().map(function(value){
-              if (value instanceof Process) {
-                var processTask = value.call(function(a) { this.update(a, id) }.bind(this))
-                var processHandler = processTask.run()
-                if (label) {
-                  this.processes.set(label, function(){ processHandler.cancel() })
-                }
-              } else {
-                this.update(value, id)
-              }
-            }.bind(this))
-
-          }
+          task.fork(console.error, function(value){
+            this.update(value, id)
+          }.bind(this))
         }.bind(this))
 
     // Update the map with the new data
@@ -114,9 +79,8 @@ class Program {
     if (instance.component.listener && listener) {
       _elm_lang$core$Native_List
         .toArray(data.events)
-        .map(function (promise) {
-          var handler = promise.run()
-          handler.future().map(function (msg) {
+        .map(function (task) {
+          task.fork(console.error, function(msg) {
             this.update(instance.component.listener(msg), listenerId)
           }.bind(this))
         }.bind(this))
@@ -131,11 +95,11 @@ class Program {
      @param {ElmList} elements - The elements to transform
      @param {String} parentId - The id of the parent component
   */
-  transformElements (elements, parentId, tagger) {
+  transformElements (elements, parentId) {
     return _elm_lang$core$Native_List
       .toArray(elements)
       .map(function (element, index) {
-        return this.transformElement(element, parentId, tagger)
+        return this.transformElement(element, parentId)
       }.bind(this))
   }
 
@@ -144,7 +108,7 @@ class Program {
      @param {ElmHtml} element - The element to transform
      @param {String} parentId - The id of the parent component
   */
-  transformElement (element, parentId, tagger) {
+  transformElement (element, parentId) {
     var item = element._0
 
     switch (element.ctor) {
@@ -152,35 +116,31 @@ class Program {
       case 'T':
         return item
 
-      // Controlled Component
-      case 'CC':
-        return this.transformElement(
-          item.view(item.model),
-          parentId,
-          item.listener
-        )
-
       // Component
       case 'C':
+        var id;
+
         if (parentId) {
-          item.id = parentId + '::' + item.id
+          id = parentId + '::' + item.id
+        } else {
+          id = item.id
         }
 
-        if (this.ids.has(item.id)) {
+        if (this.ids.has(id)) {
           console.warn(
-            [ 'The id "' + item.id + '"" has been used before. ',
+            [ 'The id "' + id + '"" has been used before. ',
               'This can lead to wierd behaviour!!!'
             ].join('')
           )
         }
 
-        this.ids.add(item.id)
-        this.listeners.set(item.id, parentId)
+        this.ids.add(id)
+        this.listeners.set(id, parentId)
 
         // If there is no data set it
-        if (!this.map.has(item.id)) {
+        if (!this.map.has(id)) {
           this.map.set(
-            item.id,
+            id,
             { component: item,
               data: item.model }
           )
@@ -188,10 +148,10 @@ class Program {
 
         // Render the component with the current data and transform it's
         // children
-        var instance = this.map.get(item.id)
+        var instance = this.map.get(id)
         return this.transformElement(
           item.view(instance.data),
-          item.id
+          id
         )
 
       // Element
@@ -199,8 +159,8 @@ class Program {
         // Create virtual dom element
         return Inferno.createElement(
           item.tag,
-          this.transformAttributes(item.attributes, parentId, tagger),
-          this.transformElements(item.contents, parentId, tagger)
+          this.transformAttributes(item.attributes, parentId),
+          this.transformElements(item.contents, parentId)
         )
     }
   }
@@ -211,7 +171,7 @@ class Program {
      @param {ElmAttribute} attributes - The attributes to transform
      @param {String} id - The id of the component
   */
-  transformAttributes (attributes, id, tagger) {
+  transformAttributes (attributes, id) {
     var result = {}
 
     _elm_lang$core$Native_List
@@ -223,7 +183,7 @@ class Program {
             result["on" + attribute._0] = function (event) {
               // TODO: handle stopPropagation, stopImmediatePropagation,
               // preventDefault here
-              this.update(attribute._1(event), id, tagger)
+              this.update(attribute._1(event), id)
             }.bind(this)
             break
         }

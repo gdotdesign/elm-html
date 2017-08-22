@@ -1,4 +1,4 @@
-module Plank exposing (..)
+module Rumble.Html exposing (..)
 
 import Native.Uid
 import Native.Inferno
@@ -28,7 +28,6 @@ type Html msg
   = T String
   | E (Element msg)
   | C X
-  | CC X
 
 type alias Component a b c =
   { update : b -> a -> Update a b c
@@ -65,10 +64,6 @@ node tag attributes contents =
 mount : Component a b d -> String -> (d -> c) -> Html c
 mount template id listener =
   C (Native.Html.component template id listener)
-
-mountControlled : Component a b d -> a -> (b -> c) -> Html c
-mountControlled template model listener =
-  CC (Native.Html.controlledComponent template model listener)
 
 root : Component a b d -> Html c
 root template =

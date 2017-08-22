@@ -1,7 +1,8 @@
-import Plank exposing (Update, Html, node, text, on, mountControlled, mount, return)
 
 import Counter
 import NestedCounter
+
+import Rumble.Html as Html exposing (Update, Html, node, text, on, mount, return)
 import Rumble.Task as Task exposing (Task)
 import Rumble.Http as Http
 
@@ -10,17 +11,14 @@ type alias Model =
   , decrementCount: Int
   , counterChanged: Int
   , counterCount :Int
-  , controlledCounter : Counter.Model
   , result : String
   }
 
 type Msg
   = Counter Counter.Event
   | CounterList Counter.Event
-  | ControlledCounter Counter.Msg
   | Fetch
   | Result String
-  | Abort
   | Progress Http.Progress
 
 init : Model
@@ -29,7 +27,6 @@ init =
   , decrementCount = 0
   , counterChanged = 0
   , counterCount = 0
-  , controlledCounter = Counter.init
   , result = ""
   }
 
@@ -47,7 +44,6 @@ fetch =
     , onProgress = Just Progress
     , onFinish = Result
     }
-    |> Task.label "request"
 
 
 update : Msg -> Model -> Update Model Msg a
@@ -74,29 +70,12 @@ update msg model =
         Counter.Changed ->
           return { model | counterChanged = model.counterChanged + 1 }
 
-    ControlledCounter msg ->
-      let
-        data =
-          Counter.update msg model.controlledCounter
-
-        updatedCounter = data.model
-        effects = data.effects
-      in
-        { model = { model | controlledCounter = updatedCounter }
-        , effects = List.map (Task.map ControlledCounter) effects
-        , events = []
-        }
-
     Fetch ->
       return model
-        |> Plank.andThen fetch
+        |> Html.andThen fetch
 
     Result data ->
       return { model | result = data }
-
-    Abort ->
-      return model
-        |> Plank.andThen (Task.cancel "request")
 
     _ ->
       return model
@@ -123,22 +102,18 @@ view model =
           , mount Counter.component "list" CounterList
           , node "div" [] counterList
           , node "hr" [] []
-          , node "h1" [] [ text "Controlled Component" ]
-          , mountControlled Counter.component model.controlledCounter ControlledCounter
-          , node "hr" [] []
           , node "button" [on "click" (\_ -> Fetch)] [text "Fetch"]
-          , node "button" [on "click" (\_ -> Abort)] [text "Abort"]
           ]
         ]
       , text (toString model)
       ]
 
 mod =
-  Plank.root
+  Html.root
     { view = view
     , model = init
     , update = update
     }
 
 main =
-  Plank.program mod
+  Html.program mod
