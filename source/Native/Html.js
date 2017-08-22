@@ -23,6 +23,7 @@ var _gdotdesign$elm_html$Native_Html = (function () { // eslint-disable-line
   }
 
   return {
+    embed: function (value) { return value },
     component: F3(component),
     program: program
   }

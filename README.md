@@ -20,10 +20,11 @@ This is an experiment of creating a different architecture for Elm appliactions 
 
 # Roadmap
 These features are completed / planned
-- [x] Html structure
-- [x] Component state handling
-- [x] Task based event handling
-- [x] Task based child to parent communication
+- [x] Standard Html structure - text / node tree
+- [x] Component state handling - simple components that can update themselves
+- [x] Side effects - side effects using tasks
+- [x] Child to parent communication - events using tasks
+- [x] Embeddable content - embed content from parent component
 - [ ] Styled nodes
 - [ ] Passive event listeners
 - [ ] Process handling

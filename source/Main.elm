@@ -1,11 +1,13 @@
-
+import Test
 import Counter
 import NestedCounter
 
-import Rumble.Html as Html exposing (Html, root, node, text, on, mount)
+import Rumble.Html as Html exposing (Html, root, node, text, on, mount, mountOpen)
 import Rumble.Task as Task exposing (Task)
 import Rumble.Update exposing (..)
 import Rumble.Http as Http
+
+import Dict
 
 type alias Model =
   { incrementCount: Int
@@ -18,6 +20,7 @@ type alias Model =
 type Msg
   = Counter Counter.Event
   | CounterList Counter.Event
+  | Open Test.Event
   | Fetch
   | Result String
   | Progress Http.Progress
@@ -84,6 +87,9 @@ update msg model =
 view : Model -> Html Msg
 view model =
   let
+    content =
+      node "button" [on "click" (\_ -> Fetch)] [text "Fetch"]
+
     counterList =
       List.range 1 model.counterCount
       |> List.map (\index -> mount Counter.component ("list-" ++ toString index) Counter)
@@ -103,7 +109,10 @@ view model =
           , mount Counter.component "list" CounterList
           , node "div" [] counterList
           , node "hr" [] []
-          , node "button" [on "click" (\_ -> Fetch)] [text "Fetch"]
+          , content
+          , node "h1" [] [ text "Open Component" ]
+          , mountOpen Test.component "open" Open
+              (Dict.fromList [("content", content)])
           ]
         ]
       , text (toString model)

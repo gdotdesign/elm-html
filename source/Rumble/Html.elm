@@ -1,5 +1,6 @@
 module Rumble.Html exposing
-  (Component, Html, node, text, mount, on, root, program)
+  ( OpenComponent, Component, Html, node, text, mount, mountOpen, embed
+  , on, root, program)
 
 {-| This module provides a way to render Html elements and simple Components.
 
@@ -10,7 +11,7 @@ module Rumble.Html exposing
 @docs on
 
 # Component
-@docs Component, mount, root
+@docs Component, OpenComponent, mount, mountOpen, embed, root
 
 # Program
 @docs program
@@ -23,11 +24,12 @@ import Native.Html
 import Native.Uid
 
 import Json.Decode as Json
+import Dict exposing (Dict)
 
 import Rumble.Update exposing (Update)
 
 -- A hidden type to bypass the type system
-type COMPONENT = COMPONENT
+type DATA = DATA
 
 
 {-| Represents an Html attribute.
@@ -42,8 +44,9 @@ type Attribute msg
 -}
 type Html msg
   = E (Element msg)
-  | C COMPONENT
   | T String
+  | EM DATA
+  | C DATA
 
 
 {-| Represents a component.
@@ -51,6 +54,16 @@ type Html msg
 type alias Component model msg event =
   { update : msg -> model -> Update model msg event
   , view : model -> Html msg
+  , model : model
+  }
+
+
+{-| Represents a component that is has injection points for content from their
+parent component.
+-}
+type alias OpenComponent model msg event parentMsg =
+  { view : Dict String (Html parentMsg) -> model -> Html msg
+  , update : msg -> model -> Update model msg event
   , model : model
   }
 
@@ -106,6 +119,24 @@ mount template id listener =
   C (Native.Html.component template id listener)
 
 
+{-| Mounts the given open component.
+-}
+mountOpen : OpenComponent model msg event parentMsg
+          -> String
+          -> (event -> parentMsg)
+          -> Dict String (Html parentMsg)
+          -> Html parentMsg
+mountOpen template id listener dict =
+  C (Native.Html.component { template | view = template.view dict } id listener)
+
+
+{-| Embeds parent html into a component.
+-}
+embed : Html parentMsg -> Html msg
+embed parentHtml =
+  EM (Native.Html.embed parentHtml)
+
+
 {-| Mounts the given component as a root component.
 -}
 root : Component a b d -> Html c
@@ -118,3 +149,4 @@ root template =
 program : Html msg -> Program Never model msg
 program =
   Native.Html.program
+

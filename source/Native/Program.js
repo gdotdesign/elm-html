@@ -106,6 +106,11 @@ class Program {
       case 'T':
         return item
 
+      // Embed
+      case 'EM':
+        var component = this.map.get(parentId)
+        return this.transformElement(item, component.parent)
+
       // Component
       case 'C':
         var id
