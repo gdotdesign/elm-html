@@ -1,6 +1,6 @@
 module Rumble.Html exposing
-  ( OpenComponent, Component, Html, node, text, mount, mountOpen, embed
-  , on, root, program)
+  ( ComponentWithContent, Component, Html, node, text, mount, mountWithContent
+  , embed, on, root, program)
 
 {-| This module provides a way to render Html elements and simple Components.
 
@@ -11,7 +11,7 @@ module Rumble.Html exposing
 @docs on
 
 # Component
-@docs Component, OpenComponent, mount, mountOpen, embed, root
+@docs Component, ComponentWithContent, mount, mountWithContent, embed, root
 
 # Program
 @docs program
@@ -61,7 +61,7 @@ type alias Component model msg event =
 {-| Represents a component that is has injection points for content from their
 parent component.
 -}
-type alias OpenComponent model msg event parentMsg =
+type alias ComponentWithContent model msg event parentMsg =
   { view : Dict String (Html parentMsg) -> model -> Html msg
   , update : msg -> model -> Update model msg event
   , model : model
@@ -121,12 +121,13 @@ mount template id listener =
 
 {-| Mounts the given open component.
 -}
-mountOpen : OpenComponent model msg event parentMsg
-          -> String
-          -> (event -> parentMsg)
-          -> Dict String (Html parentMsg)
-          -> Html parentMsg
-mountOpen template id listener dict =
+mountWithContent
+  : ComponentWithContent model msg event parentMsg
+  -> String
+  -> (event -> parentMsg)
+  -> Dict String (Html parentMsg)
+  -> Html parentMsg
+mountWithContent template id listener dict =
   C (Native.Html.component { template | view = template.view dict } id listener)
 
 

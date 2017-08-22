@@ -1,6 +1,6 @@
 module Test exposing (..)
 
-import Rumble.Html exposing (Html, OpenComponent, embed, text, node, on)
+import Rumble.Html exposing (Html, ComponentWithContent, embed, text, node, on)
 import Rumble.Update exposing (Update, return)
 import Dict exposing (Dict)
 
@@ -36,7 +36,7 @@ view data model =
     node "button" [ on "click" (\value -> Toggle) ] [ text "Open" ]
 
 
-component : OpenComponent Model Msg Event a
+component : ComponentWithContent Model Msg Event a
 component =
   { update = update
   , model = init

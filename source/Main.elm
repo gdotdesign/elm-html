@@ -2,7 +2,7 @@ import Test
 import Counter
 import NestedCounter
 
-import Rumble.Html as Html exposing (Html, root, node, text, on, mount, mountOpen)
+import Rumble.Html as Html exposing (Html, root, node, text, on, mount, mountWithContent)
 import Rumble.Task as Task exposing (Task)
 import Rumble.Update exposing (..)
 import Rumble.Http as Http
@@ -111,7 +111,7 @@ view model =
           , node "hr" [] []
           , content
           , node "h1" [] [ text "Open Component" ]
-          , mountOpen Test.component "open" Open
+          , mountWithContent Test.component "open" Open
               (Dict.fromList [("content", content)])
           ]
         ]
