@@ -15,7 +15,6 @@ var _gdotdesign$elm_html$Native_Uid = (function () { // eslint-disable-line
     ].join('-')
   }
 
-  /* Interface */
   return {
     uid: uid
   }

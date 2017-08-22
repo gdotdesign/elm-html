@@ -1,8 +1,8 @@
 module Rumble.Html exposing (..)
 
 import Native.Uid
-import Native.Inferno
-import Native.InfernoCreateElement
+import Native.Vendor.Inferno
+import Native.Vendor.InfernoCreateElement
 import Native.Program
 import Native.Html
 

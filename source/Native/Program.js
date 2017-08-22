@@ -1,24 +1,9 @@
 'use strict'
 
-class Process {
-  constructor (method) {
-    this.method = method
-  }
-
-  call (callback) {
-    return this.method(callback)
-  }
-}
-
 /* global Inferno, _elm_lang$core$Native_List */
 
-/*
-  Represents a program whose architecture is based on a map which contains
-  data for components identified by their unique id.
-
-  This program uses:
-  - InfernoJS for rendering
-  - TODO: JSS for styling elements
+/* Represents a program whose architecture is based on a map which contains
+   data for components identified by their unique id.
 */
 class Program {
   /* Creates a program from a base tree */
@@ -26,7 +11,6 @@ class Program {
     this.container = this.createContainer()
     this.root = rootComponent
 
-    this.listeners = new Map()
     this.ids = new Set()
     this.map = new Map()
 
@@ -34,7 +18,8 @@ class Program {
   }
 
   /* Create and inject a container element into the body, this is needed
-     because of InfernoJS. */
+     because of InfernoJS.
+  */
   createContainer () {
     var element = document.createElement('div')
     document.body.appendChild(element)
@@ -47,21 +32,23 @@ class Program {
      @param {String} id - The id of the component
   */
   update (msg, id) {
-    // Don't update anything if the component doesn't own the data
+    // Don't update anything if the component is no longer present
     if (!this.map.has(id)) { return }
 
     // Get the instance
     var instance = this.map.get(id)
+    var component = instance.component
 
-    // Update the component the, return value contains the updated data
-    // and maybe a promise
-    var data = instance.component.update(msg)(instance.data)
+    // Update the component, the return value contains the updated data,
+    // the side effect tasks and the event tasks
+    var data = component.update(msg)(instance.data)
 
-    // Process side effects (2. array of the tuple)
+    // Process the side effect tasks
     _elm_lang$core$Native_List
         .toArray(data.effects)
         .map(function (task) {
-          task.fork(console.error, function(value){
+          // TODO: Nicer error handling
+          task.fork(console.error, function (value) {
             this.update(value, id)
           }.bind(this))
         }.bind(this))
@@ -69,24 +56,27 @@ class Program {
     // Update the map with the new data
     this.map.set(
       id,
-      { component: instance.component,
-        data: data.model }
+      {
+        parent: instance.parent,
+        component: component,
+        data: data.model
+      }
     )
 
-    // Notify listener parent
-    var listenerId = this.listeners.get(id)
-    var listener = this.map.get(listenerId)
-    if (instance.component.listener && listener) {
+    // Process the event tasks
+    if (component.listener && this.map.has(instance.parent)) {
       _elm_lang$core$Native_List
         .toArray(data.events)
         .map(function (task) {
-          task.fork(console.error, function(msg) {
-            this.update(instance.component.listener(msg), listenerId)
+          // TODO: Nicer error handling
+          task.fork(console.error, function (msg) {
+            this.update(component.listener(msg), instance.parent)
           }.bind(this))
         }.bind(this))
     }
 
-    // Render - TODO: Just schedule on requestAnimationFrame
+    // Schedule a render
+    // TODO: Just schedule on requestAnimationFrame
     this.render()
   }
 
@@ -118,7 +108,7 @@ class Program {
 
       // Component
       case 'C':
-        var id;
+        var id
 
         if (parentId) {
           id = parentId + '::' + item.id
@@ -128,21 +118,23 @@ class Program {
 
         if (this.ids.has(id)) {
           console.warn(
-            [ 'The id "' + id + '"" has been used before. ',
+            [ 'The id "' + id + '" has been used before. ',
               'This can lead to wierd behaviour!!!'
             ].join('')
           )
         }
 
         this.ids.add(id)
-        this.listeners.set(id, parentId)
 
         // If there is no data set it
         if (!this.map.has(id)) {
           this.map.set(
             id,
-            { component: item,
-              data: item.model }
+            {
+              component: item,
+              data: item.model,
+              parent: parentId
+            }
           )
         }
 
@@ -180,7 +172,7 @@ class Program {
         switch (attribute.ctor) {
           case 'Event':
             // Wire in the event to the update.
-            result["on" + attribute._0] = function (event) {
+            result['on' + attribute._0] = function (event) {
               // TODO: handle stopPropagation, stopImmediatePropagation,
               // preventDefault here
               this.update(attribute._1(event), id)

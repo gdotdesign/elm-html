@@ -1,6 +1,6 @@
 module Rumble.Task exposing (..)
 
-import Native.Fluture
+import Native.Vendor.Fluture
 import Native.Task
 
 type Task a = Task a
