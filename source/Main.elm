@@ -2,8 +2,9 @@
 import Counter
 import NestedCounter
 
-import Rumble.Html as Html exposing (Update, Html, node, text, on, mount, return)
+import Rumble.Html as Html exposing (Html, root, node, text, on, mount)
 import Rumble.Task as Task exposing (Task)
+import Rumble.Update exposing (..)
 import Rumble.Http as Http
 
 type alias Model =
@@ -31,7 +32,7 @@ init =
   }
 
 
-fetch : Task Msg
+fetch : Task Never Msg
 fetch =
   Http.send
     { method = "get"
@@ -48,7 +49,7 @@ fetch =
 
 update : Msg -> Model -> Update Model Msg a
 update msg model =
-  case Debug.log "" msg of
+  case msg of
     CounterList event ->
       case event of
         Counter.Incremented ->
@@ -72,7 +73,7 @@ update msg model =
 
     Fetch ->
       return model
-        |> Html.andThen fetch
+        |> andThen fetch
 
     Result data ->
       return { model | result = data }
@@ -109,7 +110,7 @@ view model =
       ]
 
 mod =
-  Html.root
+  root
     { view = view
     , model = init
     , update = update

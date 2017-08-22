@@ -24,7 +24,7 @@ These features are completed / planned
 - [x] Component state handling
 - [x] Task based event handling
 - [x] Task based child to parent communication
-- [ ] Process handling
 - [ ] Styled nodes
 - [ ] Passive event listeners
+- [ ] Process handling
 - [ ] DOM Apis

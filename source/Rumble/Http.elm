@@ -52,7 +52,7 @@ type alias Progress =
 
 {-| Sends a request.
 -}
-send : Request msg -> Task msg
+send : Request msg -> Task Never msg
 send request =
   Native.Http.send request
 

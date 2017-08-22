@@ -7,7 +7,11 @@
     "source"
   ],
   "native-modules": true,
-  "exposed-modules": [],
+  "exposed-modules": [
+    "Rumble.Update",
+    "Rumble.Html",
+    "Rumble.Task"
+  ],
   "dependencies": {
     "elm-lang/core": "5.1.1 <= v < 6.0.0"
   },

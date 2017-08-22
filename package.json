@@ -13,7 +13,7 @@
     "standard": "^10.0.3"
   },
   "scripts": {
-    "test": "yarn jest && yarn standard"
+    "test": "yarn jest && yarn standard && yarn elm-dev docs"
   },
   "standard": {
     "env": [

@@ -10,7 +10,7 @@ var _gdotdesign$elm_html$Native_Task = (function () { // eslint-disable-line
       return task.map(func)
     }),
 
-    andThen: F2(function (func, task) {
+    chain: F2(function (func, task) {
       return task.chain(func)
     }),
 

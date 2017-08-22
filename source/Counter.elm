@@ -1,7 +1,8 @@
 module Counter exposing (..)
 
-import Rumble.Html exposing (Component, Html, Update, node, text, on, return, emit, thenEmit, andThen)
+import Rumble.Html exposing (Component, Html, node, text, on)
 import Rumble.Task as Task exposing (Task)
+import Rumble.Update exposing (..)
 
 type alias Model =
   { count: Int
@@ -42,7 +43,7 @@ update msg model =
           |> emit Changed
 
 
-delayedDecrement : Task Msg
+delayedDecrement : Task Never Msg
 delayedDecrement =
   Task.delay 1000 Decrement
 

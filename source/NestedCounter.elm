@@ -1,6 +1,7 @@
 module NestedCounter exposing (..)
 
-import Rumble.Html exposing (Component, Update, Html, node, text, on, return, emit, mount)
+import Rumble.Html exposing (Component, Html, node, text, on, mount)
+import Rumble.Update exposing (..)
 import Counter
 
 type alias Model =

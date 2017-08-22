@@ -1,25 +1,42 @@
-module Rumble.Task exposing (..)
+module Rumble.Task exposing (Task, succeed, delay, chain, map)
+
+{-| Handle results of a computation.
+
+@docs Task, delay, succeed, map, chain
+-}
 
 import Native.Vendor.Fluture
 import Native.Task
 
-type Task a = Task a
-type Id = Id
 
-type Error = Error String
+{-| Representation of the result of a computation.
+-}
+type Task error value = Task error value
 
-delay : Int -> a -> Task a
+
+{-| Task that resolves the given value after the given delay.
+-}
+delay : Int -> value -> Task Never value
 delay delay value =
   Native.Task.timeout delay value
 
-succeed : value -> Task value
+
+{-| Task that resolve the value immediately.
+-}
+succeed : value -> Task Never value
 succeed value =
   Native.Task.succeed value
 
-map : (a -> b) -> Task a -> Task b
+
+{-| Synchronously transform the result of a task.
+-}
+map : (value -> newValue) -> Task error value -> Task error newValue
 map function task =
   Native.Task.map function task
 
-andThen : (a -> Task b) -> Task a -> Task b
-andThen function task =
-  Native.Task.andThen function task
+
+{-| Asynchronously transform the result of a task.
+-}
+chain : (value -> Task error newValue) -> Task error value -> Task error newValue
+chain function task =
+  Native.Task.chain function task
