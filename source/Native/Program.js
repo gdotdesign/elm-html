@@ -1,6 +1,6 @@
 'use strict'
 
-/* global Inferno, _elm_lang$core$Native_List */
+/* global Inferno, _elm_lang$core$Native_List, jss, jssNested */
 
 /* Represents a program whose architecture is based on a map which contains
    data for components identified by their unique id.
@@ -11,10 +11,27 @@ class Program {
     this.container = this.createContainer()
     this.root = rootComponent
 
+    this.styles = new Map()
+    this.index = 0
+
     this.ids = new Set()
     this.map = new Map()
 
+    this.setupJss()
+
     this.render()
+  }
+
+  setupJss () {
+    this.jss = jss.create()
+    this.jss.use(jssNested.default())
+    this.jss.setup({
+      generateClassName: function (rule) {
+        return 's-' + rule.name
+      }
+    })
+    this.sheet = this.jss.createStyleSheet({}, { link: true })
+    this.sheet.attach()
   }
 
   /* Create and inject a container element into the body, this is needed
@@ -153,13 +170,63 @@ class Program {
 
       // Element
       case 'E':
+        var attributes = this.transformAttributes(item.attributes, parentId)
+        var styleHash = JSON.stringify(item.styles)
+        var rule
+
+        if (item.styles._0) {
+          if (this.styles.has(styleHash)) {
+            rule = this.styles.get(styleHash)
+            attributes.className = rule.className
+          } else {
+            rule = this.transformStyles(item.styles)
+            this.styles.set(styleHash, rule)
+            attributes.className = rule.className
+          }
+        }
+
         // Create virtual dom element
         return Inferno.createElement(
           item.tag,
-          this.transformAttributes(item.attributes, parentId),
+          attributes,
           this.transformElements(item.contents, parentId)
         )
     }
+  }
+
+  /* Transform styles of an element.
+  */
+  transformStyles (styles) {
+    var data = {}
+
+    for (var style of _elm_lang$core$Native_List.toArray(styles)) {
+      switch (style.selector.ctor) {
+        case 'Self':
+          for (var tuple of _elm_lang$core$Native_List.toArray(style.data)) {
+            data[tuple._0] = tuple._1
+          }
+          break
+
+        case 'Child':
+          data['& ' + style.selector._0] = this.transformStyleBody(style.data)
+          break
+
+        case 'Pseudo':
+          data['&' + style.selector._0] = this.transformStyleBody(style.data)
+      }
+    }
+    console.log(data)
+    return this.sheet.addRule(this.index++, data)
+  }
+
+  transformStyleBody (data) {
+    var body = {}
+
+    for (var tuple of _elm_lang$core$Native_List.toArray(data)) {
+      body[tuple._0] = tuple._1
+    }
+
+    return body
   }
 
   /* Transforms attributes of an element from Elm representation into virtual
@@ -192,8 +259,9 @@ class Program {
   /* Renders the program into the container */
   render () {
     this.ids.clear()
-    var vdom = this.transformElement(this.root)
-    Inferno.render(vdom, this.container)
+
+    Inferno.render(this.transformElement(this.root), this.container)
+
     for (var key of this.map.keys()) {
       if (this.ids.has(key)) { continue }
       this.map.delete(key)
@@ -204,6 +272,8 @@ class Program {
 if (typeof module !== 'undefined') {
   global.Inferno = require('inferno')
   global.Inferno.createElement = require('inferno-create-element')
+  global.jss = require('jss')
+  global.jssNested = require('jss-nested')
 
   global._elm_lang$core$Native_List = {
     toArray: function (a) { return a }

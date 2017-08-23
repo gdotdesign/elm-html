@@ -19,6 +19,7 @@ module Rumble.Html exposing
 
 import Native.Vendor.Inferno
 import Native.Vendor.InfernoCreateElement
+import Native.Vendor.Jss
 import Native.Program
 import Native.Html
 import Native.Uid

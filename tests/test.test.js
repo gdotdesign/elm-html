@@ -10,6 +10,7 @@ const rootComponent = ctor('C', {
       contents: [
         ctor('T', 'Hello')
       ],
+      styles: [],
       attributes: [] })
   }
 })

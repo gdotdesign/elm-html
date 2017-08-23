@@ -25,9 +25,14 @@ type alias Rule =
   , data : Style
   }
 
+child : String -> Style -> Rule
+child selector data =
+  Rule (Child selector) data
+
+pseudo : String -> Style -> Rule
+pseudo selector data =
+  Rule (Pseudo selector) data
 
 style : Style -> Rule
 style data =
-  { selector = Self
-  , data = data
-  }
+  Rule Self data

@@ -4,6 +4,7 @@ import NestedCounter
 
 import Rumble.Html as Html exposing (Html, root, node, text, on, mount, mountWithContent)
 import Rumble.Task as Task exposing (Task)
+import Rumble.Style exposing (style)
 import Rumble.Update exposing (..)
 import Rumble.Http as Http
 
@@ -108,6 +109,12 @@ view model =
           , node "hr" [] [] []
           , node "h1" [] [] [ text "Component List" ]
           , mount Counter.component "list" CounterList
+          , node "hr" []
+            [ style
+              [ ("border", "0")
+              , ("border-bottom", "1px dashed #ccc")
+              ]
+            ] []
           , node "div" [] [] counterList
           , node "hr" [] [] []
           , content
