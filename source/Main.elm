@@ -88,7 +88,7 @@ view : Model -> Html Msg
 view model =
   let
     content =
-      node "button" [on "click" (\_ -> Fetch)] [text "Fetch"]
+      node "button" [on "click" (\_ -> Fetch)] [] [text "Fetch"]
 
     counterList =
       List.range 1 model.counterCount
@@ -96,21 +96,22 @@ view model =
   in
     node "div"
       []
-      [ node "div" []
-        [ node "div" []
-          [ node "h1" [] [ text "Normal Components" ]
+      []
+      [ node "div" [] []
+        [ node "div" [] []
+          [ node "h1" [] [] [ text "Normal Components" ]
           , mount Counter.component "counter" Counter
           , mount Counter.component "counter2" Counter
-          , node "hr" [] []
-          , node "h1" [] [ text "Nested Component" ]
+          , node "hr" [] [] []
+          , node "h1" [] [] [ text "Nested Component" ]
           , mount NestedCounter.component "nested-counter" Counter
-          , node "hr" [] []
-          , node "h1" [] [ text "Component List" ]
+          , node "hr" [] [] []
+          , node "h1" [] [] [ text "Component List" ]
           , mount Counter.component "list" CounterList
-          , node "div" [] counterList
-          , node "hr" [] []
+          , node "div" [] [] counterList
+          , node "hr" [] [] []
           , content
-          , node "h1" [] [ text "Open Component" ]
+          , node "h1" [] [] [ text "Open Component" ]
           , mountWithContent Test.component "open" Open
               (Dict.fromList [("content", content)])
           ]

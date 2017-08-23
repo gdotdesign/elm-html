@@ -2,6 +2,7 @@ module Counter exposing (..)
 
 import Rumble.Html exposing (Component, Html, node, text, on)
 import Rumble.Task as Task exposing (Task)
+import Rumble.Style exposing (style)
 import Rumble.Update exposing (..)
 
 type alias Model =
@@ -52,12 +53,18 @@ view : Model -> Html Msg
 view model =
   node "div"
     []
+    [ style
+      [ ("background", "red")
+      ]
+    ]
     [ node "button"
       [ on "click" (\value -> Decrement) ]
+      []
       [ text "-"]
     , text (toString model)
     , node "button"
       [ on "click" (\value -> Increment) ]
+      []
       [ text "+"]
     ]
 

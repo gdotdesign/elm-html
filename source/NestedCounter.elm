@@ -23,11 +23,10 @@ update msg model =
 
 view : Model -> Html Msg
 view model =
-  node "div"
-    []
+  node "div" [] []
     [ text "Nested Counter:"
-    , node "div" []
-      [ node "div" []
+    , node "div" [] []
+      [ node "div" [] []
         [ mount Counter.component "counter" Counter
         ]
       ]

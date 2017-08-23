@@ -33,7 +33,7 @@ view data model =
       Just html -> embed html
       Nothing -> text "Hello"
   else
-    node "button" [ on "click" (\value -> Toggle) ] [ text "Open" ]
+    node "button" [ on "click" (\value -> Toggle) ] [] [ text "Open" ]
 
 
 component : ComponentWithContent Model Msg Event a

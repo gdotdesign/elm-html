@@ -26,9 +26,11 @@ import Native.Uid
 import Json.Decode as Json
 import Dict exposing (Dict)
 
+import Rumble.Style exposing (Rule, Style)
 import Rumble.Update exposing (Update)
 
--- A hidden type to bypass the type system
+{-| A hidden type to bypass the type system
+-}
 type DATA = DATA
 
 
@@ -36,8 +38,8 @@ type DATA = DATA
 -}
 type Attribute msg
   = Event String (Json.Value -> msg)
-  | Property String String
   | Attribute String String
+  | Property String String
 
 
 {-| Represents a Html node.
@@ -72,9 +74,9 @@ type alias ComponentWithContent model msg event parentMsg =
 -}
 type alias Element msg =
   { attributes : List (Attribute msg)
-  , styles : List (String, String)
   , contents : List (Html msg)
   , scrollKey : Maybe String
+  , styles : List Rule
   , tag : String
   }
 
@@ -98,13 +100,13 @@ text value =
 
 {-| Returns an Html element.
 -}
-node : String -> List (Attribute msg) -> List (Html msg) -> (Html msg)
-node tag attributes contents =
+node : String -> List (Attribute msg) -> List Rule -> List (Html msg) -> Html msg
+node tag attributes styles contents =
   E
     { attributes = attributes
     , scrollKey = Nothing
     , contents = contents
-    , styles = []
+    , styles = styles
     , tag = tag
     }
 
