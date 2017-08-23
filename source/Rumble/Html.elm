@@ -1,6 +1,6 @@
 module Rumble.Html exposing
   ( ComponentWithContent, Component, Html, node, text, mount, mountWithContent
-  , embed, on, root, program)
+  , embed, on, root, program, attribute, property )
 
 {-| This module provides a way to render Html elements and simple Components.
 
@@ -9,6 +9,9 @@ module Rumble.Html exposing
 
 # Events
 @docs on
+
+# Attributes
+@docs attribute, property
 
 # Component
 @docs Component, ComponentWithContent, mount, mountWithContent, embed, root
@@ -90,6 +93,20 @@ type alias Element msg =
 on : String -> (Json.Value -> msg) -> Attribute msg
 on event handler =
   Event event handler
+
+
+{-| Returns an attribute from the given name and value.
+-}
+attribute : String -> String -> Attribute msg
+attribute =
+  Attribute
+
+
+{-| Returns a property from the given name and value.
+-}
+property : String -> String -> Attribute msg
+property =
+  Property
 
 
 {-| Returns an Html text node.

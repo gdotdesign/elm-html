@@ -215,7 +215,7 @@ class Program {
           data['&' + style.selector._0] = this.transformStyleBody(style.data)
       }
     }
-    console.log(data)
+
     return this.sheet.addRule(this.index++, data)
   }
 
@@ -242,6 +242,10 @@ class Program {
       .toArray(attributes)
       .forEach(function (attribute) {
         switch (attribute.ctor) {
+          case 'Property':
+            result[attribute._0] = attribute._1
+            break
+
           case 'Event':
             // Wire in the event to the update.
             result['on' + attribute._0] = function (event) {

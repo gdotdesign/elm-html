@@ -1,6 +1,4 @@
-module Ui.Input exposing
-  ( Model, Msg, init, onChange, update, view, render, placeholder
-  , showClearIcon, setValue, kind )
+module Ui.Input exposing (..)
 
 {-| Component for single line text based input (wrapper for the input HTML tag).
 
@@ -20,27 +18,37 @@ module Ui.Input exposing
 @docs setValue
 -}
 
-import Plank exposing (node, text, on, attribute)
+import Rumble.Html exposing (Component, Html, node, text, on, attribute, property)
+import Rumble.Update exposing (Update, return, emit)
 
-import Ui.Icons
-import Ui
+import Json.Decode as Json
 
-import Ui.Styles.Input exposing (defaultStyle)
-import Ui.Styles
+--import Ui.Icons
+--import Ui
 
-{-| Props for an input.
+--import Ui.Styles.Input exposing (defaultStyle)
+--import Ui.Styles
+
+{-| Represents an input.
+-}
+type alias Model =
+  { value : String
+  }
+
+
+{-| Properties for an input.
   - **placeholder** - The text to display when there is no value
   - **showClearIcon** - Whether or not to show the clear icon
   - **disabled** - Whether or not the input is disabled
   - **readonly** - Whether or not the input is readonly
   - **kind** - The type of the input
 -}
-type alias Model =
+type alias Properties =
   { placeholder : String
   , showClearIcon : Bool
+  , value : Maybe String
   , disabled : Bool
   , readonly : Bool
-  , value : String
   , kind : String
   }
 
@@ -49,156 +57,95 @@ type alias Model =
 -}
 type Msg
   = Input String
+  | Clear
 
 
-{-| Initializes an input with a default value and a placeholder.
+type Event
+  = Changed String
+  | Cleared
 
-    input =
-      Ui.Input.init ()
-        |> Ui.Input.placeholder "Type here..."
-        |> Ui.Input.showClearIcon True
+{-| Initializes an input.
 -}
 init : Model
-init _ =
+init =
+  { value = ""
+  }
+
+
+{-| Default properties for an input.
+-}
+defaultProps : Properties
+defaultProps =
   { showClearIcon = False
   , placeholder = ""
-  , uid = Uid.uid ()
   , disabled = False
   , readonly = False
   , kind = "text"
-  , value = ""
+  , value = Nothing
   }
-
-defaultProps :
-
-{-| Sets the placeholder of an input.
--}
-placeholder : String -> Model -> Model
-placeholder value model =
-  { model | placeholder = value }
-
-
-{-| Sets the kind (type) of an input.
--}
-kind : String -> Model -> Model
-kind value model =
-  { model | kind = value }
-
-
-{-| Subscribe to the changes of an input.
-
-    subscription = Ui.Input.onChange InputChanged input
--}
-onChange : (String -> msg) -> Model -> Sub msg
-onChange msg model =
-  Emitter.listenString model.uid msg
 
 
 {-| Updates an input.
-
-    ( updatedInput, cmd ) = Ui.Input.update msg input
 -}
-update : Msg -> Model -> ( Model, Cmd Msg )
+update : Msg -> Model -> Update Model Msg Event
 update msg model =
   case msg of
-    Done _ ->
-      ( model, Cmd.none )
-
     Input value ->
-      ( { model | value = value }, Emitter.sendString model.uid value )
+      return { model | value = value }
+        |> emit (Changed value)
 
     Clear ->
-      let
-        (updatedInput, cmd) =
-          setValue "" model
-
-        commands =
-          Cmd.batch
-            [ Emitter.sendString model.uid ""
-            , cmd
-            ]
-      in
-        ( updatedInput, commands )
-
-
-{-| Lazily renders an input.
-
-    Ui.Input.view input
--}
-view : Model -> Html.Html Msg
-view model =
-  Html.Lazy.lazy render model
+      return { model | value = "" }
+        |> emit Cleared
 
 
 {-| Renders an input.
-
-    Ui.Input.render input
 -}
-render : Model -> Html.Html Msg
-render model =
+view : Properties -> Model -> Html Msg
+view properties model =
   let
+    value =
+      Maybe.withDefault model.value properties.value
+
     showClearIcon =
-      not (not model.showClearIcon
-           || model.disabled
-           || model.readonly
-           || model.value == "")
+      not (not properties.showClearIcon
+           || properties.disabled
+           || properties.readonly
+           || value == "")
 
     clearIcon =
       if showClearIcon then
-        Ui.Icons.close [onClick Clear]
+        node "span" [ on "click" (\_ -> Clear)] [] [ text "clear" ]
       else
         text ""
   in
     node
       "ui-input"
-      ( [ Ui.attributeList
-          [ ( "clearable", showClearIcon)
-          ]
-        , Ui.Styles.apply defaultStyle
-        ]
-        |> List.concat
-      )
+      []
+      []
       [ node
           "input"
-          [ Html.Attributes.placeholder model.placeholder
-          , defaultValue model.value
-          , readonly model.readonly
-          , disabled model.disabled
-          , spellcheck False
-          , type_ model.kind
-          , onInput Input
-          , id model.uid
+          [ attribute "placeholder" properties.placeholder
+          --, attribute "readonly" properties.readonly
+          --, attribute "disabled" properties.disabled
+          , attribute "type" properties.kind
+          , attribute "spellcheck" "false"
+
+          , property "value" value
+          , on "input" (\value ->
+              case Json.decodeValue (Json.at ["target", "value"] Json.string) value of
+                Ok value -> Input value
+                Err _ -> Input ""
+            )
           ]
+          []
           []
       , clearIcon
       ]
 
-
-{-| Sets the value of an input.
-
-    (updatedInput, cmd) = Ui.Input.setValue "new value" input
--}
-setValue : String -> Model -> ( Model, Cmd Msg)
-setValue value model =
-  let
-    selector =
-      DOM.idSelector model.uid
-
-    equals =
-      case DOM.getValueSync selector of
-        Ok currentValue -> model.value == value && currentValue == value
-        Err _ -> False
-  in
-    if equals then
-      ( model, Cmd.none )
-    else
-      ( { model | value = value }
-      , Task.attempt Done (DOM.setValue value selector)
-      )
-
-
-{-| Sets whether or not to show a clear icon for an input.
--}
-showClearIcon : Bool -> Model -> Model
-showClearIcon value model =
-  { model | showClearIcon = value }
+component : Properties -> Component Model Msg Event
+component properties =
+  { view = view properties
+  , update = update
+  , model = init
+  }

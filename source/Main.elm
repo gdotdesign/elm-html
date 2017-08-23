@@ -8,6 +8,8 @@ import Rumble.Style exposing (style)
 import Rumble.Update exposing (..)
 import Rumble.Http as Http
 
+import Ui.Input
+
 import Dict
 
 type alias Model =
@@ -25,6 +27,7 @@ type Msg
   | Fetch
   | Result String
   | Progress Http.Progress
+  | Input Ui.Input.Event
 
 init : Model
 init =
@@ -88,6 +91,8 @@ update msg model =
 view : Model -> Html Msg
 view model =
   let
+    props = Ui.Input.defaultProps
+
     content =
       node "button" [on "click" (\_ -> Fetch)] [] [text "Fetch"]
 
@@ -123,6 +128,7 @@ view model =
               (Dict.fromList [("content", content)])
           ]
         ]
+      , mount (Ui.Input.component { props | showClearIcon = True }) "input" Input
       , text (toString model)
       ]
 
