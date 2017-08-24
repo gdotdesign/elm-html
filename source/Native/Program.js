@@ -66,7 +66,11 @@ class Program {
         .map(function (task) {
           // TODO: Nicer error handling
           task.fork(console.error, function (value) {
-            this.update(value, id)
+            if(value.ctor === "_Tuple2") {
+              this.update(value._1, id + "::" + value._0.ctor)
+            } else {
+              this.update(value, id)
+            }
           }.bind(this))
         }.bind(this))
 
@@ -133,9 +137,9 @@ class Program {
         var id
 
         if (parentId) {
-          id = parentId + '::' + item.id
+          id = parentId + '::' + item.id("").ctor
         } else {
-          id = item.id
+          id = item.id("").ctor
         }
 
         if (this.ids.has(id)) {

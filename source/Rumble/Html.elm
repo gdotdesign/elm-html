@@ -1,6 +1,6 @@
 module Rumble.Html exposing
-  ( ComponentWithContent, Component, Html, node, text, mount, mountWithContent
-  , embed, on, root, program, attribute, property )
+  ( ComponentWithContent, Component, Html, node, text, mount, mountWithEvent, mountWithContent
+  , embed, on, root, program, attribute, property, send)
 
 {-| This module provides a way to render Html elements and simple Components.
 
@@ -14,7 +14,7 @@ module Rumble.Html exposing
 @docs attribute, property
 
 # Component
-@docs Component, ComponentWithContent, mount, mountWithContent, embed, root
+@docs Component, ComponentWithContent, mount, mountWithContent, mountWithEvent, embed, root, send
 
 # Program
 @docs program
@@ -32,10 +32,13 @@ import Dict exposing (Dict)
 
 import Rumble.Style exposing (Rule, Style)
 import Rumble.Update exposing (Update)
+import Rumble.Task exposing (Task)
 
 {-| A hidden type to bypass the type system
 -}
 type DATA = DATA
+
+type Root = Root String
 
 
 {-| Represents an Html attribute.
@@ -85,6 +88,13 @@ type alias Element msg =
   }
 
 
+{-|
+-}
+send : (msg -> actionMsg) -> msg -> Task Never a
+send id msg =
+  Native.Task.succeed (id msg, msg)
+
+
 {-| Subscribe to an event as a Html attribute.
     - The first parameter is the event
     - The second parameter is the event hanlder function which takes the
@@ -132,18 +142,26 @@ node tag attributes styles contents =
 {-| Mounts the given component.
 -}
 mount : Component model msg event
-      -> String
+      -> (msg -> actionMsg)
+      -> Html parentMsg
+mount template id =
+  C (Native.Html.component template id)
+
+
+{-| Mounts the given component with a listener.
+-}
+mountWithEvent : Component model msg event
+      -> (msg -> actionMsg)
       -> (event -> parentMsg)
       -> Html parentMsg
-mount template id listener =
+mountWithEvent template id listener =
   C (Native.Html.component template id listener)
-
 
 {-| Mounts the given open component.
 -}
 mountWithContent
   : ComponentWithContent model msg event parentMsg
-  -> String
+  -> (msg -> actionMsg)
   -> (event -> parentMsg)
   -> Dict String (Html parentMsg)
   -> Html parentMsg
@@ -162,7 +180,7 @@ embed parentHtml =
 -}
 root : Component a b d -> Html c
 root template =
-  C (Native.Html.component template "root" "")
+  C (Native.Html.component template Root "")
 
 
 {-| Creates a program from the given Html tree.

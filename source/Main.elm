@@ -2,7 +2,7 @@ import Test
 import Counter
 import NestedCounter
 
-import Rumble.Html as Html exposing (Html, root, node, text, on, mount, mountWithContent)
+import Rumble.Html as Html exposing (Html, root, node, text, on, mount,mountWithEvent, mountWithContent)
 import Rumble.Task as Task exposing (Task)
 import Rumble.Style exposing (style)
 import Rumble.Update exposing (..)
@@ -28,6 +28,17 @@ type Msg
   | Result String
   | Progress Http.Progress
   | Input Ui.Input.Event
+  | DoIncrement
+
+type Components
+  = ACounter Counter.Msg
+  | BCounter Counter.Msg
+  | CList Int Counter.Msg
+  | NCounter NestedCounter.Msg
+  | LCounter Counter.Msg
+  | IInput Ui.Input.Msg
+  | TTest Test.Msg
+
 
 init : Model
 init =
@@ -85,20 +96,22 @@ update msg model =
     Result data ->
       return { model | result = data }
 
+    DoIncrement ->
+      return model
+        |> andThen (Html.send ACounter Counter.Increment)
+
     _ ->
       return model
 
 view : Model -> Html Msg
 view model =
   let
-    props = Ui.Input.defaultProps
-
     content =
       node "button" [on "click" (\_ -> Fetch)] [] [text "Fetch"]
 
     counterList =
       List.range 1 model.counterCount
-      |> List.map (\index -> mount Counter.component ("list-" ++ toString index) Counter)
+      |> List.map (\index -> mountWithEvent Counter.component (CList index) Counter)
   in
     node "div"
       []
@@ -106,14 +119,15 @@ view model =
       [ node "div" [] []
         [ node "div" [] []
           [ node "h1" [] [] [ text "Normal Components" ]
-          , mount Counter.component "counter" Counter
-          , mount Counter.component "counter2" Counter
+          , mountWithEvent Counter.component ACounter Counter
+          , node "button" [on "click" (\_ -> DoIncrement)] [] [text "Increment"]
+          , mountWithEvent Counter.component BCounter Counter
           , node "hr" [] [] []
           , node "h1" [] [] [ text "Nested Component" ]
-          , mount NestedCounter.component "nested-counter" Counter
+          , mountWithEvent NestedCounter.component NCounter Counter
           , node "hr" [] [] []
           , node "h1" [] [] [ text "Component List" ]
-          , mount Counter.component "list" CounterList
+          , mountWithEvent Counter.component LCounter CounterList
           , node "hr" []
             [ style
               [ ("border", "0")
@@ -124,11 +138,11 @@ view model =
           , node "hr" [] [] []
           , content
           , node "h1" [] [] [ text "Open Component" ]
-          , mountWithContent Test.component "open" Open
+          , mountWithContent Test.component TTest Open
               (Dict.fromList [("content", content)])
           ]
         ]
-      , mount (Ui.Input.component { props | showClearIcon = True }) "input" Input
+      , mountWithEvent Ui.Input.component IInput Input
       , text (toString model)
       ]
 

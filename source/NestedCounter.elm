@@ -1,6 +1,6 @@
 module NestedCounter exposing (..)
 
-import Rumble.Html exposing (Component, Html, node, text, on, mount)
+import Rumble.Html exposing (Component, Html, node, text, on, mountWithEvent)
 import Rumble.Update exposing (..)
 import Counter
 
@@ -13,6 +13,9 @@ init =
 
 type Msg
   = Counter Counter.Event
+
+type Components
+  = ACounter Counter.Msg
 
 update : Msg -> Model -> Update Model Msg Counter.Event
 update msg model =
@@ -27,7 +30,7 @@ view model =
     [ text "Nested Counter:"
     , node "div" [] []
       [ node "div" [] []
-        [ mount Counter.component "counter" Counter
+        [ mountWithEvent Counter.component ACounter Counter
         ]
       ]
     ]

@@ -30,23 +30,17 @@ import Json.Decode as Json
 --import Ui.Styles
 
 {-| Represents an input.
--}
-type alias Model =
-  { value : String
-  }
-
-
-{-| Properties for an input.
   - **placeholder** - The text to display when there is no value
   - **showClearIcon** - Whether or not to show the clear icon
   - **disabled** - Whether or not the input is disabled
   - **readonly** - Whether or not the input is readonly
   - **kind** - The type of the input
 -}
-type alias Properties =
-  { placeholder : String
+type alias Model =
+  { value : String
+  , placeholder : String
   , showClearIcon : Bool
-  , value : Maybe String
+  , value : String
   , disabled : Bool
   , readonly : Bool
   , kind : String
@@ -68,20 +62,12 @@ type Event
 -}
 init : Model
 init =
-  { value = ""
-  }
-
-
-{-| Default properties for an input.
--}
-defaultProps : Properties
-defaultProps =
   { showClearIcon = False
   , placeholder = ""
   , disabled = False
   , readonly = False
   , kind = "text"
-  , value = Nothing
+  , value = ""
   }
 
 
@@ -101,17 +87,14 @@ update msg model =
 
 {-| Renders an input.
 -}
-view : Properties -> Model -> Html Msg
-view properties model =
+view : Model -> Html Msg
+view model =
   let
-    value =
-      Maybe.withDefault model.value properties.value
-
     showClearIcon =
-      not (not properties.showClearIcon
-           || properties.disabled
-           || properties.readonly
-           || value == "")
+      not (not model.showClearIcon
+           || model.disabled
+           || model.readonly
+           || model.value == "")
 
     clearIcon =
       if showClearIcon then
@@ -125,13 +108,13 @@ view properties model =
       []
       [ node
           "input"
-          [ attribute "placeholder" properties.placeholder
+          [ attribute "placeholder" model.placeholder
           --, attribute "readonly" properties.readonly
           --, attribute "disabled" properties.disabled
-          , attribute "type" properties.kind
+          , attribute "type" model.kind
           , attribute "spellcheck" "false"
 
-          , property "value" value
+          , property "value" model.value
           , on "input" (\value ->
               case Json.decodeValue (Json.at ["target", "value"] Json.string) value of
                 Ok value -> Input value
@@ -143,9 +126,9 @@ view properties model =
       , clearIcon
       ]
 
-component : Properties -> Component Model Msg Event
-component properties =
-  { view = view properties
+component : Component Model Msg Event
+component =
+  { view = view
   , update = update
   , model = init
   }
