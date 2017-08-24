@@ -19,7 +19,7 @@ init =
   { open = False
   }
 
-update : Msg -> Model -> Update Model Msg Event
+update : Msg -> Model -> Update Model Msg Event a
 update msg model =
   case msg of
     Toggle ->
@@ -36,7 +36,7 @@ view data model =
     node "button" [ on "click" (\value -> Toggle) ] [] [ text "Open" ]
 
 
-component : ComponentWithContent Model Msg Event a
+component : ComponentWithContent Model Msg Event a b
 component =
   { update = update
   , model = init

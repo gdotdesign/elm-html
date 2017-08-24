@@ -28,7 +28,7 @@ init =
   }
 
 
-update : Msg -> Model -> Update Model Msg Event
+update : Msg -> Model -> Update Model Msg Event command
 update msg model =
   case msg of
     Decrement ->
@@ -91,7 +91,7 @@ view model =
     ]
 
 
-component : Component Model Msg Event
+component : Component Model Msg Event command
 component =
   { update = update
   , model = init

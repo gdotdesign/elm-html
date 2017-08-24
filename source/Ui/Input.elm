@@ -73,7 +73,7 @@ init =
 
 {-| Updates an input.
 -}
-update : Msg -> Model -> Update Model Msg Event
+update : Msg -> Model -> Update Model Msg Event command
 update msg model =
   case msg of
     Input value ->
@@ -126,7 +126,7 @@ view model =
       , clearIcon
       ]
 
-component : Component Model Msg Event
+component : Component Model Msg Event command
 component =
   { view = view
   , update = update

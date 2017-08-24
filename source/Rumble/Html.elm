@@ -1,6 +1,6 @@
 module Rumble.Html exposing
   ( ComponentWithContent, Component, Html, node, text, mount, mountWithEvent, mountWithContent
-  , embed, on, root, program, attribute, property, send)
+  , embed, on, root, program, attribute, property)
 
 {-| This module provides a way to render Html elements and simple Components.
 
@@ -14,7 +14,7 @@ module Rumble.Html exposing
 @docs attribute, property
 
 # Component
-@docs Component, ComponentWithContent, mount, mountWithContent, mountWithEvent, embed, root, send
+@docs Component, ComponentWithContent, mount, mountWithContent, mountWithEvent, embed, root
 
 # Program
 @docs program
@@ -60,8 +60,8 @@ type Html msg
 
 {-| Represents a component.
 -}
-type alias Component model msg event =
-  { update : msg -> model -> Update model msg event
+type alias Component model msg event command =
+  { update : msg -> model -> Update model msg event command
   , view : model -> Html msg
   , model : model
   }
@@ -70,9 +70,9 @@ type alias Component model msg event =
 {-| Represents a component that is has injection points for content from their
 parent component.
 -}
-type alias ComponentWithContent model msg event parentMsg =
+type alias ComponentWithContent model msg event parentMsg command =
   { view : Dict String (Html parentMsg) -> model -> Html msg
-  , update : msg -> model -> Update model msg event
+  , update : msg -> model -> Update model msg event command
   , model : model
   }
 
@@ -86,13 +86,6 @@ type alias Element msg =
   , styles : List Rule
   , tag : String
   }
-
-
-{-|
--}
-send : (msg -> actionMsg) -> msg -> Task Never a
-send id msg =
-  Native.Task.succeed (id msg, msg)
 
 
 {-| Subscribe to an event as a Html attribute.
@@ -141,7 +134,7 @@ node tag attributes styles contents =
 
 {-| Mounts the given component.
 -}
-mount : Component model msg event
+mount : Component model msg event command
       -> (msg -> actionMsg)
       -> Html parentMsg
 mount template id =
@@ -150,7 +143,7 @@ mount template id =
 
 {-| Mounts the given component with a listener.
 -}
-mountWithEvent : Component model msg event
+mountWithEvent : Component model msg event command
       -> (msg -> actionMsg)
       -> (event -> parentMsg)
       -> Html parentMsg
@@ -160,7 +153,7 @@ mountWithEvent template id listener =
 {-| Mounts the given open component.
 -}
 mountWithContent
-  : ComponentWithContent model msg event parentMsg
+  : ComponentWithContent model msg event parentMsg command
   -> (msg -> actionMsg)
   -> (event -> parentMsg)
   -> Dict String (Html parentMsg)
@@ -178,7 +171,7 @@ embed parentHtml =
 
 {-| Mounts the given component as a root component.
 -}
-root : Component a b d -> Html c
+root : Component a b d e -> Html c
 root template =
   C (Native.Html.component template Root "")
 

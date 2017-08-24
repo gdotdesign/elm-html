@@ -17,7 +17,7 @@ type Msg
 type Components
   = ACounter Counter.Msg
 
-update : Msg -> Model -> Update Model Msg Counter.Event
+update : Msg -> Model -> Update Model Msg Counter.Event Components
 update msg model =
   case msg of
     Counter event ->
@@ -35,7 +35,7 @@ view model =
       ]
     ]
 
-component : Component Model Msg Counter.Event
+component : Component Model Msg Counter.Event Components
 component =
   { model = init
   , update = update

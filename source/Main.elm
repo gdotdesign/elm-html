@@ -65,7 +65,7 @@ fetch =
     }
 
 
-update : Msg -> Model -> Update Model Msg a
+update : Msg -> Model -> Update Model Msg a Components
 update msg model =
   case msg of
     CounterList event ->
@@ -98,7 +98,7 @@ update msg model =
 
     DoIncrement ->
       return model
-        |> andThen (Html.send ACounter Counter.Increment)
+        |> send (ACounter Counter.Increment)
 
     _ ->
       return model

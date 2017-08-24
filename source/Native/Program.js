@@ -66,11 +66,17 @@ class Program {
         .map(function (task) {
           // TODO: Nicer error handling
           task.fork(console.error, function (value) {
-            if(value.ctor === "_Tuple2") {
-              this.update(value._1, id + "::" + value._0.ctor)
-            } else {
-              this.update(value, id)
-            }
+            this.update(value, id)
+          }.bind(this))
+        }.bind(this))
+
+    // Process the command tasks
+    _elm_lang$core$Native_List
+        .toArray(data.commands)
+        .map(function (task) {
+          // TODO: Nicer error handling
+          task.fork(console.error, function (value) {
+            this.update(value._0, id + '::' + value.ctor)
           }.bind(this))
         }.bind(this))
 
