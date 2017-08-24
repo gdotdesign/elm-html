@@ -1,4 +1,5 @@
-module Counter exposing (..)
+module Counter exposing
+  (Model, Msg(Increment, Decrement), Event(..), init, update, view, component)
 
 import Rumble.Html exposing (Component, Html, node, text, on)
 import Rumble.Style exposing (style, child, pseudo)
