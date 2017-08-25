@@ -13,7 +13,7 @@ module Ui.Input exposing
 @docs Msg
 -}
 
-import Rumble.Html exposing (Component, Html, node, text)
+import Rumble.Html as Html exposing (Component, Html, node, text)
 import Rumble.Html.Events exposing (onInput, onClick)
 import Rumble.Update exposing (Update, return, emit)
 import Rumble.Style exposing (Style, Rule, style)
@@ -160,3 +160,8 @@ component =
   , model = init
   , view = view
   }
+
+
+main =
+  Html.root component
+  |> Html.program

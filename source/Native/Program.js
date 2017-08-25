@@ -1,13 +1,14 @@
 'use strict'
 
-/* global Inferno, _elm_lang$core$Native_List, jss, jssNested */
+/* global _elm_lang$core$Native_List */
 
 /* Represents a program whose architecture is based on a map which contains
    data for components identified by their unique id.
 */
-class Program {
+class Program { // eslint-disable-line
   /* Creates a program from a base tree */
   constructor (rootComponent) {
+    this.inferno = (window.Inferno || exports.Inferno)
     this.container = this.createContainer()
     this.root = rootComponent
 
@@ -23,8 +24,8 @@ class Program {
   }
 
   setupJss () {
-    this.jss = jss.create()
-    this.jss.use(jssNested.default())
+    this.jss = (window.jss || exports.jss).create()
+    this.jss.use((window.jssNested || exports.jssNested).default())
     this.jss.setup({
       generateClassName: function (rule) {
         return 's-' + rule.name
@@ -196,7 +197,7 @@ class Program {
         }
 
         // Create virtual dom element
-        return Inferno.createElement(
+        return this.inferno.createElement(
           item.tag,
           attributes,
           this.transformElements(item.contents, parentId)
@@ -286,23 +287,11 @@ class Program {
   render () {
     this.ids.clear()
 
-    Inferno.render(this.transformElement(this.root), this.container)
+    this.inferno.render(this.transformElement(this.root), this.container)
 
     for (var key of this.map.keys()) {
       if (this.ids.has(key)) { continue }
       this.map.delete(key)
     }
   }
-}
-
-if (typeof module !== 'undefined') {
-  global.Inferno = require('inferno')
-  global.Inferno.createElement = require('inferno-create-element')
-  global.jss = require('jss')
-  global.jssNested = require('jss-nested')
-
-  global._elm_lang$core$Native_List = {
-    toArray: function (a) { return a }
-  }
-  module.exports = Program
 }
