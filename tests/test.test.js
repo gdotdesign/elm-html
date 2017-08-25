@@ -5,6 +5,7 @@ const ctor = function (name, data) {
 }
 
 const rootComponent = ctor('C', {
+  id: () => { return ctor('root') },
   view: (model) => {
     return ctor('E', { tag: 'div',
       contents: [

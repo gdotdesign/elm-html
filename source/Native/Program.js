@@ -143,9 +143,9 @@ class Program {
         var id
 
         if (parentId) {
-          id = parentId + '::' + item.id("").ctor
+          id = parentId + '::' + item.id('').ctor
         } else {
-          id = item.id("").ctor
+          id = item.id('').ctor
         }
 
         if (this.ids.has(id)) {

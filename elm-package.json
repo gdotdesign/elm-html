@@ -9,6 +9,8 @@
   "native-modules": true,
   "exposed-modules": [
     "Rumble.Update",
+    "Rumble.Html.Attributes",
+    "Rumble.Html.Events",
     "Rumble.Html",
     "Rumble.Task"
   ],

@@ -1,5 +1,10 @@
 module Rumble.Html.Attributes exposing (..)
 
+{-| Commonly used Html attributes.
+
+@docs placeholder, readonly, disabled, type_, value, spellcheck
+-}
+
 import Rumble.Html exposing (Attribute, attribute, boolAttribute, property)
 
 {-| Provides a hint to the user of what can be entered into an
