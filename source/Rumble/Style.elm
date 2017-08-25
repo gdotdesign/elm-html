@@ -12,7 +12,7 @@ type alias Style =
 -}
 type Selector
   = Child String
-  | Children String
+  | Children (List String)
   | Pseudo String
   | Pseudos (List String)
   | Self
@@ -25,9 +25,13 @@ type alias Rule =
   , data : Style
   }
 
-child : String -> Style -> Rule
-child selector data =
+selector : String -> Style -> Rule
+selector selector data =
   Rule (Child selector) data
+
+selectors : List String -> Style -> Rule
+selectors selectors data =
+  Rule (Children selectors) data
 
 pseudo : String -> Style -> Rule
 pseudo selector data =

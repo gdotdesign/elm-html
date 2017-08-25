@@ -10,6 +10,7 @@ import Rumble.Update exposing (..)
 import Rumble.Http as Http
 
 import Ui.Input
+import Ui.Theme
 
 import Dict
 
@@ -143,7 +144,9 @@ view model =
               (Dict.fromList [("content", content)])
           ]
         ]
-      , mountWithEvent Ui.Input.component IInput Input
+      , Ui.Theme.wrapper
+        [ mountWithEvent Ui.Input.component IInput Input
+        ]
       , text (toString model)
       ]
 

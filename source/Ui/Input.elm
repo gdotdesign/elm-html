@@ -13,10 +13,10 @@ module Ui.Input exposing
 @docs Msg
 -}
 
-import Rumble.Html as Html exposing (Component, Html, node, text)
+import Rumble.Html exposing (Component, Html, node, text)
 import Rumble.Html.Events exposing (onInput, onClick)
 import Rumble.Update exposing (Update, return, emit)
-import Rumble.Style exposing (Style, Rule, style)
+import Rumble.Style exposing (..)
 import Rumble.Html.Attributes exposing
   (placeholder, disabled, readonly, value, type_ , spellcheck)
 
@@ -145,6 +145,26 @@ view model =
             , ( "font-size", "14px" )
             , ( "height", "34px" )
             , ( "width", "100%" )
+
+            , ( "box-shadow", "var(--ui-input-box-shadow, var(--focused-idle-box-shadow))")
+            , ( "transition", "var(--ui-input-transition, var(--focused-idle-transition))")
+            ]
+
+          , pseudo ":focus"
+            [ ( "box-shadow", "var(--ui-input-focus-box-shadow, var(--focused-box-shadow))")
+            , ( "transition", "var(--ui-input-focus-transition, var(--focused-transition))")
+            , ( "outline", "none" )
+            ]
+
+          , selector "&[disabled]"
+            [ ( "border-color", "transparent" )
+            ]
+
+          , selectors
+            [ "&[readonly]::-moz-selection"
+            , "&[readonly]::selection"
+            ]
+            [ ( "background", "transparent" )
             ]
           ]
           []
@@ -160,8 +180,3 @@ component =
   , model = init
   , view = view
   }
-
-
-main =
-  Html.root component
-  |> Html.program

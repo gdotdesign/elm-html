@@ -2,7 +2,7 @@ module Counter exposing
   (Model, Msg(Increment, Decrement), Event(..), init, update, view, component)
 
 import Rumble.Html exposing (Component, Html, node, text)
-import Rumble.Style exposing (style, child, pseudo)
+import Rumble.Style exposing (style, selector, pseudo)
 import Rumble.Html.Events exposing (onClick)
 import Rumble.Task as Task exposing (Task)
 import Rumble.Update exposing (..)
@@ -67,7 +67,7 @@ view model =
       , ("padding", "10px")
       , ("margin", "10px 0")
       ]
-    , child "button"
+    , selector "button"
       [ ( "color", "white" )
       , ( "background", "black" )
       , ( "cursor", "pointer" )
@@ -75,7 +75,7 @@ view model =
       , ( "height", "20px" )
       , ( "border", "0" )
       ]
-    , child "button:hover"
+    , selector "button:hover"
       [ ( "color", "cyan") ]
     , pseudo ":before"
       [ ( "content", "'Counter: '" )
