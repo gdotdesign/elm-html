@@ -7,10 +7,19 @@ module Rumble.Html.Events exposing (..)
 
 # Decoders
 @docs decodeTargetValue
+
+# Event Options
+@docs defaultOptions
 -}
 
-import Rumble.Html exposing (Attribute, on)
+import Rumble.Html exposing (EventOptions, Attribute, on)
 import Json.Decode as Json
+
+{-| Default event options.
+-}
+defaultOptions : EventOptions
+defaultOptions =
+  EventOptions False False False
 
 
 {-| Decodes the value of the event target.
@@ -29,14 +38,17 @@ decodeTargetValue value =
 -}
 onClick : msg -> Attribute msg
 onClick msg =
-  msg
-    |> Just
-    |> always
-    |> on "click"
+  on "click" (always (Just msg, defaultOptions))
 
 
 {-| Captures input events.
 -}
 onInput : (String -> msg) -> Attribute msg
 onInput msg =
-  on "input" (decodeTargetValue >> (Maybe.map msg))
+  let
+    function =
+      decodeTargetValue
+      >> Maybe.map msg
+      >> (flip (,) defaultOptions)
+  in
+    on "input" function

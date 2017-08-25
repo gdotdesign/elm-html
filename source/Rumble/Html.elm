@@ -1,6 +1,7 @@
 module Rumble.Html exposing
-  ( ComponentWithContent, Component, Html, Attribute, node, text, mount, mountWithEvent, mountWithContent
-  , embed, on, root, program, attribute, boolAttribute, property)
+  ( ComponentWithContent, Component, Html, Attribute, EventOptions, node, text
+  , mount, mountWithEvent, mountWithContent, embed, on, root, program
+  , attribute, boolAttribute, property )
 
 {-| This module provides a way to render Html elements and simple Components.
 
@@ -8,7 +9,7 @@ module Rumble.Html exposing
 @docs Html, node, text
 
 # Events
-@docs on
+@docs EventOptions, on
 
 # Attributes
 @docs Attribute, attribute, property, boolAttribute
@@ -40,10 +41,18 @@ type DATA = DATA
 type Root = Root String
 
 
+{-| Event options.
+-}
+type alias EventOptions =
+  { stopImmediatePropagation : Bool
+  , stopPropagation : Bool
+  , preventDefault : Bool
+  }
+
 {-| Represents an Html attribute.
 -}
 type Attribute msg
-  = Event String (Json.Value -> Maybe msg)
+  = Event String (Json.Value -> (Maybe msg, EventOptions))
   | BoolAttribute String Bool
   | Attribute String String
   | Property String String
@@ -93,7 +102,7 @@ type alias Element msg =
     - The second parameter is the event hanlder function which takes the
       event as a Json.Value so it can be decoded
 -}
-on : String -> (Json.Value -> Maybe msg) -> Attribute msg
+on : String -> (Json.Value -> (Maybe msg, EventOptions)) -> Attribute msg
 on event handler =
   Event event handler
 

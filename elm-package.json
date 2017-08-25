@@ -12,7 +12,10 @@
     "Rumble.Html.Attributes",
     "Rumble.Html.Events",
     "Rumble.Html",
-    "Rumble.Task"
+    "Rumble.Task",
+
+    "Ui.Theme",
+    "Ui.Input"
   ],
   "dependencies": {
     "elm-lang/core": "5.1.1 <= v < 6.0.0"

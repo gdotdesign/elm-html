@@ -268,11 +268,15 @@ class Program { // eslint-disable-line
           case 'Event':
             // Wire in the event to the update.
             result['on' + attribute._0] = function (event) {
-              var result = attribute._1(event)
+              var tuple = attribute._1(event)
+
+              for (var key in tuple._1) {
+                if (tuple._1[key]) { event[key]() }
+              }
+
+              var result = tuple._0
               switch (result.ctor) {
                 case 'Just':
-                  // TODO: handle stopPropagation, stopImmediatePropagation,
-                  // preventDefault here
                   this.update(result._0, id)
               }
             }.bind(this)

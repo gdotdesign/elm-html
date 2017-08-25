@@ -1,8 +1,22 @@
 module Ui.Theme exposing (..)
 
-import Rumble.Html exposing (Html, node)
-import Rumble.Style exposing (style)
+{-| The default theme wrapper for the styles.
 
+# Wrapper
+@docs wrapper
+
+# Utility function
+@docs fontFamilyStack, focusedIdleBoxShadows, focusedBoxShadows
+
+# Mixins
+@docs defaults
+-}
+
+import Rumble.Style exposing (Rule, style)
+import Rumble.Html exposing (Html, node)
+
+{-| The font family stack.
+-}
 fontFamilyStack : String
 fontFamilyStack =
   [ "-apple-system"
@@ -16,6 +30,9 @@ fontFamilyStack =
   ]
   |> String.join ","
 
+
+{-| Idle box shadows.
+-}
 focusedIdleBoxShadows : String
 focusedIdleBoxShadows =
   [ "0 0 0 1px rgba(0,192,255,0) inset"
@@ -24,6 +41,9 @@ focusedIdleBoxShadows =
   ]
   |> String.join ","
 
+
+{-| Focused box shadows.
+-}
 focusedBoxShadows : String
 focusedBoxShadows =
   [ "0 0 0 1px rgba(0,192,255,1) inset"
@@ -32,6 +52,20 @@ focusedBoxShadows =
   ]
   |> String.join ","
 
+
+{-| The default css for an element.
+-}
+defaults : Rule
+defaults =
+  style
+    [ ( "-webkit-tap-highlight-color", "rgba(0,0,0,0)" )
+    , ( "-webkit-touch-callout", "none" )
+    , ( "box-sizing", "border-box" )
+    ]
+
+
+{-| Wrapper element that contains the styles.
+-}
 wrapper : List (Html msg) -> Html msg
 wrapper =
   node "div" []

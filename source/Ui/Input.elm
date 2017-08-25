@@ -21,7 +21,7 @@ import Rumble.Html.Attributes exposing
   (placeholder, disabled, readonly, value, type_ , spellcheck)
 
 --import Ui.Icons
---import Ui
+import Ui.Theme exposing (defaults)
 
 {-| Represents an input.
   - **placeholder** - The text to display when there is no value
@@ -89,15 +89,6 @@ update msg model =
         return model
 
 
-defaults : Rule
-defaults =
-  style
-    [ ( "-webkit-tap-highlight-color", "rgba(0,0,0,0)" )
-    , ( "-webkit-touch-callout", "none" )
-    , ( "box-sizing", "border-box" )
-    ]
-
-
 {-| Renders an input.
 -}
 view : Model -> Html Msg
@@ -111,7 +102,10 @@ view model =
 
     clearIcon =
       if showClearIcon then
-        node "span" [ onClick Clear ] [] [ text "clear" ]
+        node "span"
+          [ onClick Clear ]
+          []
+          [ text "clear" ]
       else
         text ""
   in
