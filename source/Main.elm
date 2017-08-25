@@ -3,6 +3,7 @@ import Counter
 import NestedCounter
 
 import Rumble.Html as Html exposing (Html, root, node, text, on, mount,mountWithEvent, mountWithContent)
+import Rumble.Html.Events exposing (onClick)
 import Rumble.Task as Task exposing (Task)
 import Rumble.Style exposing (style)
 import Rumble.Update exposing (..)
@@ -107,7 +108,7 @@ view : Model -> Html Msg
 view model =
   let
     content =
-      node "button" [on "click" (\_ -> Fetch)] [] [text "Fetch"]
+      node "button" [ onClick Fetch] [] [text "Fetch"]
 
     counterList =
       List.range 1 model.counterCount
@@ -120,7 +121,7 @@ view model =
         [ node "div" [] []
           [ node "h1" [] [] [ text "Normal Components" ]
           , mountWithEvent Counter.component ACounter Counter
-          , node "button" [on "click" (\_ -> DoIncrement)] [] [text "Increment"]
+          , node "button" [onClick DoIncrement] [] [text "Increment"]
           , mountWithEvent Counter.component BCounter Counter
           , node "hr" [] [] []
           , node "h1" [] [] [ text "Nested Component" ]

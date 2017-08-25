@@ -2,6 +2,7 @@ module Test exposing (..)
 
 import Rumble.Html exposing (Html, ComponentWithContent, embed, text, node, on)
 import Rumble.Update exposing (Update, return)
+import Rumble.Html.Events exposing (onClick)
 import Dict exposing (Dict)
 
 type alias Model =
@@ -33,7 +34,7 @@ view data model =
       Just html -> embed html
       Nothing -> text "Hello"
   else
-    node "button" [ on "click" (\value -> Toggle) ] [] [ text "Open" ]
+    node "button" [ onClick Toggle ] [] [ text "Open" ]
 
 
 component : ComponentWithContent Model Msg Event a b

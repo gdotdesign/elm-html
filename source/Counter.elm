@@ -1,8 +1,9 @@
 module Counter exposing
   (Model, Msg(Increment, Decrement), Event(..), init, update, view, component)
 
-import Rumble.Html exposing (Component, Html, node, text, on)
+import Rumble.Html exposing (Component, Html, node, text)
 import Rumble.Style exposing (style, child, pseudo)
+import Rumble.Html.Events exposing (onClick)
 import Rumble.Task as Task exposing (Task)
 import Rumble.Update exposing (..)
 
@@ -81,12 +82,12 @@ view model =
       ]
     ]
     [ node "button"
-      [ on "click" (\value -> Decrement) ]
+      [ onClick Decrement ]
       []
       [ text "-"]
     , text (toString model)
     , node "button"
-      [ on "click" (\value -> Increment) ]
+      [ onClick Increment ]
       []
       [ text "+"]
     ]

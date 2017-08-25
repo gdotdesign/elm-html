@@ -1,6 +1,6 @@
 module Rumble.Html exposing
-  ( ComponentWithContent, Component, Html, node, text, mount, mountWithEvent, mountWithContent
-  , embed, on, root, program, attribute, property)
+  ( ComponentWithContent, Component, Html, Attribute, node, text, mount, mountWithEvent, mountWithContent
+  , embed, on, root, program, attribute, boolAttribute, property)
 
 {-| This module provides a way to render Html elements and simple Components.
 
@@ -11,7 +11,7 @@ module Rumble.Html exposing
 @docs on
 
 # Attributes
-@docs attribute, property
+@docs Attribute, attribute, property, boolAttribute
 
 # Component
 @docs Component, ComponentWithContent, mount, mountWithContent, mountWithEvent, embed, root
@@ -32,7 +32,6 @@ import Dict exposing (Dict)
 
 import Rumble.Style exposing (Rule, Style)
 import Rumble.Update exposing (Update)
-import Rumble.Task exposing (Task)
 
 {-| A hidden type to bypass the type system
 -}
@@ -44,7 +43,8 @@ type Root = Root String
 {-| Represents an Html attribute.
 -}
 type Attribute msg
-  = Event String (Json.Value -> msg)
+  = Event String (Json.Value -> Maybe msg)
+  | BoolAttribute String Bool
   | Attribute String String
   | Property String String
 
@@ -93,7 +93,7 @@ type alias Element msg =
     - The second parameter is the event hanlder function which takes the
       event as a Json.Value so it can be decoded
 -}
-on : String -> (Json.Value -> msg) -> Attribute msg
+on : String -> (Json.Value -> Maybe msg) -> Attribute msg
 on event handler =
   Event event handler
 
@@ -103,6 +103,13 @@ on event handler =
 attribute : String -> String -> Attribute msg
 attribute =
   Attribute
+
+
+{-| Returns a boolean attribute from the given name and value.
+-}
+boolAttribute : String -> Bool -> Attribute msg
+boolAttribute =
+  BoolAttribute
 
 
 {-| Returns a property from the given name and value.

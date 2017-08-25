@@ -252,6 +252,14 @@ class Program {
       .toArray(attributes)
       .forEach(function (attribute) {
         switch (attribute.ctor) {
+          case 'Attribute':
+            result[attribute._0] = attribute._1
+            break
+
+          case 'BoolAttribute':
+            if (attribute._1) { result[attribute._0] = attribute._1 }
+            break
+
           case 'Property':
             result[attribute._0] = attribute._1
             break
@@ -259,9 +267,13 @@ class Program {
           case 'Event':
             // Wire in the event to the update.
             result['on' + attribute._0] = function (event) {
-              // TODO: handle stopPropagation, stopImmediatePropagation,
-              // preventDefault here
-              this.update(attribute._1(event), id)
+              var result = attribute._1(event)
+              switch (result.ctor) {
+                case 'Just':
+                  // TODO: handle stopPropagation, stopImmediatePropagation,
+                  // preventDefault here
+                  this.update(result._0, id)
+              }
             }.bind(this)
             break
         }
