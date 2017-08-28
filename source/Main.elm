@@ -1,6 +1,8 @@
 import Test
-import Counter
 import NestedCounter
+
+import Examples.Components.Counter as Counter
+import Examples.Counter
 
 import Rumble.Html as Html exposing (Html, root, node, text, on, mount,mountWithEvent, mountWithContent)
 import Rumble.Html.Events exposing (onClick)
@@ -40,6 +42,7 @@ type Components
   | LCounter Counter.Msg
   | IInput Ui.Input.Msg
   | TTest Test.Msg
+  | CounterExample Examples.Counter.Msg
 
 
 init : Model
@@ -72,23 +75,23 @@ update msg model =
   case msg of
     CounterList event ->
       case event of
-        Counter.Incremented ->
+        Counter.Incremented _ ->
           return { model | counterCount = model.counterCount + 1 }
 
-        Counter.Decremented ->
+        Counter.Decremented _ ->
           return { model | counterCount = model.counterCount - 1 }
 
         _ -> return model
 
     Counter event ->
       case event of
-        Counter.Incremented ->
+        Counter.Incremented _ ->
           return { model | incrementCount = model.incrementCount + 1 }
 
-        Counter.Decremented ->
+        Counter.Decremented _ ->
           return { model | decrementCount = model.decrementCount + 1 }
 
-        Counter.Changed ->
+        Counter.Changed _ ->
           return { model | counterChanged = model.counterChanged + 1 }
 
     Fetch ->
@@ -120,12 +123,7 @@ view model =
       []
       [ node "div" [] []
         [ node "div" [] []
-          [ node "h1" [] [] [ text "Normal Components" ]
-          , mountWithEvent Counter.component ACounter Counter
-          , node "button" [onClick DoIncrement] [] [text "Increment"]
-          , mountWithEvent Counter.component BCounter Counter
-          , node "hr" [] [] []
-          , node "h1" [] [] [ text "Nested Component" ]
+          [ node "h1" [] [] [ text "Nested Component" ]
           , mountWithEvent NestedCounter.component NCounter Counter
           , node "hr" [] [] []
           , node "h1" [] [] [ text "Component List" ]
@@ -148,6 +146,7 @@ view model =
         [ mountWithEvent Ui.Input.component IInput Input
         ]
       , text (toString model)
+      , mount Examples.Counter.component CounterExample
       ]
 
 mod =

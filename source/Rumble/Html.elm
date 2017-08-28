@@ -154,7 +154,7 @@ mount : Component model msg event command
       -> (msg -> actionMsg)
       -> Html parentMsg
 mount template id =
-  C (Native.Html.component template id)
+  C (Native.Html.component template id "")
 
 
 {-| Mounts the given component with a listener.

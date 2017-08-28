@@ -25,7 +25,7 @@ These features are completed / planned
 - [x] Side effects - side effects using tasks
 - [x] Child to parent communication - events using tasks
 - [x] Embeddable content - embed content from parent component
-- [ ] Styled nodes
-- [ ] Passive event listeners
+- [x] Styled nodes
+- [ ] Subscriptions
 - [ ] Process handling
 - [ ] DOM Apis

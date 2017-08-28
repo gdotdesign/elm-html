@@ -4,7 +4,8 @@
   "repository": "https://github.com/gdotdesign/elm-html.git",
   "license": "BSD3",
   "source-directories": [
-    "source"
+    "source",
+    "examples"
   ],
   "native-modules": true,
   "exposed-modules": [
@@ -13,6 +14,10 @@
     "Rumble.Html.Events",
     "Rumble.Html",
     "Rumble.Task",
+
+    "Examples.Components.Counter",
+    "Examples.Components.Static",
+    "Examples.Counter",
 
     "Ui.Theme",
     "Ui.Input"
