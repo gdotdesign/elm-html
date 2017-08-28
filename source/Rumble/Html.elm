@@ -31,6 +31,7 @@ import Native.Uid
 import Json.Decode as Json
 import Dict exposing (Dict)
 
+import Rumble.Subscription exposing (Subscription)
 import Rumble.Style exposing (Rule, Style)
 import Rumble.Update exposing (Update)
 
@@ -71,6 +72,7 @@ type Html msg
 -}
 type alias Component model msg event command =
   { update : msg -> model -> Update model msg event command
+  , subscriptions : model -> List (Subscription msg)
   , view : model -> Html msg
   , model : model
   }
@@ -82,6 +84,7 @@ parent component.
 type alias ComponentWithContent model msg event parentMsg command =
   { view : Dict String (Html parentMsg) -> model -> Html msg
   , update : msg -> model -> Update model msg event command
+  , subscriptions : model -> List (Subscription msg)
   , model : model
   }
 

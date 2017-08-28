@@ -14,6 +14,7 @@ var _gdotdesign$elm_html$Native_Html = (function () { // eslint-disable-line
 
   function component (comp, id, listener) {
     return {
+      subscriptions: comp.subscriptions,
       update: comp.update,
       listener: listener,
       model: comp.model,

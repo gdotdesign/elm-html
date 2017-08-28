@@ -37,7 +37,8 @@ view model =
 
 component : Component Model Msg Counter.Event Components
 component =
-  { model = init
+  { subscriptions = \_ -> []
+  , model = init
   , update = update
   , view = view
   }

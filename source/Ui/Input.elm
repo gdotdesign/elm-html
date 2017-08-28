@@ -170,7 +170,8 @@ view model =
 -}
 component : Component Model Msg Event command
 component =
-  { update = update
+  { subscriptions = \_ -> []
+  , update = update
   , model = init
   , view = view
   }

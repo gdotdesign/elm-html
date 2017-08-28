@@ -1,6 +1,7 @@
 import Test
 import NestedCounter
 
+import Examples.Components.MouseTracker as MouseTracker
 import Examples.Components.Counter as Counter
 import Examples.Counter
 
@@ -43,6 +44,7 @@ type Components
   | IInput Ui.Input.Msg
   | TTest Test.Msg
   | CounterExample Examples.Counter.Msg
+  | MT MouseTracker.Msg
 
 
 init : Model
@@ -147,12 +149,14 @@ view model =
         ]
       , text (toString model)
       , mount Examples.Counter.component CounterExample
+      , mount MouseTracker.component MT
       ]
 
 mod =
   root
     { view = view
     , model = init
+    , subscriptions = \_ -> []
     , update = update
     }
 

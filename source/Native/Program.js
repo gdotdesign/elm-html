@@ -15,6 +15,7 @@ class Program { // eslint-disable-line
     this.styles = new Map()
     this.index = 0
 
+    this.subscriptions = new Map()
     this.ids = new Set()
     this.map = new Map()
 
@@ -174,6 +175,20 @@ class Program { // eslint-disable-line
         // Render the component with the current data and transform it's
         // children
         var instance = this.map.get(id)
+
+        _elm_lang$core$Native_List
+          .toArray(item.subscriptions(instance.data))
+          .forEach(function (subscription) {
+            if (!this.subscriptions.has(subscription.function)) {
+              this.subscriptions.set(subscription.function, [])
+            }
+
+            this
+              .subscriptions
+              .get(subscription.function)
+              .push([id, subscription.msg])
+          }.bind(this))
+
         return this.transformElement(
           item.view(instance.data),
           id
@@ -291,9 +306,25 @@ class Program { // eslint-disable-line
   render () {
     this.ids.clear()
 
+    let subscriptionKeys = new Set()
+    for (let key of this.subscriptions.keys()) {
+      subscriptionKeys.add(key)
+    }
+
+    this.subscriptions.clear()
+
     this.inferno.render(this.transformElement(this.root), this.container)
 
-    for (var key of this.map.keys()) {
+    for (let [key, value] of this.subscriptions.entries()) {
+      subscriptionKeys.delete(key)
+      key(this, value)
+    }
+
+    for (let key of subscriptionKeys) {
+      key(this, [])
+    }
+
+    for (let key of this.map.keys()) {
       if (this.ids.has(key)) { continue }
       this.map.delete(key)
     }

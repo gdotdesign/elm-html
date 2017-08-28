@@ -39,7 +39,8 @@ view data model =
 
 component : ComponentWithContent Model Msg Event a b
 component =
-  { update = update
+  { subscriptions = \_ -> []
+  , update = update
   , model = init
   , view = view
   }
