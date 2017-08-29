@@ -144,10 +144,20 @@ class Program { // eslint-disable-line
       case 'C':
         var id
 
+        var data = item.id('')
+        var ctorId = data.ctor
+        var index = 0
+        var part
+
+        while (part = data['_' + index]) {
+          ctorId += part
+          index++
+        }
+
         if (parentId) {
-          id = parentId + '::' + item.id('').ctor
+          id = parentId + '::' + ctorId
         } else {
-          id = item.id('').ctor
+          id = ctorId
         }
 
         if (this.ids.has(id)) {

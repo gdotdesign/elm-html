@@ -26,6 +26,6 @@ These features are completed / planned
 - [x] Child to parent communication - events using tasks
 - [x] Embeddable content - embed content from parent component
 - [x] Styled nodes
-- [ ] Subscriptions
+- [x] Subscriptions
 - [ ] Process handling
 - [ ] DOM Apis

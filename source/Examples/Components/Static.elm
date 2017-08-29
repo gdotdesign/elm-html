@@ -50,6 +50,7 @@ container =
   node "div" []
     [ style
       [ ( "background", "#F2F6F7" )
+      , ( "font-family", "sans" )
       , ( "margin", "10px 2px" )
       , ( "color", "#26343D" )
       , ( "padding", "20px" )

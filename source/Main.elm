@@ -6,9 +6,9 @@ import Examples.Components.Counter as Counter
 import Examples.Counter
 
 import Rumble.Html as Html exposing (Html, root, node, text, on, mount,mountWithEvent, mountWithContent)
+import Rumble.Style exposing (style, selector)
 import Rumble.Html.Events exposing (onClick)
 import Rumble.Task as Task exposing (Task)
-import Rumble.Style exposing (style)
 import Rumble.Update exposing (..)
 import Rumble.Http as Http
 
@@ -148,8 +148,10 @@ view model =
         [ mountWithEvent Ui.Input.component IInput Input
         ]
       , text (toString model)
-      , mount Examples.Counter.component CounterExample
-      , mount MouseTracker.component MT
+      , node "div" [] []
+        [ mount MouseTracker.component MT
+        , mount Examples.Counter.component CounterExample
+        ]
       ]
 
 mod =
