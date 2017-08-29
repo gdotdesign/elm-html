@@ -2,11 +2,60 @@ module Examples.Components.Static exposing (..)
 
 {-| Static elements for the examples.
 
-@docs li, p, title, ul
+@docs li, p, title, ul, container, logs, log
 -}
 
 import Rumble.Html exposing (Html, node, text)
-import Rumble.Style exposing (style)
+import Rumble.Style exposing (style, selector)
+
+
+{-| Renders a log container.
+-}
+logs : List (Html msg) -> Html msg
+logs =
+  node "div" []
+    [ style
+      [ ( "border", "1px solid rgba(0,0,0,0.1)")
+      , ( "padding", "3px 10px" )
+      , ( "background", "white" )
+      , ( "font-family", "sans" )
+      , ( "line-height", "1em" )
+      , ( "font-size", "14px" )
+      , ( "overflow", "auto" )
+      , ( "height", "200px" )
+      ]
+    ]
+
+
+{-| Renders a log container.
+-}
+log : String -> Html msg
+log content =
+  node "div" []
+    [ style
+      [ ( "padding", "7px 0" )
+      ]
+
+    , selector "+ *"
+      [ ( "border-top", "1px dashed rgba(0,0,0,0.1)" )
+      ]
+    ]
+    [ text content ]
+
+
+{-| Renders an example container.
+-}
+container : List (Html msg) -> Html msg
+container =
+  node "div" []
+    [ style
+      [ ( "background", "#F2F6F7" )
+      , ( "margin", "10px 2px" )
+      , ( "color", "#26343D" )
+      , ( "padding", "20px" )
+      ]
+    ]
+
 
 {-| Renders a title with the given content.
 -}
@@ -15,6 +64,7 @@ title content =
   node "h1" []
     [ style
       [ ( "font-family", "sans" )
+      , ( "margin-top", "0" )
       ]
     ]
     [ text content ]
@@ -48,5 +98,8 @@ ul =
 li : String -> Html msg
 li content =
   node "li" []
-    [ ]
+    [ style
+      [ ( "line-height", "1.4em" )
+      ]
+    ]
     [ text content ]

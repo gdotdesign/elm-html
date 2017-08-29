@@ -78,7 +78,7 @@ update msg model =
 -}
 view : Model -> Html Msg
 view model =
-  node "div" [] []
+  container
     [ title "Counter"
     , p "Simple stateful component that implements:"
     , ul
@@ -90,7 +90,7 @@ view model =
       ]
     , mountWithEvent Counter.component Counter Events
     , p "Events:"
-    , ul (List.map li model.events)
+    , logs (List.map log model.events)
     ]
 
 

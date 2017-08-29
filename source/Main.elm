@@ -1,7 +1,7 @@
 import Test
 import NestedCounter
 
-import Examples.Components.MouseTracker as MouseTracker
+import Examples.MouseTracker as MouseTracker
 import Examples.Components.Counter as Counter
 import Examples.Counter
 

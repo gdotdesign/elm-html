@@ -100,9 +100,9 @@ view model =
       ]
 
     , selector "button"
-      [ ( "background", "CornflowerBlue" )
-      , ( "justify-content", "center" )
+      [ ( "justify-content", "center" )
       , ( "font-family", "inherit" )
+      , ( "background", "#2E86AB" )
       , ( "align-items", "center" )
       , ( "font-weight", "bold" )
       , ( "font-size", "18px" )
@@ -116,11 +116,11 @@ view model =
       ]
 
     , selector "button:first-child"
-      [ ( "border-radius", "50% 0 0 50%" )
+      [ ( "border-radius", "3px 0 0 3px" )
       ]
 
     , selector "button:last-child"
-      [ ( "border-radius", "0 50% 50% 0" )
+      [ ( "border-radius", "0 3px 3px 0" )
       ]
     ]
     [ node "button"
@@ -130,9 +130,9 @@ view model =
 
     , node "div" []
       [ style
-        [ ( "padding", "0 20px" )
-        , ( "background", "#b6caef" )
+        [ ( "background", "white" )
         , ( "line-height", "30px" )
+        , ( "padding", "0 20px" )
         ]
       ]
       [ text (toString model.count) ]

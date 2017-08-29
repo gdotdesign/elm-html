@@ -1,5 +1,3 @@
-/* global Program, F3 */
-
 /* Native Elm interface. */
 var _gdotdesign$elm_html$Native_Mouse = (function () { // eslint-disable-line
   let listeners = new Map()
@@ -8,7 +6,7 @@ var _gdotdesign$elm_html$Native_Mouse = (function () { // eslint-disable-line
     listeners.set(program, items)
   }
 
-  window.addEventListener('mousemove', function(event){
+  window.addEventListener('mousemove', function (event) {
     let value = { top: event.pageY, left: event.pageX }
 
     for (let [program, items] of listeners) {
