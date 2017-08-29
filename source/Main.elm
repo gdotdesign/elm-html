@@ -1,8 +1,9 @@
 import Test
 import NestedCounter
 
-import Examples.MouseTracker as MouseTracker
 import Examples.Components.Counter as Counter
+import Examples.MouseTracker as MouseTracker
+import Examples.CounterList as CounterList
 import Examples.Counter
 
 import Rumble.Html as Html exposing (Html, root, node, text, on, mount,mountWithEvent, mountWithContent)
@@ -18,27 +19,18 @@ import Ui.Theme
 import Dict
 
 type alias Model =
-  { incrementCount: Int
-  , decrementCount: Int
-  , counterChanged: Int
-  , counterCount :Int
-  , result : String
+  { result : String
   }
 
 type Msg
-  = Counter Counter.Event
-  | CounterList Counter.Event
-  | Open Test.Event
+  = Open Test.Event
   | Fetch
   | Result String
   | Progress Http.Progress
   | Input Ui.Input.Event
-  | DoIncrement
 
 type Components
-  = ACounter Counter.Msg
-  | BCounter Counter.Msg
-  | CList Int Counter.Msg
+  = CList CounterList.Msg
   | NCounter NestedCounter.Msg
   | LCounter Counter.Msg
   | IInput Ui.Input.Msg
@@ -49,11 +41,7 @@ type Components
 
 init : Model
 init =
-  { incrementCount = 0
-  , decrementCount = 0
-  , counterChanged = 0
-  , counterCount = 0
-  , result = ""
+  { result = ""
   }
 
 
@@ -75,37 +63,12 @@ fetch =
 update : Msg -> Model -> Update Model Msg a Components
 update msg model =
   case msg of
-    CounterList event ->
-      case event of
-        Counter.Incremented _ ->
-          return { model | counterCount = model.counterCount + 1 }
-
-        Counter.Decremented _ ->
-          return { model | counterCount = model.counterCount - 1 }
-
-        _ -> return model
-
-    Counter event ->
-      case event of
-        Counter.Incremented _ ->
-          return { model | incrementCount = model.incrementCount + 1 }
-
-        Counter.Decremented _ ->
-          return { model | decrementCount = model.decrementCount + 1 }
-
-        Counter.Changed _ ->
-          return { model | counterChanged = model.counterChanged + 1 }
-
     Fetch ->
       return model
         |> andThen fetch
 
     Result data ->
       return { model | result = data }
-
-    DoIncrement ->
-      return model
-        |> send (ACounter Counter.Increment)
 
     _ ->
       return model
@@ -115,10 +78,6 @@ view model =
   let
     content =
       node "button" [ onClick Fetch] [] [text "Fetch"]
-
-    counterList =
-      List.range 1 model.counterCount
-      |> List.map (\index -> mountWithEvent Counter.component (CList index) Counter)
   in
     node "div"
       []
@@ -126,17 +85,7 @@ view model =
       [ node "div" [] []
         [ node "div" [] []
           [ node "h1" [] [] [ text "Nested Component" ]
-          , mountWithEvent NestedCounter.component NCounter Counter
-          , node "hr" [] [] []
-          , node "h1" [] [] [ text "Component List" ]
-          , mountWithEvent Counter.component LCounter CounterList
-          , node "hr" []
-            [ style
-              [ ("border", "0")
-              , ("border-bottom", "1px dashed #ccc")
-              ]
-            ] []
-          , node "div" [] [] counterList
+          , mount NestedCounter.component NCounter
           , node "hr" [] [] []
           , content
           , node "h1" [] [] [ text "Open Component" ]
@@ -149,8 +98,9 @@ view model =
         ]
       , text (toString model)
       , node "div" [] []
-        [ mount MouseTracker.component MT
-        , mount Examples.Counter.component CounterExample
+        [ mount Examples.Counter.component CounterExample
+        , mount CounterList.component CList
+        , mount MouseTracker.component MT
         ]
       ]
 

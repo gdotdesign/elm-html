@@ -84,7 +84,7 @@ view model =
     , ul
       [ li "buttons for increment / decrement"
       , li "a side effect for an other decrement which is triggered after 1 second"
-      , li "styling for the buttons are embedded"
+      , li "styling for the buttons"
       , li "'Incremented' 'Decremented' and 'Change' events"
       , li "API for incrementing and decrementing"
       ]

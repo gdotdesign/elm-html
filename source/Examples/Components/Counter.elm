@@ -1,5 +1,5 @@
 module Examples.Components.Counter exposing
-  (Model, Msg(Increment, Decrement), Event(..), component)
+  (Model, Msg(Increment, Decrement, Set), Event(..), component)
 
 {-| A simple counter component with the following features:
   - buttons for increment / decrement
@@ -36,6 +36,7 @@ type Msg
   = DelayedDecrement
   | Increment
   | Decrement
+  | Set Int
 
 
 {-| Events that a counter can emit.
@@ -86,6 +87,9 @@ update msg model =
           { model | count = newCount }
             |> emit (Incremented newCount)
             |> emit (Changed newCount)
+
+    Set count ->
+      return { model | count = count }
 
 
 {-| Renders a counter.
