@@ -149,7 +149,7 @@ class Program { // eslint-disable-line
         var index = 0
         var part
 
-        while (part = data['_' + index]) {
+        while (part = data['_' + index]) { // eslint-disable-line
           ctorId += part
           index++
         }

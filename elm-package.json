@@ -18,6 +18,7 @@
     "Examples.Components.Counter",
     "Examples.Components.Static",
     "Examples.MouseTracker",
+    "Examples.CounterList",
     "Examples.Counter",
 
     "Ui.Theme",
