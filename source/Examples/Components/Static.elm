@@ -2,11 +2,38 @@ module Examples.Components.Static exposing (..)
 
 {-| Static elements for the examples.
 
-@docs li, p, title, ul, container, logs, log
+@docs li, p, title, ul, container, logs, log, button
 -}
 
 import Rumble.Html exposing (Html, node, text)
 import Rumble.Style exposing (style, selector)
+import Rumble.Html.Events exposing (onClick)
+
+{-| A simple button.
+-}
+button : msg -> String -> Html msg
+button msg content =
+  node "button"
+    [ onClick msg ]
+    [ style
+      [ ( "justify-content", "center" )
+      , ( "font-family", "inherit" )
+      , ( "background", "#2E86AB" )
+      , ( "align-items", "center" )
+      , ( "border-radius", "3px" )
+      , ( "font-weight", "bold" )
+      , ( "font-size", "14px" )
+      , ( "padding", "0 10px" )
+      , ( "cursor", "pointer" )
+      , ( "line-height", "0" )
+      , ( "display", "flex" )
+      , ( "color", "white" )
+      , ( "height", "30px" )
+      , ( "border", "0" )
+      ]
+    ]
+    [ text content
+    ]
 
 
 {-| Renders a log container.

@@ -4,22 +4,34 @@ class HttpProcess extends Process {
   constructor (options) {
     super()
     this.options = options
+    this.aborted = false
 
     this.initialize()
     this.setHeaders()
 
     this.xhr.onload = this.onLoaded.bind(this)
 
-    if (options.onProgress.ctor === 'Just') {
+    if (this.options.onProgress.ctor === 'Just') {
       this.xhr.onprogress = this.onProgress.bind(this)
     }
   }
 
   onProgress (event) {
-    this.update(this.options.onProgress._0({
-      transferredBytes: event.loaded,
-      totalBytes: event.total
-    }))
+    if (this.aborted) { return }
+
+    if (event.lengthComputable) {
+      this.update(
+        this.options.onProgress._0(
+          _gdotdesign$elm_html$Rumble_Http$LoadedWithTotal(event.loaded)(event.total)
+        )
+      )
+    } else {
+      this.update(
+        this.options.onProgress._0(
+          _gdotdesign$elm_html$Rumble_Http$Loaded(event.loaded)
+        )
+      )
+    }
   }
 
   onLoaded (event) {
@@ -28,7 +40,10 @@ class HttpProcess extends Process {
     } else if (this.xhr.status === 404) {
       // TODO: error handling
     } else if (this.xhr.status !== 0) {
-      this.update(this.options.onFinish(event.target.responseText))
+      if (this.options.onLoad.ctor === 'Just') {
+        this.update(
+          this.options.onLoad._0(event.target.responseText))
+      }
     }
     this.finish()
   }
@@ -61,6 +76,7 @@ class HttpProcess extends Process {
   }
 
   abort () {
+    this.aborted = true
     this.xhr.abort()
     this.finish()
   }

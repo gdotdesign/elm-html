@@ -76,27 +76,7 @@ view model =
         , node "strong" [] [] [ text ((toString model.position.left) ++ "px") ]
         ]
       ]
-    , node "button"
-      [ onClick Toggle ]
-      [ style
-        [ ( "justify-content", "center" )
-        , ( "font-family", "inherit" )
-        , ( "background", "#2E86AB" )
-        , ( "align-items", "center" )
-        , ( "border-radius", "3px" )
-        , ( "font-weight", "bold" )
-        , ( "font-size", "14px" )
-        , ( "padding", "0 10px" )
-        , ( "cursor", "pointer" )
-        , ( "line-height", "0" )
-        , ( "display", "flex" )
-        , ( "color", "white" )
-        , ( "height", "30px" )
-        , ( "border", "0" )
-        ]
-      ]
-      [ text (if model.tracking then "Stop tracking" else "Track")
-      ]
+    , button Toggle (if model.tracking then "Stop tracking" else "Track")
     ]
 
 

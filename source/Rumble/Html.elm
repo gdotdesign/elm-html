@@ -26,7 +26,6 @@ import Native.Vendor.InfernoCreateElement
 import Native.Vendor.Jss
 import Native.Program
 import Native.Html
-import Native.Uid
 
 import Json.Decode as Json
 import Dict exposing (Dict)

@@ -28,7 +28,7 @@ type alias Request msg =
 
   , onUploadProgress : Maybe (Progress -> msg)
   , onProgress : Maybe (Progress -> msg)
-  , onFinish : String -> msg
+  , onLoad : Maybe (String -> msg)
   }
 
 
@@ -45,10 +45,10 @@ type Body
   * transferredBytes - The amount of bytes that have been downloaded or uploaded
   * totalBytes - The amount of bytes of the whole progress
 -}
-type alias Progress =
-  { transferredBytes : Int
-  , totalBytes: Int
-  }
+type Progress
+  = Initial
+  | LoadedWithTotal Int Int
+  | Loaded Int
 
 
 {-| Sends a request.
@@ -68,3 +68,25 @@ emptyBody =
 stringBody : String -> Body
 stringBody =
   StringBody
+
+
+onLoad : (String -> msg) -> Request msg -> Request msg
+onLoad handler request =
+  { request | onLoad = Just handler }
+
+onProgress : (Progress -> msg) -> Request msg -> Request msg
+onProgress handler request =
+  { request | onProgress = Just handler }
+
+get : String -> Request msg
+get url =
+  { withCredentials = False
+  , body = EmptyBody
+  , method = "GET"
+  , headers = []
+  , url = url
+
+  , onUploadProgress = Nothing
+  , onProgress = Nothing
+  , onLoad = Nothing
+  }

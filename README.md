@@ -27,7 +27,7 @@ These features are completed / planned
 - [x] Embeddable content - embed content from parent component
 - [x] Styled nodes
 - [x] Subscriptions
-- [ ] Process handling
+- [x] Process handling
 - [ ] DOM Apis
 - [ ] Foreign Component
 - [ ] Component Lifecycle
