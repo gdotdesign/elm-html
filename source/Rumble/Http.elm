@@ -2,8 +2,9 @@ module Rumble.Http exposing (..)
 
 {-| Make Http requests.
 -}
-import Rumble.Task as Task exposing (Task)
+import Rumble.Process exposing (Process)
 import Json.Encode as Json
+
 import Native.Http
 
 
@@ -52,7 +53,7 @@ type alias Progress =
 
 {-| Sends a request.
 -}
-send : Request msg -> Task Never msg
+send : Request msg -> Process msg
 send request =
   Native.Http.send request
 

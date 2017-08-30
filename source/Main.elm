@@ -8,6 +8,7 @@ import Examples.Counter
 
 import Rumble.Html as Html exposing (Html, root, node, text, on, mount,mountWithEvent, mountWithContent)
 import Rumble.Style exposing (style, selector)
+import Rumble.Process exposing (Process)
 import Rumble.Html.Events exposing (onClick)
 import Rumble.Task as Task exposing (Task)
 import Rumble.Update exposing (..)
@@ -28,6 +29,7 @@ type Msg
   | Result String
   | Progress Http.Progress
   | Input Ui.Input.Event
+  | Abort
 
 type Components
   = CList CounterList.Msg
@@ -45,7 +47,7 @@ init =
   }
 
 
-fetch : Task Never Msg
+fetch : Process Msg
 fetch =
   Http.send
     { method = "get"
@@ -62,10 +64,14 @@ fetch =
 
 update : Msg -> Model -> Update Model Msg a Components
 update msg model =
-  case msg of
+  case Debug.log "" msg of
+    Abort ->
+      return model
+        |> abort "request"
+
     Fetch ->
       return model
-        |> andThen fetch
+        |> process "request" fetch
 
     Result data ->
       return { model | result = data }
@@ -88,6 +94,7 @@ view model =
           , mount NestedCounter.component NCounter
           , node "hr" [] [] []
           , content
+          , node "button" [ onClick Abort] [] [text "Abort"]
           , node "h1" [] [] [ text "Open Component" ]
           , mountWithContent Test.component TTest Open
               (Dict.fromList [("content", content)])

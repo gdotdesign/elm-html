@@ -1,6 +1,6 @@
 'use strict'
 
-/* global _elm_lang$core$Native_List */
+/* global _elm_lang$core$Native_List, AbortProcess */
 
 /* Represents a program whose architecture is based on a map which contains
    data for components identified by their unique id.
@@ -16,6 +16,7 @@ class Program { // eslint-disable-line
     this.index = 0
 
     this.subscriptions = new Map()
+    this.processes = new Map()
     this.ids = new Set()
     this.map = new Map()
 
@@ -80,6 +81,27 @@ class Program { // eslint-disable-line
           task.fork(console.error, function (value) {
             this.update(value._0, id + '::' + value.ctor)
           }.bind(this))
+        }.bind(this))
+
+    // Process the processes tasks
+    _elm_lang$core$Native_List
+        .toArray(data.processes)
+        .map(function (item) {
+          let proc = item._1()
+          let procId = id + '--' + item._0
+
+          if (proc instanceof AbortProcess) {
+            let runningProc = this.processes.get(procId)
+            if (runningProc) { runningProc.abort() }
+          } else {
+            this.processes.set(procId, proc)
+
+            proc.run(function (processMsg) {
+              this.update(processMsg, id)
+            }.bind(this), function () {
+              this.processes.delete(procId)
+            }.bind(this))
+          }
         }.bind(this))
 
     // Update the map with the new data
@@ -149,7 +171,7 @@ class Program { // eslint-disable-line
         var index = 0
         var part
 
-        while (part = data['_' + index]) {
+        while (part = data['_' + index]) {  // eslint-disable-line
           ctorId += part
           index++
         }

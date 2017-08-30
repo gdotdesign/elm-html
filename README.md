@@ -29,3 +29,5 @@ These features are completed / planned
 - [x] Subscriptions
 - [ ] Process handling
 - [ ] DOM Apis
+- [ ] Foreign Component
+- [ ] Component Lifecycle
