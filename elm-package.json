@@ -9,16 +9,23 @@
   ],
   "native-modules": true,
   "exposed-modules": [
+    "Rumble.Subscription",
+    "Rumble.Process",
     "Rumble.Update",
+    "Rumble.Style",
+    "Rumble.Mouse",
+    "Rumble.Http",
+    "Rumble.Task",
     "Rumble.Html.Attributes",
     "Rumble.Html.Events",
     "Rumble.Html",
-    "Rumble.Task",
 
     "Examples.Components.Counter",
     "Examples.Components.Static",
     "Examples.MouseTracker",
+    "Examples.CounterList",
     "Examples.Counter",
+    "Examples.Http",
 
     "Ui.Theme",
     "Ui.Input"

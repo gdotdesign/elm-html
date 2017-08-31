@@ -1,7 +1,7 @@
 # Architecture
 
 Rumbles architecture is based on components and tries to fix the following
-issues of The Elm Architecture (TEA):
+issues of The Elm Architecture (TEA) and the available packages:
 
 - Update boilerplate:
 	**use case:** Embed a button which has a ripple effect with one line.

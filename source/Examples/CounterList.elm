@@ -1,6 +1,8 @@
 module Examples.CounterList exposing (..)
 
 {-| This example showcases how to use list of components.
+
+@docs Model, Msg, Components, init, update, view, component
 -}
 
 import Examples.Components.Static exposing (..)
@@ -10,6 +12,8 @@ import Rumble.Html exposing (Component, Html, node, mountWithEvent, text)
 import Rumble.Style exposing (style)
 import Rumble.Update exposing (..)
 
+{-| The model.
+-}
 type alias Model =
   { incrementCount : Int
   , decrementCount : Int
@@ -17,14 +21,23 @@ type alias Model =
   , counterCount : Int
   }
 
+
+{-| The message.
+-}
 type Msg
   = Counter Counter.Event
   | Events Counter.Event
 
+
+{-| The components.
+-}
 type Components
   = CountCounter Counter.Msg
   | List Int Counter.Msg
 
+
+{-| The initial state.
+-}
 init : Model
 init =
   { incrementCount = 0
@@ -33,6 +46,9 @@ init =
   , changedCount = 0
   }
 
+
+{-| The update.
+-}
 update : Msg -> Model -> Update Model Msg events Components
 update msg model =
   case msg of
@@ -55,6 +71,9 @@ update msg model =
     _ ->
       return model
 
+
+{-| The view.
+-}
 view : Model -> Html Msg
 view model =
   let
@@ -95,6 +114,8 @@ view model =
       ]
 
 
+{-| The component.
+-}
 component : Component Model Msg event Components
 component =
   { subscriptions = \_ -> []

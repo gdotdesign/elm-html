@@ -1,4 +1,4 @@
-/* global Process, _elm_lang$core$Native_List */
+/* global Process, _elm_lang$core$Native_List, _gdotdesign$elm_html$Rumble_Http$LoadedWithTotal, _gdotdesign$elm_html$Rumble_Http$Loaded */
 
 class HttpProcess extends Process {
   constructor (options) {

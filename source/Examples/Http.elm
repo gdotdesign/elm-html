@@ -1,26 +1,38 @@
 module Examples.Http exposing (..)
 
+{-| An example to showcase an Http request.
+
+@docs Model, Msg, init, fetch, update, view, component
+-}
+
 import Examples.Components.Static exposing (..)
 
 import Rumble.Html exposing (Html, Component, node, text)
 import Rumble.Style exposing (style, selector)
-import Rumble.Html.Events exposing (onClick)
 import Rumble.Process exposing (Process)
 import Rumble.Update exposing (..)
 import Rumble.Http as Http
 
+{-| The model.
+-}
 type alias Model =
   { progress : Http.Progress
   , result : String
   , fetched : Bool
   }
 
+
+{-| The messages.
+-}
 type Msg
   = Progress Http.Progress
   | Load String
   | Fetch
   | Abort
 
+
+{-| The initial state.
+-}
 init : Model
 init =
   { progress = Http.Initial
@@ -28,19 +40,25 @@ init =
   , result = ""
   }
 
+
+{-| Process for fetching a request.
+-}
 fetch : Process Msg
 fetch =
   "https://httpbin.org/stream-bytes/5000?chunk_size=1"
     |> Http.get
     |> Http.onProgress Progress
     |> Http.onLoad Load
-    |> Http.send
+    |> Http.toProcess
 
+
+{-| The update.
+-}
 update : Msg -> Model -> Update Model Msg events components
 update msg model =
   case Debug.log "" msg of
     Abort ->
-      return { model | fetched = False }
+      return init
         |> abort "request"
 
     Fetch ->
@@ -48,17 +66,14 @@ update msg model =
         |> process "request" fetch
 
     Load data ->
-      return
-        { model
-        | result = data
-        , progress = Http.Initial
-        , fetched = False
-        }
+      return { init | result = data }
 
     Progress progress ->
       return { model | progress = progress }
 
 
+{-| The view.
+-}
 view : Model -> Html Msg
 view model =
   let
@@ -103,6 +118,7 @@ view model =
       , p ("Result: " ++ resultText)
       , logs [ text model.result ]
       ]
+
 
 {-| The component.
 -}
