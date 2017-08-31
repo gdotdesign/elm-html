@@ -13,8 +13,12 @@ module Rumble.Update exposing (..)
 
 # Commands
 @docs send
+
+# Processes
+@docs process, abort
 -}
 
+import Rumble.Process as Process exposing (Process)
 import Rumble.Task as Task exposing (Task)
 
 
@@ -25,7 +29,8 @@ import Rumble.Task as Task exposing (Task)
   - model - The updated model
 -}
 type alias Update model msg event command =
-  { commands : List (Task Never command)
+  { processes : List (String, Process msg)
+  , commands : List (Task Never command)
   , events : List (Task Never event)
   , effects : List (Task Never msg)
   , model : model
@@ -36,7 +41,7 @@ type alias Update model msg event command =
 -}
 return : model -> Update model msg eventMsg command
 return model =
-  { model = model, effects = [], events = [], commands = [] }
+  { model = model, effects = [], events = [], commands = [], processes = [] }
 
 
 {-| Emits the given event.
@@ -77,3 +82,24 @@ send
   -> Update model msg event command
 send command data =
   { data | commands = Task.succeed command :: data.commands }
+
+
+{-| Starts the given process with the given ID.
+-}
+process
+  : String
+  -> Process msg
+  -> Update model msg event command
+  -> Update model msg event command
+process id process data =
+  { data | processes = (id, process) :: data.processes }
+
+
+{-| Aborts the process with the given ID.
+-}
+abort
+  : String
+  -> Update model msg event command
+  -> Update model msg event command
+abort id data =
+  { data | processes = (id, Process.abort) :: data.processes }

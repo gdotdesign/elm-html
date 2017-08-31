@@ -11,7 +11,7 @@
     "standard": "^10.0.3"
   },
   "scripts": {
-    "test": "yarn jest -- --no-cache && yarn standard && yarn elm-dev docs"
+    "test": "yarn standard && yarn elm-dev docs"
   },
   "jest": {
     "transform": {

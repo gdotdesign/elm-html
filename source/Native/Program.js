@@ -1,10 +1,8 @@
 'use strict'
 
-/* global _elm_lang$core$Native_List */
+/* global _elm_lang$core$Native_List, AbortProcess */
 
-/* Represents a program whose architecture is based on a map which contains
-   data for components identified by their unique id.
-*/
+/* Represents a program */
 class Program { // eslint-disable-line
   /* Creates a program from a base tree */
   constructor (rootComponent) {
@@ -16,6 +14,7 @@ class Program { // eslint-disable-line
     this.index = 0
 
     this.subscriptions = new Map()
+    this.processes = new Map()
     this.ids = new Set()
     this.map = new Map()
 
@@ -45,64 +44,84 @@ class Program { // eslint-disable-line
     return element
   }
 
-  /* Updates data of a component at a given branch
+  /* Handles an update.
 
      @param {ElmObject} msg - The message for the component at the branch
      @param {String} id - The id of the component
   */
   update (msg, id) {
-    // Don't update anything if the component is no longer present
+    // Don't do anything, if we don't have the component
     if (!this.map.has(id)) { return }
 
-    // Get the instance
+    // Get the instance of the component
     var instance = this.map.get(id)
     var component = instance.component
 
-    // Update the component, the return value contains the updated data,
-    // the side effect tasks and the event tasks
+    // Update the component data.
+    // The return value contains:
+    // - the updated data
+    // - the side effect tasks
+    // - the event event tasks
+    // - the command tasks
+    // - the processes
     var data = component.update(msg)(instance.data)
 
     // Process the side effect tasks
-    _elm_lang$core$Native_List
-        .toArray(data.effects)
-        .map(function (task) {
-          // TODO: Nicer error handling
-          task.fork(console.error, function (value) {
-            this.update(value, id)
-          }.bind(this))
-        }.bind(this))
+    for (let task of _elm_lang$core$Native_List.toArray(data.effects)) {
+      // TODO: Nicer error handling
+      task.fork(console.error, function (value) {
+        this.update(value, id)
+      }.bind(this))
+    }
 
     // Process the command tasks
-    _elm_lang$core$Native_List
-        .toArray(data.commands)
-        .map(function (task) {
-          // TODO: Nicer error handling
-          task.fork(console.error, function (value) {
-            this.update(value._0, id + '::' + value.ctor)
-          }.bind(this))
-        }.bind(this))
+    for (let task of _elm_lang$core$Native_List.toArray(data.commands)) {
+      // TODO: Nicer error handling
+      task.fork(console.error, function (value) {
+        this.update(value._0, id + '::' + value.ctor)
+      }.bind(this))
+    }
 
-    // Update the map with the new data
-    this.map.set(
-      id,
+    // Process the processes tasks
+    for (let item of _elm_lang$core$Native_List.toArray(data.processes)) {
+      let proc = item._1()
+      let procId = id + '--' + item._0
+
+      if (proc instanceof AbortProcess) {
+        let runningProc = this.processes.get(procId)
+        if (runningProc) { runningProc.abort() }
+      } else {
+        this.processes.set(procId, proc)
+
+        proc.run(
+          function (processMsg) {
+            this.update(processMsg, id)
+          }.bind(this),
+            function () {
+              this.processes.delete(procId)
+            }.bind(this)
+        )
+      }
+    }
+
+    // Process the event tasks
+    if (component.listener && this.map.has(instance.parent)) {
+      for (let task of _elm_lang$core$Native_List.toArray(data.events)) {
+        // TODO: Nicer error handling
+        task.fork(console.error, function (msg) {
+          this.update(component.listener(msg), instance.parent)
+        }.bind(this))
+      }
+    }
+
+    // Create new object in the map with the new data
+    this.map.set(id,
       {
         parent: instance.parent,
         component: component,
         data: data.model
       }
     )
-
-    // Process the event tasks
-    if (component.listener && this.map.has(instance.parent)) {
-      _elm_lang$core$Native_List
-        .toArray(data.events)
-        .map(function (task) {
-          // TODO: Nicer error handling
-          task.fork(console.error, function (msg) {
-            this.update(component.listener(msg), instance.parent)
-          }.bind(this))
-        }.bind(this))
-    }
 
     // Schedule a render
     // TODO: Just schedule on requestAnimationFrame
@@ -170,7 +189,7 @@ class Program { // eslint-disable-line
 
         this.ids.add(id)
 
-        // If there is no data set it
+        // If there is no data set the defaults
         if (!this.map.has(id)) {
           this.map.set(
             id,
@@ -186,18 +205,16 @@ class Program { // eslint-disable-line
         // children
         var instance = this.map.get(id)
 
-        _elm_lang$core$Native_List
-          .toArray(item.subscriptions(instance.data))
-          .forEach(function (subscription) {
-            if (!this.subscriptions.has(subscription.function)) {
-              this.subscriptions.set(subscription.function, [])
-            }
+        for (let subscription of _elm_lang$core$Native_List.toArray(item.subscriptions(instance.data))) {
+          if (!this.subscriptions.has(subscription.function)) {
+            this.subscriptions.set(subscription.function, [])
+          }
 
-            this
-              .subscriptions
-              .get(subscription.function)
-              .push([id, subscription.msg])
-          }.bind(this))
+          this
+            .subscriptions
+            .get(subscription.function)
+            .push([id, subscription.msg])
+        }
 
         return this.transformElement(
           item.view(instance.data),
@@ -213,12 +230,14 @@ class Program { // eslint-disable-line
         if (item.styles._0) {
           if (this.styles.has(styleHash)) {
             rule = this.styles.get(styleHash)
-            attributes.className = rule.className
           } else {
             rule = this.transformStyles(item.styles)
             this.styles.set(styleHash, rule)
-            attributes.className = rule.className
           }
+        }
+
+        if (rule) {
+          attributes.className = rule.className
         }
 
         // Create virtual dom element
@@ -314,26 +333,31 @@ class Program { // eslint-disable-line
 
   /* Renders the program into the container */
   render () {
-    this.ids.clear()
-
+    // Geather the subscription keys
     let subscriptionKeys = new Set()
     for (let key of this.subscriptions.keys()) {
       subscriptionKeys.add(key)
     }
 
+    // Clear temp variables
+    this.ids.clear()
     this.subscriptions.clear()
 
+    // Render the VDOM
     this.inferno.render(this.transformElement(this.root), this.container)
 
+    // Update subscriptions
     for (let [key, value] of this.subscriptions.entries()) {
       subscriptionKeys.delete(key)
       key(this, value)
     }
 
+    // Clear up not used subscriptions
     for (let key of subscriptionKeys) {
       key(this, [])
     }
 
+    // Clear up not used ids
     for (let key of this.map.keys()) {
       if (this.ids.has(key)) { continue }
       this.map.delete(key)

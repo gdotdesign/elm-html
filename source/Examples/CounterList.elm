@@ -2,7 +2,7 @@ module Examples.CounterList exposing (..)
 
 {-| This example showcases how to use list of components.
 
-@docs Components, Model, Msg, init, view, component, update
+@docs Model, Msg, Components, init, update, view, component
 -}
 
 import Examples.Components.Static exposing (..)
@@ -36,7 +36,7 @@ type Components
   | List Int Counter.Msg
 
 
-{-| The initial model.
+{-| The initial state.
 -}
 init : Model
 init =

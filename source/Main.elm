@@ -4,14 +4,15 @@ import NestedCounter
 import Examples.Components.Counter as Counter
 import Examples.MouseTracker as MouseTracker
 import Examples.CounterList as CounterList
+import Examples.Http as Http
 import Examples.Counter
 
 import Rumble.Html as Html exposing (Html, root, node, text, on, mount,mountWithEvent, mountWithContent)
 import Rumble.Style exposing (style, selector)
+import Rumble.Process exposing (Process)
 import Rumble.Html.Events exposing (onClick)
 import Rumble.Task as Task exposing (Task)
 import Rumble.Update exposing (..)
-import Rumble.Http as Http
 
 import Ui.Input
 import Ui.Theme
@@ -19,90 +20,59 @@ import Ui.Theme
 import Dict
 
 type alias Model =
-  { result : String
-  }
+  { }
 
 type Msg
   = Open Test.Event
-  | Fetch
-  | Result String
-  | Progress Http.Progress
   | Input Ui.Input.Event
 
 type Components
   = CList CounterList.Msg
   | NCounter NestedCounter.Msg
-  | LCounter Counter.Msg
   | IInput Ui.Input.Msg
   | TTest Test.Msg
   | CounterExample Examples.Counter.Msg
   | MT MouseTracker.Msg
+  | HT Http.Msg
 
 
 init : Model
 init =
-  { result = ""
-  }
-
-
-fetch : Task Never Msg
-fetch =
-  Http.send
-    { method = "get"
-    , headers = []
-    , url = "https://httpbin.org/stream-bytes/5000?chunk_size=1"
-    , withCredentials = False
-    , body = Http.emptyBody
-
-    , onUploadProgress = Nothing
-    , onProgress = Just Progress
-    , onFinish = Result
-    }
+  {}
 
 
 update : Msg -> Model -> Update Model Msg a Components
 update msg model =
-  case msg of
-    Fetch ->
-      return model
-        |> andThen fetch
-
-    Result data ->
-      return { model | result = data }
-
+  case Debug.log "" msg of
     _ ->
       return model
 
 view : Model -> Html Msg
 view model =
-  let
-    content =
-      node "button" [ onClick Fetch] [] [text "Fetch"]
-  in
-    node "div"
-      []
-      []
+  node "div"
+    []
+    []
+    [ node "div" [] []
       [ node "div" [] []
-        [ node "div" [] []
-          [ node "h1" [] [] [ text "Nested Component" ]
-          , mount NestedCounter.component NCounter
-          , node "hr" [] [] []
-          , content
-          , node "h1" [] [] [ text "Open Component" ]
-          , mountWithContent Test.component TTest Open
-              (Dict.fromList [("content", content)])
-          ]
-        ]
-      , Ui.Theme.wrapper
-        [ mountWithEvent Ui.Input.component IInput Input
-        ]
-      , text (toString model)
-      , node "div" [] []
-        [ mount Examples.Counter.component CounterExample
-        , mount CounterList.component CList
-        , mount MouseTracker.component MT
+        [ node "h1" [] [] [ text "Nested Component" ]
+        , mount NestedCounter.component NCounter
+        , node "hr" [] [] []
+        , node "h1" [] [] [ text "Open Component" ]
+        , mountWithContent Test.component TTest Open
+            (Dict.fromList [("content", text "")])
         ]
       ]
+    , Ui.Theme.wrapper
+      [ mountWithEvent Ui.Input.component IInput Input
+      ]
+    , text (toString model)
+    , node "div" [] []
+      [ mount Examples.Counter.component CounterExample
+      , mount CounterList.component CList
+      , mount MouseTracker.component MT
+      , mount Http.component HT
+      ]
+    ]
 
 mod =
   root
