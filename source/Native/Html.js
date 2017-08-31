@@ -24,6 +24,7 @@ var _gdotdesign$elm_html$Native_Html = (function () { // eslint-disable-line
   }
 
   return {
+    foreign: F2(function (props, component) { return {props: props, component: component } }),
     embed: function (value) { return value },
     component: F3(component),
     program: program

@@ -1,7 +1,7 @@
 module Rumble.Html exposing
   ( ComponentWithContent, Component, Html, Attribute, EventOptions, node, text
   , mount, mountWithEvent, mountWithContent, embed, on, root, program
-  , attribute, boolAttribute, property )
+  , attribute, boolAttribute, property, foreign )
 
 {-| This module provides a way to render Html elements and simple Components.
 
@@ -15,7 +15,7 @@ module Rumble.Html exposing
 @docs Attribute, attribute, property, boolAttribute
 
 # Component
-@docs Component, ComponentWithContent, mount, mountWithContent, mountWithEvent, embed, root
+@docs Component, ComponentWithContent, mount, mountWithContent, mountWithEvent, embed, root, foreign
 
 # Program
 @docs program
@@ -23,6 +23,7 @@ module Rumble.Html exposing
 
 import Native.Vendor.Inferno
 import Native.Vendor.InfernoCreateElement
+import Native.Vendor.InfernoComponent
 import Native.Vendor.Jss
 import Native.Program
 import Native.Html
@@ -64,6 +65,7 @@ type Html msg
   = E (Element msg)
   | T String
   | EM DATA
+  | F DATA
   | C DATA
 
 
@@ -200,3 +202,9 @@ program : Html msg -> Program Never model msg
 program =
   Native.Html.program
 
+
+{-| Embeds a foreign Inferno component.
+-}
+foreign : props -> component -> Html msg
+foreign props component =
+  F (Native.Html.foreign props component)

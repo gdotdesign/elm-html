@@ -2,8 +2,10 @@ import Test
 import NestedCounter
 
 import Examples.Components.Counter as Counter
+
 import Examples.MouseTracker as MouseTracker
 import Examples.CounterList as CounterList
+import Examples.Foreign as Foreign
 import Examples.Http as Http
 import Examples.Counter
 
@@ -34,6 +36,7 @@ type Components
   | CounterExample Examples.Counter.Msg
   | MT MouseTracker.Msg
   | HT Http.Msg
+  | FO Foreign.Msg
 
 
 init : Model
@@ -71,6 +74,7 @@ view model =
       , mount CounterList.component CList
       , mount MouseTracker.component MT
       , mount Http.component HT
+      , mount Foreign.component FO
       ]
     ]
 

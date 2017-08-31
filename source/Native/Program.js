@@ -150,6 +150,9 @@ class Program { // eslint-disable-line
     var item = element._0
 
     switch (element.ctor) {
+      case 'F':
+        return this.inferno.createElement(item.component, item.props)
+
       // Text
       case 'T':
         return item
