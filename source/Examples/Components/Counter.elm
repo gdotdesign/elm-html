@@ -4,19 +4,14 @@ module Examples.Components.Counter exposing
 {-| A simple counter component with the following features:
   - buttons for increment / decrement
   - a side effect for an other decrement which is triggered after 1 second
-  - styling for the buttons are embedded
-  - 'Incremented' 'Decremented' and 'Change' events
+  - styling for the buttons
+  - props for events: onIncrement, onDecrement and onChange
+  - prop for the delayed decrement side effect
   - API for incrementing and decrementing
 
-# State
-@docs State, Msg
-
-# Props
-@docs Props
-
-# Component
-@docs component
+@docs State, Props, Msg, component
 -}
+
 import Rumble.Html exposing (Component, Html, node, text)
 import Rumble.Style exposing (style, selector)
 import Rumble.Html.Events exposing (onClick)

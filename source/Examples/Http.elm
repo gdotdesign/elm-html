@@ -2,7 +2,7 @@ module Examples.Http exposing (..)
 
 {-| An example to showcase an Http request.
 
-@docs Model, Msg, init, fetch, update, view, component
+@docs State, Msg, initialState, fetch, update, view, component
 -}
 
 import Examples.Components.Static exposing (..)
@@ -13,9 +13,9 @@ import Rumble.Process exposing (Process)
 import Rumble.Update exposing (..)
 import Rumble.Http as Http
 
-{-| The model.
+{-| The state.
 -}
-type alias Model =
+type alias State =
   { progress : Http.Progress
   , result : String
   , fetched : Bool
@@ -33,8 +33,8 @@ type Msg
 
 {-| The initial state.
 -}
-init : Model
-init =
+initialState : State
+initialState =
   { progress = Http.Initial
   , fetched = False
   , result = ""
@@ -54,28 +54,28 @@ fetch =
 
 {-| The update.
 -}
-update : Msg -> Model -> Update Model Msg events components
-update msg model =
-  case Debug.log "" msg of
+update : Msg -> () -> State -> Update State Msg msg components
+update msg () state =
+  case msg of
     Abort ->
-      return init
+      return initialState
         |> abort "request"
 
     Fetch ->
-      return { model | fetched = True }
+      return { initialState | fetched = True }
         |> process "request" fetch
 
     Load data ->
-      return { init | result = data }
+      return { initialState | result = data }
 
     Progress progress ->
-      return { model | progress = progress }
+      return { state | progress = progress }
 
 
 {-| The view.
 -}
-view : Model -> Html Msg parentMsg
-view model =
+view : () -> State -> Html Msg parentMsg
+view () model =
   let
     abortButton =
       if model.fetched then
@@ -122,10 +122,10 @@ view model =
 
 {-| The component.
 -}
-component : Component Model Msg events components parentMsg
+component : Component () State Msg msg component
 component =
-  { subscriptions = \_ -> []
+  { initialState = initialState
+  , subscriptions = \_ _ -> []
   , update = update
-  , model = init
   , view = view
   }

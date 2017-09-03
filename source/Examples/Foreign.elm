@@ -7,35 +7,52 @@ import Rumble.Html exposing (Html, Component, node)
 import Rumble.Style exposing (style, selector)
 import Rumble.Update exposing (..)
 
-type alias Model = GoogleMaps.Props
+type alias State =
+  { center : GoogleMaps.Position
+  , zoomLevel : Int
+  }
 
 type Msg
   = IncreaseZoomLevel
   | DecreaseZoomLevel
+  | CenterChanged GoogleMaps.Position
+  | ZoomLevelChanged Int
 
-init : Model
-init =
+initialState : State
+initialState =
   { center = { lat = 47.4979, lng = 19.0402 }
   , zoomLevel = 8
   }
 
-update : Msg -> Model -> Update Model Msg events components
-update msg model =
+update : Msg -> () -> State -> Update State Msg msg components
+update msg () state =
   case msg of
     IncreaseZoomLevel ->
-      return { model | zoomLevel = model.zoomLevel + 1 }
+      return { state | zoomLevel = state.zoomLevel + 1 }
 
     DecreaseZoomLevel ->
-      return { model | zoomLevel = model.zoomLevel - 1 }
+      return { state | zoomLevel = state.zoomLevel - 1 }
 
-view : Model -> Html Msg parentMsg
-view model =
+    CenterChanged position ->
+      return { state | center = position }
+
+    ZoomLevelChanged zoomLevel ->
+      return { state | zoomLevel = zoomLevel }
+
+view : () -> State -> Html Msg msg
+view () state =
   container
     [ title "Foreign Component"
     , p """
         This example shows how to embed a foreign (google maps) component.
         """
-    , GoogleMaps.mount model
+    , GoogleMaps.mount
+      { center = state.center
+      , zoomLevel = state.zoomLevel
+      , onCenterChange = Just CenterChanged
+      , onZoomLevelChanged = Just ZoomLevelChanged
+      }
+
     , node "div" []
       [ style
         [ ( "margin-top", "10px" )
@@ -52,10 +69,10 @@ view model =
     ]
 
 
-component : Component Model Msg events components parentMsg
+component : Component () State Msg msg components
 component =
-  { subscriptions = \_ -> []
+  { initialState = initialState
+  , subscriptions = \_ _ -> []
   , update = update
-  , model = init
   , view = view
   }

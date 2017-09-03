@@ -2,7 +2,7 @@ module Examples.MouseTracker exposing (..)
 
 {-| Example for showcasing basic subscriptions.
 
-@docs Model, Msg, init, subscriptions, view, component, update
+@docs State, Msg, initialState, subscriptions, view, component, update
 -}
 
 import Examples.Components.Static exposing (..)
@@ -14,9 +14,9 @@ import Rumble.Html.Events exposing (onClick)
 import Rumble.Style exposing (style)
 import Rumble.Update exposing (..)
 
-{-| The model.
+{-| The state.
 -}
-type alias Model =
+type alias State =
   { position : Position
   , tracking : Bool
   }
@@ -29,10 +29,10 @@ type Msg
   | Toggle
 
 
-{-| The initial model.
+{-| The initial state.
 -}
-init : Model
-init =
+initialState : State
+initialState =
   { position = { top = 0, left = 0 }
   , tracking = True
   }
@@ -40,20 +40,20 @@ init =
 
 {-| The update.
 -}
-update : Msg -> Model -> Update Model Msg event command
-update msg model =
+update : Msg -> () -> State -> Update State Msg msg commands
+update msg () state =
   case msg of
     Toggle ->
-      return { model | tracking = not model.tracking }
+      return { state | tracking = not state.tracking }
 
     Move position ->
-      return { model | position = position }
+      return { state | position = position }
 
 
 {-| The view.
 -}
-view : Model -> Html Msg parentMsg
-view model =
+view : () -> State -> Html Msg parentMsg
+view () state =
   container
     [ title "Mouse Tracker"
     , p """
@@ -69,22 +69,22 @@ view model =
       ]
       [ node "div" [] []
         [ text "Top: "
-        , node "strong" [] [] [ text ((toString model.position.top) ++ "px") ]
+        , node "strong" [] [] [ text ((toString state.position.top) ++ "px") ]
         ]
       , node "div" [] []
         [ text "Left: "
-        , node "strong" [] [] [ text ((toString model.position.left) ++ "px") ]
+        , node "strong" [] [] [ text ((toString state.position.left) ++ "px") ]
         ]
       ]
-    , button Toggle (if model.tracking then "Stop tracking" else "Track")
+    , button Toggle (if state.tracking then "Stop tracking" else "Track")
     ]
 
 
 {-| The subscriptions.
 -}
-subscriptions : Model -> List (Subscription Msg)
-subscriptions model =
-  if model.tracking then
+subscriptions : () -> State -> List (Subscription Msg)
+subscriptions () state =
+  if state.tracking then
     [ moves Move ]
   else
     []
@@ -92,10 +92,10 @@ subscriptions model =
 
 {-| The component.
 -}
-component : Component Model Msg event components parentMsg
+component : Component () State Msg msg components
 component =
   { subscriptions = subscriptions
+  , initialState = initialState
   , update = update
-  , model = init
   , view = view
   }

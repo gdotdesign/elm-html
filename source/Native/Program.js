@@ -144,6 +144,10 @@ class Program { // eslint-disable-line
 
     switch (element.ctor) {
       case 'F':
+        item.props._update = function(msg){
+          this.update(msg, parentId)
+        }.bind(this)
+
         return this.inferno.createElement(item.component, item.props)
 
       // Text
@@ -204,7 +208,7 @@ class Program { // eslint-disable-line
         )
 
         var subscriptions =
-          _elm_lang$core$Native_List.toArray(item.subscriptions(instance.state)(item.props))
+          _elm_lang$core$Native_List.toArray(item.subscriptions(item.props)(instance.state))
 
         for (let subscription of subscriptions) {
           if (!this.subscriptions.has(subscription.function)) {

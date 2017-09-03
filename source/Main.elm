@@ -1,14 +1,11 @@
+import Examples.MouseTracker as MouseTracker
 import Examples.CounterList as CounterList
+import Examples.Foreign as Foreign
 import Examples.Counter as Counter
+import Examples.Http as Http
 
-import Rumble.Html as Html exposing (Html, node, text, on, mount)
-import Rumble.Style exposing (style, selector)
-import Rumble.Process exposing (Process)
-import Rumble.Html.Events exposing (onClick)
-import Rumble.Task as Task exposing (Task)
+import Rumble.Html as Html exposing (Html, node, mount)
 import Rumble.Update exposing (..)
-
-import Dict
 
 type alias Model =
   {}
@@ -17,8 +14,11 @@ type Msg
   = Changed Int
 
 type Components
-  = CounterList CounterList.Msg
+  = MouseTracker MouseTracker.Msg
+  | CounterList CounterList.Msg
   | Counter Counter.Msg
+  | Foreign Foreign.Msg
+  | Http Http.Msg
 
 
 init : Model
@@ -39,6 +39,9 @@ view props model =
     []
     [ mount Counter.component Counter ()
     , mount CounterList.component CounterList ()
+    , mount MouseTracker.component MouseTracker ()
+    , mount Http.component Http ()
+    , mount Foreign.component Foreign ()
     ]
 
 main =

@@ -87,6 +87,7 @@ view props model =
       , li "a side effect for an other decrement which is triggered after 1 second"
       , li "styling for the buttons"
       , li "props for events: onIncrement, onDecrement and onChange"
+      , li "prop for the delayed decrement side effect"
       , li "API for incrementing and decrementing"
       ]
     , mount Counter.component Counter
@@ -106,10 +107,10 @@ view props model =
         [ ( "margin-left", "10px" )
         ]
       ]
-      [ button IncrementCounter "Increment"
-      , button DecrementCounter "Decrement"
+      [ button DecrementCounter "Decrement"
+      , button IncrementCounter "Increment"
       ]
-    , p "Events:"
+    , p "Event log:"
     , logs (List.map log model.events)
     ]
 

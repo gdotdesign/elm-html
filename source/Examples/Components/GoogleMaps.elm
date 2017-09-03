@@ -3,12 +3,19 @@ module Examples.Components.GoogleMaps exposing (..)
 import Rumble.Html exposing (Html, foreign)
 import Native.Components.GoogleMaps
 
-type alias Props =
-  { center : { lat : Float, lng : Float }
+type alias Position =
+  { lat : Float
+  , lng : Float
+  }
+
+type alias Props msg =
+  { onCenterChange : Maybe (Position -> msg)
+  , onZoomLevelChanged : Maybe (Int -> msg)
+  , center : Position
   , zoomLevel : Int
   }
 
 
-mount : Props -> Html msg parentMsg
+mount : Props msg -> Html msg a
 mount props =
   foreign props Native.Components.GoogleMaps.component
