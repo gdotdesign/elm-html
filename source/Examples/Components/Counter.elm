@@ -13,10 +13,10 @@ module Examples.Components.Counter exposing
 -}
 
 import Rumble.Html.Events exposing (onClick)
-import Rumble.Task as Task exposing (Task)
 import Rumble exposing (..)
+import Rumble.Task as Task
 
-{-| Representation of a counter.
+{-| Representation of the state of a counter.
 -}
 type alias State =
   { count: Int
@@ -52,10 +52,13 @@ initialState =
 
 {-| Updates a counter.
 -}
-update : Msg -> Props msg -> State -> Update State Msg command msg
+update : Msg -> Props msg -> State -> Update State Msg components msg
 update msg props state =
   let
-    count = Maybe.withDefault state.count props.count
+    -- The component can be "controlled" with the props so we need to use
+    -- that if present
+    count =
+      Maybe.withDefault state.count props.count
   in
     case msg of
       Decrement ->
@@ -69,7 +72,8 @@ update msg props state =
                 |> emitMaybe props.onChange newCount
         in
           if props.delayedDecrement then
-            andThen (Task.delay 1000 DelayedDecrement) updateData
+            updateData
+              |> andThen (Task.delay 1000 DelayedDecrement)
           else
             updateData
 
@@ -150,7 +154,7 @@ view props state =
 
 {-| The counter component.
 -}
-component : Component (Props msg) State Msg command msg
+component : Component (Props msg) State Msg components msg
 component =
   { initialState = initialState
   , subscriptions = \_ _ -> []

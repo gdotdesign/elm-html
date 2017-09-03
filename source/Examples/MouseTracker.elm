@@ -36,7 +36,7 @@ initialState =
 
 {-| The update.
 -}
-update : Msg -> () -> State -> Update State Msg commands msg
+update : Msg -> () -> State -> Update State Msg components msg
 update msg () state =
   case msg of
     Toggle ->

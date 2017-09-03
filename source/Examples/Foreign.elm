@@ -5,7 +5,7 @@ module Examples.Foreign exposing (..)
 @docs State, Msg, initialState, update, view, component
 -}
 
-import Examples.Components.GoogleMaps as GoogleMaps
+import Examples.Components.GoogleMaps as GoogleMaps exposing (Position)
 import Examples.Components.Static exposing (..)
 
 import Rumble exposing (..)
@@ -13,7 +13,7 @@ import Rumble exposing (..)
 {-| The state.
 -}
 type alias State =
-  { center : GoogleMaps.Position
+  { center : Position
   , zoomLevel : Int
   }
 
@@ -21,7 +21,7 @@ type alias State =
 {-| The messages.
 -}
 type Msg
-  = CenterChanged GoogleMaps.Position
+  = CenterChanged Position
   | ZoomLevelChanged Int
   | IncreaseZoomLevel
   | DecreaseZoomLevel
@@ -36,7 +36,7 @@ initialState =
   }
 
 
-{-| Updates the component.
+{-| The updates.
 -}
 update : Msg -> () -> State -> Update State Msg components msg
 update msg () state =
@@ -47,11 +47,11 @@ update msg () state =
     DecreaseZoomLevel ->
       return { state | zoomLevel = state.zoomLevel - 1 }
 
-    CenterChanged position ->
-      return { state | center = position }
-
     ZoomLevelChanged zoomLevel ->
       return { state | zoomLevel = zoomLevel }
+
+    CenterChanged position ->
+      return { state | center = position }
 
 
 {-| Renders the component.
@@ -65,10 +65,10 @@ view () state =
         """
 
     , GoogleMaps.mount
-      { center = state.center
-      , zoomLevel = state.zoomLevel
+      { onZoomLevelChanged = Just ZoomLevelChanged
       , onCenterChange = Just CenterChanged
-      , onZoomLevelChanged = Just ZoomLevelChanged
+      , center = state.center
+      , zoomLevel = state.zoomLevel
       }
 
     , node "div" []

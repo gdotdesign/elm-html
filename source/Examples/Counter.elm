@@ -33,7 +33,7 @@ type Components
   = Counter Counter.Msg
 
 
-{-| Defaults a model.
+{-| The initial state.
 -}
 initialState : State
 initialState =
@@ -76,7 +76,7 @@ update msg props state =
 {-| The view.
 -}
 view : () -> State -> Html Msg msg
-view props model =
+view props state =
   container
     [ title "Counter"
     , p "Simple stateful component that implements:"
@@ -109,7 +109,7 @@ view props model =
       , button IncrementCounter "Increment"
       ]
     , p "Event log:"
-    , logs (List.map log model.events)
+    , logs (List.map log state.events)
     ]
 
 

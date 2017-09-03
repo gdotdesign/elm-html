@@ -1,6 +1,6 @@
 module Examples.Components.GoogleMaps exposing (..)
 
-{-| Google Maps component using a foreign inferno component.
+{-| Google Maps component using a foreign Inferno component.
 
 @docs Position, Props, mount
 -}

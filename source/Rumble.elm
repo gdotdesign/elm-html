@@ -14,7 +14,7 @@ module Rumble exposing
 @docs EventOptions, on
 
 ## Attributes
-@docs Attribute, attribute, property, boolAttribute
+@docs Attribute
 
 ## Component
 @docs Component, mount, embed, foreign
@@ -23,7 +23,7 @@ module Rumble exposing
 @docs program
 
 # Styling
-@docs Style, Selector, Rule
+@docs Style, Rule
 
 ## Functions
 @docs style, selector, selectors, pseudo
@@ -42,6 +42,12 @@ module Rumble exposing
 
 ## Processes
 @docs process, abort
+
+# Process
+@docs Process
+
+# Subscription
+@docs Subscription
 -}
 
 import Native.Vendor.Inferno

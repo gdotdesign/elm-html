@@ -1,6 +1,7 @@
 module Examples.CounterList exposing (..)
 
-{-| This example showcases how to use list of components.
+{-| This example showcases how to use dynamic list of counters while counting
+the number of increments, decrements and overall changes.
 
 @docs State, Msg, Components, initialState, update, view, component
 -}
@@ -10,7 +11,7 @@ import Examples.Components.Counter as Counter
 
 import Rumble exposing (..)
 
-{-| The model.
+{-| The state.
 -}
 type alias State =
   { incrementCount : Int
@@ -53,10 +54,7 @@ update : Msg -> () -> State -> Update State Msg Components msg
 update msg props state =
   case msg of
     SetCount count ->
-      if count < 0 then
-        return { state | counterCount = 0 }
-      else
-        return { state | counterCount = count }
+      return { state | counterCount = max 0 count }
 
     Incremented ->
       return { state | incrementCount = state.incrementCount + 1 }

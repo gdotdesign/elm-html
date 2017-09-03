@@ -54,10 +54,6 @@ fetch =
 update : Msg -> () -> State -> Update State Msg components msg
 update msg () state =
   case msg of
-    Abort ->
-      return initialState
-        |> abort "request"
-
     Fetch ->
       return { initialState | fetched = True }
         |> process "request" fetch
@@ -68,6 +64,9 @@ update msg () state =
     Progress progress ->
       return { state | progress = progress }
 
+    Abort ->
+      return initialState
+        |> abort "request"
 
 {-| The view.
 -}
@@ -128,7 +127,7 @@ view () model =
 
 {-| The component.
 -}
-component : Component () State Msg component msg
+component : Component () State Msg components msg
 component =
   { initialState = initialState
   , subscriptions = \_ _ -> []
