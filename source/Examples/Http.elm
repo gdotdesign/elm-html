@@ -7,10 +7,7 @@ module Examples.Http exposing (..)
 
 import Examples.Components.Static exposing (..)
 
-import Rumble.Html exposing (Html, Component, node, text)
-import Rumble.Style exposing (style, selector)
-import Rumble.Process exposing (Process)
-import Rumble.Update exposing (..)
+import Rumble exposing (..)
 import Rumble.Http as Http
 
 {-| The state.
@@ -54,7 +51,7 @@ fetch =
 
 {-| The update.
 -}
-update : Msg -> () -> State -> Update State Msg msg components
+update : Msg -> () -> State -> Update State Msg components msg
 update msg () state =
   case msg of
     Abort ->
@@ -74,7 +71,7 @@ update msg () state =
 
 {-| The view.
 -}
-view : () -> State -> Html Msg parentMsg
+view : () -> State -> Html Msg msg
 view () model =
   let
     abortButton =
@@ -131,7 +128,7 @@ view () model =
 
 {-| The component.
 -}
-component : Component () State Msg msg component
+component : Component () State Msg component msg
 component =
   { initialState = initialState
   , subscriptions = \_ _ -> []

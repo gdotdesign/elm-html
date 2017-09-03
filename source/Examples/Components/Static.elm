@@ -5,9 +5,8 @@ module Examples.Components.Static exposing (..)
 @docs li, p, title, ul, container, logs, log, button
 -}
 
-import Rumble.Html exposing (Html, node, text)
-import Rumble.Style exposing (style, selector)
 import Rumble.Html.Events exposing (onClick)
+import Rumble exposing (..)
 
 {-| A simple button.
 -}

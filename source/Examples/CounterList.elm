@@ -8,9 +8,7 @@ module Examples.CounterList exposing (..)
 import Examples.Components.Static exposing (..)
 import Examples.Components.Counter as Counter
 
-import Rumble.Html exposing (Component, Html, node, mount, text)
-import Rumble.Style exposing (style)
-import Rumble.Update exposing (..)
+import Rumble exposing (..)
 
 {-| The model.
 -}
@@ -51,7 +49,7 @@ initialState =
 
 {-| The update.
 -}
-update : Msg -> () -> State -> Update State Msg msg Components
+update : Msg -> () -> State -> Update State Msg Components msg
 update msg props state =
   case msg of
     SetCount count ->
@@ -72,7 +70,7 @@ update msg props state =
 
 {-| The view.
 -}
-view : () -> State -> Html Msg parentMsg
+view : () -> State -> Html Msg msg
 view props state =
   let
     mountCounter index =
@@ -119,7 +117,7 @@ view props state =
 
 {-| The component.
 -}
-component : Component () State Msg msg Components
+component : Component () State Msg Components msg
 component =
   { initialState = initialState
   , subscriptions = \_ _ -> []

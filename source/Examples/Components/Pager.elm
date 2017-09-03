@@ -1,12 +1,8 @@
 module Examples.Components.Pager exposing (..)
 
 import Examples.Components.Static exposing (..)
-
-import Rumble.Html exposing (Html, Component, embed, text, node, on)
-import Rumble.Update exposing (Update, return)
-import Rumble.Style exposing (style, selector)
-
 import Array exposing (Array)
+import Rumble exposing (..)
 
 type alias State =
   { page : Int
@@ -25,7 +21,7 @@ initialState =
   { page = 0
   }
 
-update : Msg -> Props msg a -> State -> Update State Msg msg components
+update : Msg -> Props msg a -> State -> Update State Msg components msg
 update msg props state =
   case msg of
     Next ->
@@ -73,7 +69,7 @@ view props state =
     ]
 
 
-component : Component (Props msg a) State Msg msg components
+component : Component (Props msg a) State Msg components msg
 component =
   { initialState = initialState
   , subscriptions = \_ _ -> []

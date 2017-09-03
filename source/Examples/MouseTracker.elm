@@ -7,12 +7,8 @@ module Examples.MouseTracker exposing (..)
 
 import Examples.Components.Static exposing (..)
 
-import Rumble.Html exposing (Component, Html, node, text)
-import Rumble.Subscription exposing (Subscription)
 import Rumble.Mouse exposing (Position, moves)
-import Rumble.Html.Events exposing (onClick)
-import Rumble.Style exposing (style)
-import Rumble.Update exposing (..)
+import Rumble exposing (..)
 
 {-| The state.
 -}
@@ -40,7 +36,7 @@ initialState =
 
 {-| The update.
 -}
-update : Msg -> () -> State -> Update State Msg msg commands
+update : Msg -> () -> State -> Update State Msg commands msg
 update msg () state =
   case msg of
     Toggle ->
@@ -52,7 +48,7 @@ update msg () state =
 
 {-| The view.
 -}
-view : () -> State -> Html Msg parentMsg
+view : () -> State -> Html Msg msg
 view () state =
   container
     [ title "Mouse Tracker"
@@ -92,7 +88,7 @@ subscriptions () state =
 
 {-| The component.
 -}
-component : Component () State Msg msg components
+component : Component () State Msg components msg
 component =
   { subscriptions = subscriptions
   , initialState = initialState

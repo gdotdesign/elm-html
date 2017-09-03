@@ -5,7 +5,7 @@ module Rumble.Mouse exposing (..)
 @docs Position, moves
 -}
 
-import Rumble.Subscription exposing (Subscription)
+import Rumble exposing (Subscription)
 import Native.Mouse
 
 {-| Represents a position on the screen.

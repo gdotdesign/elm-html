@@ -18,7 +18,7 @@ module Rumble.Http exposing (..)
 @docs toProcess
 -}
 
-import Rumble.Process exposing (Process)
+import Rumble exposing (Process)
 import Json.Encode as Json
 import Native.Http
 

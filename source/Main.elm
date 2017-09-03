@@ -5,8 +5,7 @@ import Examples.Foreign as Foreign
 import Examples.Counter as Counter
 import Examples.Http as Http
 
-import Rumble.Html as Html exposing (Html, node, mount)
-import Rumble.Update exposing (..)
+import Rumble exposing (..)
 
 type alias Model =
   {}
@@ -28,13 +27,13 @@ init =
   {}
 
 
-update : Msg -> () -> Model -> Update Model Msg a Components
+update : Msg -> () -> Model -> Update Model Msg Components msg
 update msg props model =
   case Debug.log "" msg of
     _ ->
       return model
 
-view : () -> Model -> Html Msg a
+view : () -> Model -> Html Msg msg
 view props model =
   node "div"
     []
@@ -48,7 +47,7 @@ view props model =
     ]
 
 main =
-  Html.program
+  program
     { subscriptions = \_ _ -> []
     , initialState = init
     , update = update

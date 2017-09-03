@@ -12,11 +12,9 @@ module Examples.Components.Counter exposing
 @docs State, Props, Msg, component
 -}
 
-import Rumble.Html exposing (Component, Html, node, text)
-import Rumble.Style exposing (style, selector)
 import Rumble.Html.Events exposing (onClick)
 import Rumble.Task as Task exposing (Task)
-import Rumble.Update exposing (..)
+import Rumble exposing (..)
 
 {-| Representation of a counter.
 -}
@@ -54,7 +52,7 @@ initialState =
 
 {-| Updates a counter.
 -}
-update : Msg -> Props msg -> State -> Update State Msg msg command
+update : Msg -> Props msg -> State -> Update State Msg command msg
 update msg props state =
   let
     count = Maybe.withDefault state.count props.count
@@ -67,8 +65,8 @@ update msg props state =
           updateData =
             return
               { state | count = newCount }
-                |> maybeEmit props.onDecrement newCount
-                |> maybeEmit props.onChange newCount
+                |> emitMaybe props.onDecrement newCount
+                |> emitMaybe props.onChange newCount
         in
           if props.delayedDecrement then
             andThen (Task.delay 1000 DelayedDecrement) updateData
@@ -81,8 +79,8 @@ update msg props state =
         in
           return
             { state | count = newCount }
-              |> maybeEmit props.onDecrement newCount
-              |> maybeEmit props.onChange newCount
+              |> emitMaybe props.onDecrement newCount
+              |> emitMaybe props.onChange newCount
 
       Increment ->
         let
@@ -90,8 +88,8 @@ update msg props state =
         in
           return
             { state | count = newCount }
-              |> maybeEmit props.onIncrement newCount
-              |> maybeEmit props.onChange newCount
+              |> emitMaybe props.onIncrement newCount
+              |> emitMaybe props.onChange newCount
 
 
 {-| Renders a counter.
@@ -152,7 +150,7 @@ view props state =
 
 {-| The counter component.
 -}
-component : Component (Props msg) State Msg msg command
+component : Component (Props msg) State Msg command msg
 component =
   { initialState = initialState
   , subscriptions = \_ _ -> []

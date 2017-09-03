@@ -8,10 +8,7 @@ module Examples.Foreign exposing (..)
 import Examples.Components.GoogleMaps as GoogleMaps
 import Examples.Components.Static exposing (..)
 
-import Rumble.Html exposing (Html, Component, node, text)
-import Rumble.Style exposing (style, selector)
-import Rumble.Update exposing (..)
-
+import Rumble exposing (..)
 
 {-| The state.
 -}
@@ -41,7 +38,7 @@ initialState =
 
 {-| Updates the component.
 -}
-update : Msg -> () -> State -> Update State Msg msg components
+update : Msg -> () -> State -> Update State Msg components msg
 update msg () state =
   case msg of
     IncreaseZoomLevel ->
@@ -104,7 +101,7 @@ view () state =
 
 {-| The component.
 -}
-component : Component () State Msg msg components
+component : Component () State Msg components msg
 component =
   { initialState = initialState
   , subscriptions = \_ _ -> []

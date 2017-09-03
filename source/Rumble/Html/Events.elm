@@ -12,7 +12,7 @@ module Rumble.Html.Events exposing (..)
 @docs defaultOptions
 -}
 
-import Rumble.Html exposing (EventOptions, Attribute, on)
+import Rumble exposing (EventOptions, Attribute, on)
 import Json.Decode as Json
 
 {-| Default event options.

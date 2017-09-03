@@ -5,8 +5,8 @@ module Examples.Components.GoogleMaps exposing (..)
 @docs Position, Props, mount
 -}
 
-import Rumble.Html exposing (Html, foreign)
 import Native.Components.GoogleMaps
+import Rumble exposing (..)
 
 {-| Represents a geographic position.
 -}

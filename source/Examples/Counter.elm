@@ -8,9 +8,7 @@ module Examples.Counter exposing (..)
 import Examples.Components.Static exposing (..)
 import Examples.Components.Counter as Counter
 
-import Rumble.Html exposing (Component, Html, node, text, mount)
-import Rumble.Update exposing (Update, send, return)
-import Rumble.Style exposing (style, selector)
+import Rumble exposing (..)
 
 {-| The model.
 -}
@@ -45,7 +43,7 @@ initialState =
 
 {-| Update.
 -}
-update : Msg -> () -> State -> Update State Msg msg Components
+update : Msg -> () -> State -> Update State Msg Components msg
 update msg props state =
   case msg of
     IncrementCounter ->
@@ -117,7 +115,7 @@ view props model =
 
 {-| The component.
 -}
-component : Component () State Msg msg Components
+component : Component () State Msg Components msg
 component =
   { initialState = initialState
   , subscriptions = \_ _ -> []

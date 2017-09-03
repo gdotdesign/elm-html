@@ -3,10 +3,7 @@ module Examples.Embedding exposing (..)
 import Examples.Components.Static exposing (..)
 import Examples.Components.Pager as Pager
 
-import Rumble.Html exposing (Component, Html, mount, node, text)
-import Rumble.Style exposing (Rule, style)
-import Rumble.Update exposing (..)
-
+import Rumble exposing (..)
 import Array
 
 type alias State =
@@ -24,7 +21,7 @@ initialState =
   { count = 0
   }
 
-update : Msg -> () -> State -> Update State Msg msg Components
+update : Msg -> () -> State -> Update State Msg Components msg
 update msg props state =
   case msg of
     Increment ->
@@ -39,7 +36,7 @@ sharedStyle =
     , ( "display", "flex" )
     ]
 
-view : () -> State -> Html Msg parentMsg
+view : () -> State -> Html Msg msg
 view () state =
   container
     [ title "Embedding Content"
@@ -76,7 +73,7 @@ view () state =
       }
     ]
 
-component : Component () State Msg msg Components
+component : Component () State Msg Components msg
 component =
   { initialState = initialState
   , subscriptions = \_ _ -> []
