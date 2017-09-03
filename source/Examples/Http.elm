@@ -74,7 +74,7 @@ update msg model =
 
 {-| The view.
 -}
-view : Model -> Html Msg
+view : Model -> Html Msg parentMsg
 view model =
   let
     abortButton =
@@ -122,7 +122,7 @@ view model =
 
 {-| The component.
 -}
-component : Component Model Msg events components
+component : Component Model Msg events components parentMsg
 component =
   { subscriptions = \_ -> []
   , update = update

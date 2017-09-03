@@ -12,21 +12,21 @@ var _gdotdesign$elm_html$Native_Html = (function () { // eslint-disable-line
     }
   }
 
-  function component (comp, id, listener) {
+  function component (data) {
     return {
-      subscriptions: comp.subscriptions,
-      update: comp.update,
-      listener: listener,
-      model: comp.model,
-      view: comp.view,
-      id: id
+      subscriptions: data.component.subscriptions,
+      initialState: data.component.initialState,
+      update: data.component.update,
+      view: data.component.view,
+      props: data.props,
+      id: data.id
     }
   }
 
   return {
     foreign: F2(function (props, component) { return {props: props, component: component } }),
     embed: function (value) { return value },
-    component: F3(component),
+    component: component,
     program: program
   }
 }()); // eslint-disable-line

@@ -9,6 +9,6 @@ type alias Props =
   }
 
 
-mount : Props -> Html msg
+mount : Props -> Html msg parentMsg
 mount props =
   foreign props Native.Components.GoogleMaps.component

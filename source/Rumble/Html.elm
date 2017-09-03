@@ -1,6 +1,6 @@
 module Rumble.Html exposing
-  ( ComponentWithContent, Component, Html, Attribute, EventOptions, node, text
-  , mount, mountWithEvent, mountWithContent, embed, on, root, program
+  ( Component, Html, Attribute, EventOptions, node, text
+  , mount, embed, on, program
   , attribute, boolAttribute, property, foreign )
 
 {-| This module provides a way to render Html elements and simple Components.
@@ -15,7 +15,7 @@ module Rumble.Html exposing
 @docs Attribute, attribute, property, boolAttribute
 
 # Component
-@docs Component, ComponentWithContent, mount, mountWithContent, mountWithEvent, embed, root, foreign
+@docs Component, mount, embed, foreign
 
 # Program
 @docs program
@@ -29,7 +29,6 @@ import Native.Program
 import Native.Html
 
 import Json.Decode as Json
-import Dict exposing (Dict)
 
 import Rumble.Subscription exposing (Subscription)
 import Rumble.Style exposing (Rule, Style)
@@ -38,9 +37,7 @@ import Rumble.Update exposing (Update)
 {-| A hidden type to bypass the type system
 -}
 type DATA = DATA
-
-type Root = Root String
-
+type Root a = Root a
 
 {-| Event options.
 -}
@@ -61,40 +58,29 @@ type Attribute msg
 
 {-| Represents a Html node.
 -}
-type Html msg
-  = E (Element msg)
+type Html msg parentMsg
+  = E (Element msg parentMsg)
   | T String
-  | EM DATA
-  | F DATA
-  | C DATA
+  | EM (DATA parentMsg)
+  | F (DATA parentMsg)
+  | C (DATA parentMsg)
 
 
 {-| Represents a component.
 -}
-type alias Component model msg event command =
-  { update : msg -> model -> Update model msg event command
-  , subscriptions : model -> List (Subscription msg)
-  , view : model -> Html msg
-  , model : model
-  }
-
-
-{-| Represents a component that is has injection points for content from their
-parent component.
--}
-type alias ComponentWithContent model msg event parentMsg command =
-  { view : Dict String (Html parentMsg) -> model -> Html msg
-  , update : msg -> model -> Update model msg event command
-  , subscriptions : model -> List (Subscription msg)
-  , model : model
+type alias Component props state msg parentMsg command =
+  { update : msg -> props -> state -> Update state msg parentMsg command
+  , subscriptions : props -> state -> List (Subscription msg)
+  , view : props -> state -> Html msg parentMsg
+  , initialState : state
   }
 
 
 {-| Represents an element.
 -}
-type alias Element msg =
+type alias Element msg parentMsg =
   { attributes : List (Attribute msg)
-  , contents : List (Html msg)
+  , contents : List (Html msg parentMsg)
   , scrollKey : Maybe String
   , styles : List Rule
   , tag : String
@@ -134,14 +120,14 @@ property =
 
 {-| Returns an Html text node.
 -}
-text : String -> Html msg
+text : String -> Html msg parentMsg
 text value =
   T value
 
 
 {-| Returns an Html element.
 -}
-node : String -> List (Attribute msg) -> List Rule -> List (Html msg) -> Html msg
+node : String -> List (Attribute msg) -> List Rule -> List (Html msg parentMsg) -> Html msg parentMsg
 node tag attributes styles contents =
   E
     { attributes = attributes
@@ -154,57 +140,42 @@ node tag attributes styles contents =
 
 {-| Mounts the given component.
 -}
-mount : Component model msg event command
+mount : Component props state msg parentMsg command
       -> (msg -> actionMsg)
-      -> Html parentMsg
-mount template id =
-  C (Native.Html.component template id "")
-
-
-{-| Mounts the given component with a listener.
--}
-mountWithEvent : Component model msg event command
-      -> (msg -> actionMsg)
-      -> (event -> parentMsg)
-      -> Html parentMsg
-mountWithEvent template id listener =
-  C (Native.Html.component template id listener)
-
-{-| Mounts the given open component.
--}
-mountWithContent
-  : ComponentWithContent model msg event parentMsg command
-  -> (msg -> actionMsg)
-  -> (event -> parentMsg)
-  -> Dict String (Html parentMsg)
-  -> Html parentMsg
-mountWithContent template id listener dict =
-  C (Native.Html.component { template | view = template.view dict } id listener)
+      -> props
+      -> Html parentMsg grandParentMsg
+mount component id props =
+  { component = component
+  , props = props
+  , id = id
+  }
+  |> Native.Html.component
+  |> C
 
 
 {-| Embeds parent html into a component.
 -}
-embed : Html parentMsg -> Html msg
+embed : Html parentMsg a -> Html b parentMsg
 embed parentHtml =
   EM (Native.Html.embed parentHtml)
 
 
 {-| Mounts the given component as a root component.
 -}
-root : Component a b d e -> Html c
-root template =
-  C (Native.Html.component template Root "")
-
-
-{-| Creates a program from the given Html tree.
--}
-program : Html msg -> Program Never model msg
-program =
-  Native.Html.program
+program : Component props state msg command parentMsg
+        -> Program Never state msg
+program component =
+  { component = component
+  , props = {}
+  , id = Root
+  }
+  |> Native.Html.component
+  |> C
+  |> Native.Html.program
 
 
 {-| Embeds a foreign Inferno component.
 -}
-foreign : props -> component -> Html msg
+foreign : props -> component -> Html msg b
 foreign props component =
   F (Native.Html.foreign props component)

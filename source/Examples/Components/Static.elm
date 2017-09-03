@@ -11,7 +11,7 @@ import Rumble.Html.Events exposing (onClick)
 
 {-| A simple button.
 -}
-button : msg -> String -> Html msg
+button : msg -> String -> Html msg parentMsg
 button msg content =
   node "button"
     [ onClick msg ]
@@ -38,7 +38,7 @@ button msg content =
 
 {-| Renders a log container.
 -}
-logs : List (Html msg) -> Html msg
+logs : List (Html msg parentMsg) -> Html msg parentMsg
 logs =
   node "div" []
     [ style
@@ -56,7 +56,7 @@ logs =
 
 {-| Renders a log container.
 -}
-log : String -> Html msg
+log : String -> Html msg parentMsg
 log content =
   node "div" []
     [ style
@@ -72,7 +72,7 @@ log content =
 
 {-| Renders an example container.
 -}
-container : List (Html msg) -> Html msg
+container : List (Html msg parentMsg) -> Html msg parentMsg
 container =
   node "div" []
     [ style
@@ -87,7 +87,7 @@ container =
 
 {-| Renders a title with the given content.
 -}
-title : String -> Html msg
+title : String -> Html msg parentMsg
 title content =
   node "h1" []
     [ style
@@ -100,7 +100,7 @@ title content =
 
 {-| Renders a paragraph with the given content.
 -}
-p : String -> Html msg
+p : String -> Html msg parentMsg
 p content =
   node "p" []
     [ style
@@ -112,7 +112,7 @@ p content =
 
 {-| Renders a list with the given content.
 -}
-ul : List (Html msg) -> Html msg
+ul : List (Html msg parentMsg) -> Html msg parentMsg
 ul =
   node "ul" []
     [ style
@@ -123,7 +123,7 @@ ul =
 
 {-| Renders a listitem with the given content.
 -}
-li : String -> Html msg
+li : String -> Html msg parentMsg
 li content =
   node "li" []
     [ style

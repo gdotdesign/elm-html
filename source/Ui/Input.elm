@@ -91,7 +91,7 @@ update msg model =
 
 {-| Renders an input.
 -}
-view : Model -> Html Msg
+view : Model -> Html Msg parentMsg
 view model =
   let
     showClearIcon =
@@ -168,7 +168,7 @@ view model =
 
 {-| The input component.
 -}
-component : Component Model Msg Event command
+component : Component Model Msg Event command parentMsg
 component =
   { subscriptions = \_ -> []
   , update = update

@@ -1,5 +1,5 @@
 module Examples.Components.Counter exposing
-  (Model, Msg(Increment, Decrement, Set), Event(..), component)
+  (State, Msg(Increment, Decrement, Set), Props, component, defaultProps)
 
 {-| A simple counter component with the following features:
   - buttons for increment / decrement
@@ -8,11 +8,11 @@ module Examples.Components.Counter exposing
   - 'Incremented' 'Decremented' and 'Change' events
   - API for incrementing and decrementing
 
-# Model
-@docs Model, Msg
+# State
+@docs State, Msg
 
-# Events
-@docs Event
+# Props
+@docs Props, defaultProps
 
 # Component
 @docs component
@@ -25,7 +25,7 @@ import Rumble.Update exposing (..)
 
 {-| Representation of a counter.
 -}
-type alias Model =
+type alias State =
   { count: Int
   }
 
@@ -39,26 +39,37 @@ type Msg
   | Set Int
 
 
-{-| Events that a counter can emit.
+{-| Props for a counter.
 -}
-type Event
-  = Incremented Int
-  | Decremented Int
-  | Changed Int
+type alias Props msg =
+  { onDecrement : Maybe (Int -> msg)
+  , onIncrement : Maybe (Int -> msg)
+  , onChange : Maybe (Int -> msg)
+  }
 
 
-{-| Default model for a counter.
+{-| Default props for a counter.
 -}
-init : Model
-init =
+defaultProps : Props msg
+defaultProps =
+  { onDecrement = Nothing
+  , onIncrement = Nothing
+  , onChange = Nothing
+  }
+
+
+{-| Initial state for a counter.
+-}
+initialState : State
+initialState =
   { count = 0
   }
 
 
 {-| Updates a counter.
 -}
-update : Msg -> Model -> Update Model Msg Event command
-update msg model =
+update : Msg -> Props msg -> State -> Update State Msg msg command
+update msg props model =
   case msg of
     Decrement ->
       let
@@ -66,8 +77,8 @@ update msg model =
       in
         return
           { model | count = newCount }
-            |> emit (Decremented newCount)
-            |> emit (Changed newCount)
+            |> maybeEmit props.onDecrement newCount
+            |> maybeEmit props.onChange newCount
             |> andThen (Task.delay 1000 DelayedDecrement)
 
     DelayedDecrement ->
@@ -76,8 +87,8 @@ update msg model =
       in
         return
           { model | count = newCount }
-            |> emit (Decremented newCount)
-            |> emit (Changed newCount)
+            |> maybeEmit props.onDecrement newCount
+            |> maybeEmit props.onChange newCount
 
     Increment ->
       let
@@ -85,8 +96,8 @@ update msg model =
       in
         return
           { model | count = newCount }
-            |> emit (Incremented newCount)
-            |> emit (Changed newCount)
+            |> maybeEmit props.onIncrement newCount
+            |> maybeEmit props.onChange newCount
 
     Set count ->
       return { model | count = count }
@@ -94,8 +105,8 @@ update msg model =
 
 {-| Renders a counter.
 -}
-view : Model -> Html Msg
-view model =
+view : Props msg -> State -> Html Msg msg
+view props state =
   node "div"
     []
     [ style
@@ -139,7 +150,7 @@ view model =
         , ( "padding", "0 20px" )
         ]
       ]
-      [ text (toString model.count) ]
+      [ text (toString state.count) ]
 
     , node "button"
       [ onClick Increment ]
@@ -150,10 +161,10 @@ view model =
 
 {-| The counter component.
 -}
-component : Component Model Msg Event command
+component : Component (Props msg) State Msg msg command
 component =
-  { subscriptions = \_ -> []
+  { initialState = initialState
+  , subscriptions = \_ _ -> []
   , update = update
-  , model = init
   , view = view
   }

@@ -2,18 +2,19 @@ module Examples.Counter exposing (..)
 
 {-| Example component for showcasing a simple component.
 
-@docs Model, Msg, Components, init, update, view, component
+@docs State, Props, Msg, Components, initialState, update, view, component
 -}
 
 import Examples.Components.Static exposing (..)
 import Examples.Components.Counter as Counter
 
-import Rumble.Html exposing (Component, Html, node, text, mountWithEvent)
+import Rumble.Html exposing (Component, Html, node, text, mount)
 import Rumble.Update exposing (Update, send, return)
+import Rumble.Style exposing (style, selector)
 
 {-| The model.
 -}
-type alias Model =
+type alias State =
   { events : List String
   }
 
@@ -23,7 +24,9 @@ type alias Model =
 type Msg
   = IncrementCounter
   | DecrementCounter
-  | Events Counter.Event
+  | Incremented Int
+  | Decremented Int
+  | Changed Int
 
 
 {-| The components.
@@ -32,52 +35,56 @@ type Components
   = Counter Counter.Msg
 
 
+{-| The props.
+-}
+type alias Props
+  = {}
+
+
 {-| Defaults a model.
 -}
-init : Model
-init =
+initialState : State
+initialState =
   { events = []
   }
 
 
 {-| Update.
 -}
-update : Msg -> Model -> Update Model Msg event Components
-update msg model =
+update : Msg -> Props -> State -> Update State Msg msg Components
+update msg props state =
   case msg of
     IncrementCounter ->
-      return model
+      return state
         |> send (Counter Counter.Increment)
 
     DecrementCounter ->
-      return model
+      return state
         |> send (Counter Counter.Decrement)
 
-    Events event ->
-      case event of
-        Counter.Incremented count ->
-          return
-            { model
-            | events = ("Incremented to: " ++ (toString count)) :: model.events
-            }
+    Incremented count ->
+      return
+        { state
+        | events = ("Incremented to: " ++ (toString count)) :: state.events
+        }
 
-        Counter.Decremented count ->
-          return
-            { model
-            | events = ("Decremented to: " ++ (toString count)) :: model.events
-            }
+    Decremented count ->
+      return
+        { state
+        | events = ("Decremented to: " ++ (toString count)) :: state.events
+        }
 
-        Counter.Changed count ->
-          return
-            { model
-            | events = ("Changed to: " ++ (toString count)) :: model.events
-            }
+    Changed count ->
+      return
+        { state
+        | events = ("Changed to: " ++ (toString count)) :: state.events
+        }
 
 
 {-| The view.
 -}
-view : Model -> Html Msg
-view model =
+view : Props -> State -> Html Msg msg
+view props model =
   container
     [ title "Counter"
     , p "Simple stateful component that implements:"
@@ -85,10 +92,27 @@ view model =
       [ li "buttons for increment / decrement"
       , li "a side effect for an other decrement which is triggered after 1 second"
       , li "styling for the buttons"
-      , li "'Incremented' 'Decremented' and 'Change' events"
+      , li "props for events: onIncrement, onDecrement and onChange"
       , li "API for incrementing and decrementing"
       ]
-    , mountWithEvent Counter.component Counter Events
+    , mount Counter.component Counter
+      { onIncrement = Just Incremented
+      , onDecrement = Just Decremented
+      , onChange = Just Changed
+      }
+    , node "div" []
+      [ style
+        [ ( "margin-top", "10px" )
+        , ( "display", "flex" )
+        ]
+
+      , selector "* + *"
+        [ ( "margin-left", "10px" )
+        ]
+      ]
+      [ button IncrementCounter "Increment"
+      , button DecrementCounter "Decrement"
+      ]
     , p "Events:"
     , logs (List.map log model.events)
     ]
@@ -96,10 +120,10 @@ view model =
 
 {-| The component.
 -}
-component : Component Model Msg event Components
+component : Component Props State Msg msg Components
 component =
-  { subscriptions = \_ -> []
+  { initialState = initialState
+  , subscriptions = \_ _ -> []
   , update = update
-  , model = init
   , view = view
   }

@@ -9,7 +9,7 @@ module Rumble.Update exposing (..)
 @docs andThen
 
 # Events
-@docs emit, thenEmit
+@docs maybeEmit, emit, thenEmit
 
 # Commands
 @docs send
@@ -24,34 +24,50 @@ import Rumble.Task as Task exposing (Task)
 
 {-| Represents an update for a component.
   - commands - Tasks that return messages for sub components
-  - events - Tasks that return events for the parent component
+  - parentMessages - Tasks that return messages for the parent component
   - effects - Tasks that return side effects
   - model - The updated model
 -}
-type alias Update model msg event command =
-  { processes : List (String, Process msg)
+type alias Update state msg parentMsg command =
+  { parentMessages : List (Task Never parentMsg)
+  , processes : List (String, Process msg)
   , commands : List (Task Never command)
-  , events : List (Task Never event)
   , effects : List (Task Never msg)
-  , model : model
+  , state : state
   }
 
 
 {-| Builds an update from a model.
 -}
-return : model -> Update model msg eventMsg command
-return model =
-  { model = model, effects = [], events = [], commands = [], processes = [] }
+return : state -> Update state msg eventMsg command
+return state =
+  { state = state, effects = [], parentMessages = [], commands = [], processes = [] }
 
 
 {-| Emits the given event.
 -}
 emit
-  : event
-  -> Update model msg event command
-  -> Update model msg event command
-emit eventMsg data =
-  { data | events = Task.succeed eventMsg :: data.events }
+  : parentMsg
+  -> Update model msg parentMsg command
+  -> Update model msg parentMsg command
+emit parentMsg data =
+  { data | parentMessages = Task.succeed parentMsg :: data.parentMessages }
+
+
+{-| Emits the given message if exists with the given value.
+-}
+maybeEmit
+  : Maybe (a -> parentMsg)
+  -> a
+  -> Update state msg parentMsg command
+  -> Update state msg parentMsg command
+maybeEmit maybeParentMsg value data =
+  case maybeParentMsg of
+    Just parentMsg ->
+      { data | parentMessages = Task.succeed (parentMsg value) :: data.parentMessages }
+
+    Nothing ->
+      data
 
 
 {-| Runs the given task then emits the event returned by it.
@@ -61,7 +77,7 @@ thenEmit
   -> Update model msg event command
   -> Update model msg event command
 thenEmit task data =
-  { data | events = task :: data.events }
+  { data | parentMessages = task :: data.parentMessages }
 
 
 {-| Runs the given task of a side effect.

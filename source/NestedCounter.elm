@@ -24,7 +24,7 @@ update msg model =
       return model
         |> emit event
 
-view : Model -> Html Msg
+view : Model -> Html Msg parentMsg
 view model =
   node "div" [] []
     [ text "Nested Counter:"
@@ -35,7 +35,7 @@ view model =
       ]
     ]
 
-component : Component Model Msg Counter.Event Components
+component : Component Model Msg Counter.Event Components parentMsg
 component =
   { subscriptions = \_ -> []
   , model = init

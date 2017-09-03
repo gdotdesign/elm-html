@@ -52,7 +52,7 @@ update msg model =
 
 {-| The view.
 -}
-view : Model -> Html Msg
+view : Model -> Html Msg parentMsg
 view model =
   container
     [ title "Mouse Tracker"
@@ -92,7 +92,7 @@ subscriptions model =
 
 {-| The component.
 -}
-component : Component Model Msg event components
+component : Component Model Msg event components parentMsg
 component =
   { subscriptions = subscriptions
   , update = update

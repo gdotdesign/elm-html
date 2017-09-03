@@ -58,13 +58,7 @@ class Program { // eslint-disable-line
     var component = instance.component
 
     // Update the component data.
-    // The return value contains:
-    // - the updated data
-    // - the side effect tasks
-    // - the event event tasks
-    // - the command tasks
-    // - the processes
-    var data = component.update(msg)(instance.data)
+    var data = component.update(msg)(instance.props)(instance.state)
 
     // Process the side effect tasks
     for (let task of _elm_lang$core$Native_List.toArray(data.effects)) {
@@ -104,22 +98,21 @@ class Program { // eslint-disable-line
       }
     }
 
-    // Process the event tasks
-    if (component.listener && this.map.has(instance.parent)) {
-      for (let task of _elm_lang$core$Native_List.toArray(data.events)) {
-        // TODO: Nicer error handling
-        task.fork(console.error, function (msg) {
-          this.update(component.listener(msg), instance.parent)
-        }.bind(this))
-      }
+    // Process the parent messages
+    for (let task of _elm_lang$core$Native_List.toArray(data.parentMessages)) {
+      // TODO: Nicer error handling
+      task.fork(console.error, function (msg) {
+        this.update(msg, instance.parent)
+      }.bind(this))
     }
 
-    // Create new object in the map with the new data
+    // Create new object in the map with the new state
     this.map.set(id,
       {
         parent: instance.parent,
+        props: instance.props,
         component: component,
-        data: data.model
+        state: data.state
       }
     )
 
@@ -192,23 +185,28 @@ class Program { // eslint-disable-line
 
         this.ids.add(id)
 
-        // If there is no data set the defaults
+        // If there is no state set the defaults
         if (!this.map.has(id)) {
-          this.map.set(
-            id,
-            {
-              component: item,
-              data: item.model,
-              parent: parentId
-            }
-          )
+          this.map.set(id, { state: item.initialState, props: item.props })
         }
 
-        // Render the component with the current data and transform it's
-        // children
+        // Render the component with the current state and transform it's children
         var instance = this.map.get(id)
 
-        for (let subscription of _elm_lang$core$Native_List.toArray(item.subscriptions(instance.data))) {
+        this.map.set(
+          id,
+          {
+            state: instance.state,
+            props: item.props,
+            component: item,
+            parent: parentId
+          }
+        )
+
+        var subscriptions =
+          _elm_lang$core$Native_List.toArray(item.subscriptions(instance.state)(item.props))
+
+        for (let subscription of subscriptions) {
           if (!this.subscriptions.has(subscription.function)) {
             this.subscriptions.set(subscription.function, [])
           }
@@ -220,7 +218,7 @@ class Program { // eslint-disable-line
         }
 
         return this.transformElement(
-          item.view(instance.data),
+          item.view(item.props)(instance.state),
           id
         )
 

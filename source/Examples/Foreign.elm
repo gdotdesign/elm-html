@@ -28,7 +28,7 @@ update msg model =
     DecreaseZoomLevel ->
       return { model | zoomLevel = model.zoomLevel - 1 }
 
-view : Model -> Html Msg
+view : Model -> Html Msg parentMsg
 view model =
   container
     [ title "Foreign Component"
@@ -52,7 +52,7 @@ view model =
     ]
 
 
-component : Component Model Msg events components
+component : Component Model Msg events components parentMsg
 component =
   { subscriptions = \_ -> []
   , update = update

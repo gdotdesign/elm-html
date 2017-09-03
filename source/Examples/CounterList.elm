@@ -74,7 +74,7 @@ update msg model =
 
 {-| The view.
 -}
-view : Model -> Html Msg
+view : Model -> Html Msg parentMsg
 view model =
   let
     mountCounter index =
@@ -116,7 +116,7 @@ view model =
 
 {-| The component.
 -}
-component : Component Model Msg event Components
+component : Component Model Msg event Components parentMsg
 component =
   { subscriptions = \_ -> []
   , update = update

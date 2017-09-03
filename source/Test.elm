@@ -27,7 +27,7 @@ update msg model =
       return { open = not model.open }
 
 
-view : Dict String (Html parentMsg) -> Model -> Html Msg
+view : Dict String (Html parentMsg a) -> Model -> Html Msg parentMsg
 view data model =
   if model.open then
     case Dict.get "content" data of
@@ -37,7 +37,7 @@ view data model =
     node "button" [ onClick Toggle ] [] [ text "Open" ]
 
 
-component : ComponentWithContent Model Msg Event a b
+component : ComponentWithContent Model Msg Event a b c
 component =
   { subscriptions = \_ -> []
   , update = update

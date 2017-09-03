@@ -66,7 +66,7 @@ defaults =
 
 {-| Wrapper element that contains the styles.
 -}
-wrapper : List (Html msg) -> Html msg
+wrapper : List (Html msg parentMsg) -> Html msg parentMsg
 wrapper =
   node "div" []
     [ style
