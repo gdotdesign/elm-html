@@ -2,7 +2,7 @@ module Examples.Counter exposing (..)
 
 {-| Example component for showcasing a simple component.
 
-@docs State, Props, Msg, Components, initialState, update, view, component
+@docs State, Msg, Components, initialState, update, view, component
 -}
 
 import Examples.Components.Static exposing (..)
@@ -35,12 +35,6 @@ type Components
   = Counter Counter.Msg
 
 
-{-| The props.
--}
-type alias Props
-  = {}
-
-
 {-| Defaults a model.
 -}
 initialState : State
@@ -51,7 +45,7 @@ initialState =
 
 {-| Update.
 -}
-update : Msg -> Props -> State -> Update State Msg msg Components
+update : Msg -> () -> State -> Update State Msg msg Components
 update msg props state =
   case msg of
     IncrementCounter ->
@@ -83,7 +77,7 @@ update msg props state =
 
 {-| The view.
 -}
-view : Props -> State -> Html Msg msg
+view : () -> State -> Html Msg msg
 view props model =
   container
     [ title "Counter"
@@ -98,7 +92,9 @@ view props model =
     , mount Counter.component Counter
       { onIncrement = Just Incremented
       , onDecrement = Just Decremented
+      , delayedDecrement = True
       , onChange = Just Changed
+      , count = Nothing
       }
     , node "div" []
       [ style
@@ -120,7 +116,7 @@ view props model =
 
 {-| The component.
 -}
-component : Component Props State Msg msg Components
+component : Component () State Msg msg Components
 component =
   { initialState = initialState
   , subscriptions = \_ _ -> []

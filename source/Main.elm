@@ -1,3 +1,4 @@
+import Examples.CounterList as CounterList
 import Examples.Counter as Counter
 
 import Rumble.Html as Html exposing (Html, node, text, on, mount)
@@ -12,10 +13,12 @@ import Dict
 type alias Model =
   {}
 
-type Msg = Changed Int
+type Msg
+  = Changed Int
 
 type Components
-  = A Counter.Msg
+  = CounterList CounterList.Msg
+  | Counter Counter.Msg
 
 
 init : Model
@@ -34,7 +37,9 @@ view props model =
   node "div"
     []
     []
-    [ mount Counter.component A {} ]
+    [ mount Counter.component Counter ()
+    , mount CounterList.component CounterList ()
+    ]
 
 main =
   Html.program

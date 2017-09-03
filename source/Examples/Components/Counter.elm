@@ -1,5 +1,5 @@
 module Examples.Components.Counter exposing
-  (State, Msg(Increment, Decrement, Set), Props, component, defaultProps)
+  (State, Msg(Increment, Decrement), Props, component)
 
 {-| A simple counter component with the following features:
   - buttons for increment / decrement
@@ -12,7 +12,7 @@ module Examples.Components.Counter exposing
 @docs State, Msg
 
 # Props
-@docs Props, defaultProps
+@docs Props
 
 # Component
 @docs component
@@ -36,7 +36,6 @@ type Msg
   = DelayedDecrement
   | Increment
   | Decrement
-  | Set Int
 
 
 {-| Props for a counter.
@@ -45,16 +44,8 @@ type alias Props msg =
   { onDecrement : Maybe (Int -> msg)
   , onIncrement : Maybe (Int -> msg)
   , onChange : Maybe (Int -> msg)
-  }
-
-
-{-| Default props for a counter.
--}
-defaultProps : Props msg
-defaultProps =
-  { onDecrement = Nothing
-  , onIncrement = Nothing
-  , onChange = Nothing
+  , delayedDecrement : Bool
+  , count : Maybe Int
   }
 
 
@@ -69,38 +60,43 @@ initialState =
 {-| Updates a counter.
 -}
 update : Msg -> Props msg -> State -> Update State Msg msg command
-update msg props model =
-  case msg of
-    Decrement ->
-      let
-        newCount = model.count - 1
-      in
-        return
-          { model | count = newCount }
-            |> maybeEmit props.onDecrement newCount
-            |> maybeEmit props.onChange newCount
-            |> andThen (Task.delay 1000 DelayedDecrement)
+update msg props state =
+  let
+    count = Maybe.withDefault state.count props.count
+  in
+    case msg of
+      Decrement ->
+        let
+          newCount = count - 1
 
-    DelayedDecrement ->
-      let
-        newCount = model.count - 1
-      in
-        return
-          { model | count = newCount }
-            |> maybeEmit props.onDecrement newCount
-            |> maybeEmit props.onChange newCount
+          updateData =
+            return
+              { state | count = newCount }
+                |> maybeEmit props.onDecrement newCount
+                |> maybeEmit props.onChange newCount
+        in
+          if props.delayedDecrement then
+            andThen (Task.delay 1000 DelayedDecrement) updateData
+          else
+            updateData
 
-    Increment ->
-      let
-        newCount = model.count + 1
-      in
-        return
-          { model | count = newCount }
-            |> maybeEmit props.onIncrement newCount
-            |> maybeEmit props.onChange newCount
+      DelayedDecrement ->
+        let
+          newCount = count - 1
+        in
+          return
+            { state | count = newCount }
+              |> maybeEmit props.onDecrement newCount
+              |> maybeEmit props.onChange newCount
 
-    Set count ->
-      return { model | count = count }
+      Increment ->
+        let
+          newCount = count + 1
+        in
+          return
+            { state | count = newCount }
+              |> maybeEmit props.onIncrement newCount
+              |> maybeEmit props.onChange newCount
 
 
 {-| Renders a counter.
@@ -150,7 +146,7 @@ view props state =
         , ( "padding", "0 20px" )
         ]
       ]
-      [ text (toString state.count) ]
+      [ text (toString (Maybe.withDefault state.count props.count)) ]
 
     , node "button"
       [ onClick Increment ]

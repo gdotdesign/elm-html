@@ -2,19 +2,19 @@ module Examples.CounterList exposing (..)
 
 {-| This example showcases how to use list of components.
 
-@docs Model, Msg, Components, init, update, view, component
+@docs State, Msg, Components, initialState, update, view, component
 -}
 
 import Examples.Components.Static exposing (..)
 import Examples.Components.Counter as Counter
 
-import Rumble.Html exposing (Component, Html, node, mountWithEvent, text)
+import Rumble.Html exposing (Component, Html, node, mount, text)
 import Rumble.Style exposing (style)
 import Rumble.Update exposing (..)
 
 {-| The model.
 -}
-type alias Model =
+type alias State =
   { incrementCount : Int
   , decrementCount : Int
   , changedCount : Int
@@ -25,8 +25,10 @@ type alias Model =
 {-| The messages.
 -}
 type Msg
-  = Counter Counter.Event
-  | Events Counter.Event
+  = SetCount Int
+  | Incremented
+  | Decremented
+  | Changed
 
 
 {-| The components.
@@ -38,8 +40,8 @@ type Components
 
 {-| The initial state.
 -}
-init : Model
-init =
+initialState : State
+initialState =
   { incrementCount = 0
   , decrementCount = 0
   , counterCount = 1
@@ -49,33 +51,29 @@ init =
 
 {-| The update.
 -}
-update : Msg -> Model -> Update Model Msg events Components
-update msg model =
+update : Msg -> () -> State -> Update State Msg msg Components
+update msg props state =
   case msg of
-    Counter (Counter.Changed count) ->
+    SetCount count ->
       if count < 0 then
-        return { model | counterCount = 0 }
-          |> send (CountCounter (Counter.Set 0))
+        return { state | counterCount = 0 }
       else
-        return { model | counterCount = count }
+        return { state | counterCount = count }
 
-    Events (Counter.Incremented _) ->
-      return { model | incrementCount = model.incrementCount + 1 }
+    Incremented ->
+      return { state | incrementCount = state.incrementCount + 1 }
 
-    Events (Counter.Decremented _) ->
-      return { model | decrementCount = model.decrementCount + 1 }
+    Decremented ->
+      return { state | decrementCount = state.decrementCount + 1 }
 
-    Events (Counter.Changed _) ->
-      return { model | changedCount = model.changedCount + 1 }
-
-    _ ->
-      return model
+    Changed ->
+      return { state | changedCount = state.changedCount + 1 }
 
 
 {-| The view.
 -}
-view : Model -> Html Msg parentMsg
-view model =
+view : () -> State -> Html Msg parentMsg
+view props state =
   let
     mountCounter index =
       node "div" []
@@ -84,42 +82,47 @@ view model =
           ]
         ]
         [ text ("Counter #" ++ (toString index) ++ ": ")
-        , mountWithEvent Counter.component (List index) Events
+        , mount Counter.component (List index)
+          { onDecrement = Just (always Decremented)
+          , onIncrement = Just (always Incremented)
+          , onChange = Just (always Changed)
+          , delayedDecrement = False
+          , count = Nothing
+          }
         ]
 
     counters =
-      model.counterCount
+      state.counterCount
         |> List.range 1
         |> List.map mountCounter
-
-    counterComponent =
-      Counter.component
-
-    counterModel =
-      counterComponent.model
   in
     container
       [ title "List of Counters"
       , p "Use this counter to change the number of counters:"
-      , mountWithEvent
-          { counterComponent | model = { counterModel | count = 1 } }
+      , mount
+          Counter.component
           CountCounter
-          Counter
+          { count = Just state.counterCount
+          , onChange = Just SetCount
+          , delayedDecrement = False
+          , onDecrement = Nothing
+          , onIncrement = Nothing
+          }
       , p """
           Here are the counters, each are wired in to count the number of
           increments, decrements and changes.
           """
       , node "div" [] [] counters
-      , node "div" [] [] [ text (toString model) ]
+      , node "div" [] [] [ text (toString state) ]
       ]
 
 
 {-| The component.
 -}
-component : Component Model Msg event Components parentMsg
+component : Component () State Msg msg Components
 component =
-  { subscriptions = \_ -> []
+  { initialState = initialState
+  , subscriptions = \_ _ -> []
   , update = update
-  , model = init
   , view = view
   }
