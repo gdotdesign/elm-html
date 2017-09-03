@@ -60,6 +60,16 @@ class Program { // eslint-disable-line
     // Update the component data.
     var data = component.update(msg)(instance.props)(instance.state)
 
+    // Create new object in the map with the new state
+    this.map.set(id,
+      {
+        parent: instance.parent,
+        props: instance.props,
+        component: component,
+        state: data.state
+      }
+    )
+
     // Process the side effect tasks
     for (let task of _elm_lang$core$Native_List.toArray(data.effects)) {
       // TODO: Nicer error handling
@@ -105,16 +115,6 @@ class Program { // eslint-disable-line
         this.update(msg, instance.parent)
       }.bind(this))
     }
-
-    // Create new object in the map with the new state
-    this.map.set(id,
-      {
-        parent: instance.parent,
-        props: instance.props,
-        component: component,
-        state: data.state
-      }
-    )
 
     // Schedule a render
     // TODO: Just schedule on requestAnimationFrame
