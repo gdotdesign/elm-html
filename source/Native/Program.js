@@ -143,24 +143,24 @@ class Program { // eslint-disable-line
     var item = element._0
 
     switch (element.ctor) {
-      case 'F':
-        item.props._update = function(msg){
+      case 'FOREIGN':
+        item.props._update = function (msg) {
           this.update(msg, parentId)
         }.bind(this)
 
         return this.inferno.createElement(item.component, item.props)
 
       // Text
-      case 'T':
+      case 'TEXT':
         return item
 
       // Embed
-      case 'EM':
+      case 'EMBEDDED':
         var component = this.map.get(parentId)
         return this.transformElement(item, component.parent)
 
       // Component
-      case 'C':
+      case 'COMPONENT':
         var id
 
         var data = item.id('')
@@ -227,7 +227,7 @@ class Program { // eslint-disable-line
         )
 
       // Element
-      case 'E':
+      case 'ELEMENT':
         var attributes = this.transformAttributes(item.attributes, parentId)
         var styleHash = JSON.stringify(item.styles)
         var rule

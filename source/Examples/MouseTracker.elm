@@ -76,7 +76,7 @@ view () state =
         , node "strong" [] [] [ text ((toString state.position.left) ++ "px") ]
         ]
       ]
-    , button Toggle (if state.tracking then "Stop tracking" else "Track")
+    , button Toggle (if state.tracking then "Stop Tracking" else "Track")
     ]
 
 

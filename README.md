@@ -28,6 +28,6 @@ These features are completed / planned
 - [x] Styled nodes
 - [x] Subscriptions
 - [x] Process handling
+- [x] Foreign Component
 - [ ] DOM Apis
-- [ ] Foreign Component
 - [ ] Component Lifecycle

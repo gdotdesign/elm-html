@@ -1,5 +1,6 @@
 import Examples.MouseTracker as MouseTracker
 import Examples.CounterList as CounterList
+import Examples.Embedding as Embedding
 import Examples.Foreign as Foreign
 import Examples.Counter as Counter
 import Examples.Http as Http
@@ -16,6 +17,7 @@ type Msg
 type Components
   = MouseTracker MouseTracker.Msg
   | CounterList CounterList.Msg
+  | Embedding Embedding.Msg
   | Counter Counter.Msg
   | Foreign Foreign.Msg
   | Http Http.Msg
@@ -42,6 +44,7 @@ view props model =
     , mount MouseTracker.component MouseTracker ()
     , mount Http.component Http ()
     , mount Foreign.component Foreign ()
+    , mount Embedding.component Embedding ()
     ]
 
 main =

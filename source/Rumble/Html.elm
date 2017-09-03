@@ -59,11 +59,11 @@ type Attribute msg
 {-| Represents a Html node.
 -}
 type Html msg parentMsg
-  = E (Element msg parentMsg)
-  | T String
-  | EM (DATA parentMsg)
-  | F (DATA parentMsg)
-  | C (DATA parentMsg)
+  = ELEMENT (Element msg parentMsg)
+  | TEXT String
+  | EMBEDDED (DATA parentMsg)
+  | FOREIGN (DATA parentMsg)
+  | COMPONENT (DATA parentMsg)
 
 
 {-| Represents a component.
@@ -122,14 +122,14 @@ property =
 -}
 text : String -> Html msg parentMsg
 text value =
-  T value
+  TEXT value
 
 
 {-| Returns an Html element.
 -}
 node : String -> List (Attribute msg) -> List Rule -> List (Html msg parentMsg) -> Html msg parentMsg
 node tag attributes styles contents =
-  E
+  ELEMENT
     { attributes = attributes
     , scrollKey = Nothing
     , contents = contents
@@ -150,14 +150,14 @@ mount component id props =
   , id = id
   }
   |> Native.Html.component
-  |> C
+  |> COMPONENT
 
 
 {-| Embeds parent html into a component.
 -}
 embed : Html parentMsg a -> Html b parentMsg
 embed parentHtml =
-  EM (Native.Html.embed parentHtml)
+  EMBEDDED (Native.Html.embed parentHtml)
 
 
 {-| Mounts the given component as a root component.
@@ -170,7 +170,7 @@ program component =
   , id = Root
   }
   |> Native.Html.component
-  |> C
+  |> COMPONENT
   |> Native.Html.program
 
 
@@ -178,4 +178,4 @@ program component =
 -}
 foreign : props -> component -> Html msg b
 foreign props component =
-  F (Native.Html.foreign props component)
+  FOREIGN (Native.Html.foreign props component)

@@ -20,15 +20,14 @@
     "Rumble.Html.Events",
     "Rumble.Html",
 
+    "Examples.Components.GoogleMaps",
     "Examples.Components.Counter",
     "Examples.Components.Static",
     "Examples.MouseTracker",
     "Examples.CounterList",
+    "Examples.Foreign",
     "Examples.Counter",
-    "Examples.Http",
-
-    "Ui.Theme",
-    "Ui.Input"
+    "Examples.Http"
   ],
   "dependencies": {
     "elm-lang/core": "5.1.1 <= v < 6.0.0"

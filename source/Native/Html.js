@@ -1,4 +1,4 @@
-/* global Program, F3 */
+/* global Program, F2 */
 
 /* Native Elm interface. */
 var _gdotdesign$elm_html$Native_Html = (function () { // eslint-disable-line
@@ -24,7 +24,7 @@ var _gdotdesign$elm_html$Native_Html = (function () { // eslint-disable-line
   }
 
   return {
-    foreign: F2(function (props, component) { return {props: props, component: component } }),
+    foreign: F2(function (props, component) { return { props: props, component: component } }),
     embed: function (value) { return value },
     component: component,
     program: program

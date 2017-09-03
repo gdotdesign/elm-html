@@ -83,16 +83,25 @@ view () model =
       else
         text ""
 
-    resultText =
-      case model.progress of
-        Http.Initial ->
-          ""
+    status =
+      if model.fetched then
+        case model.progress of
+          Http.Initial ->
+            if String.isEmpty model.result then
+              "Request started. Waiting for data..."
+            else
+              "Done!"
 
-        Http.Loaded amount ->
-          (toString amount) ++ "bytes"
+          Http.Loaded amount ->
+            (toString amount) ++ "bytes"
 
-        Http.LoadedWithTotal amount total ->
-          (toString amount) ++ "bytes / " ++ (toString total) ++ "bytes"
+          Http.LoadedWithTotal amount total ->
+            (toString amount) ++ "bytes / " ++ (toString total) ++ "bytes"
+      else
+        if String.isEmpty model.result then
+          "Waiting for a request."
+        else
+          "Done!"
   in
     container
       [ title "Http"
@@ -115,7 +124,7 @@ view () model =
         [ button Fetch "Fetch"
         , abortButton
         ]
-      , p ("Result: " ++ resultText)
+      , p ("Status: " ++ status)
       , logs [ text model.result ]
       ]
 
