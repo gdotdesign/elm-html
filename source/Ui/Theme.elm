@@ -12,8 +12,7 @@ module Ui.Theme exposing (..)
 @docs defaults
 -}
 
-import Rumble.Style exposing (Rule, style)
-import Rumble.Html exposing (Html, node)
+import Rumble exposing (..)
 
 {-| The font family stack.
 -}
@@ -77,6 +76,8 @@ wrapper =
 
       , ( "--styles-input-background", "#FDFDFD")
       , ( "--styles-input-text", "#606060")
+
+      , ( "--styles-focus-color", "#00C0FF" )
 
       , ( "--focused-idle-transition", "box-shadow 400ms linear" )
       , ( "--focused-idle-box-shadow", focusedIdleBoxShadows )

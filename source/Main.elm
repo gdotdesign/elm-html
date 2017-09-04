@@ -7,11 +7,15 @@ import Examples.Http as Http
 
 import Rumble exposing (..)
 
+import Ui.Theme as Theme
+import Ui.Input as Input
+
 type alias Model =
   {}
 
 type Msg
-  = Changed Int
+  = Changed String
+  | Cleared
 
 type Components
   = MouseTracker MouseTracker.Msg
@@ -21,6 +25,7 @@ type Components
   | Foreign Foreign.Msg
   | Http Http.Msg
 
+  | Input Input.Msg
 
 init : Model
 init =
@@ -30,6 +35,10 @@ init =
 update : Msg -> () -> Model -> Update Model Msg Components msg
 update msg props model =
   case Debug.log "" msg of
+    Changed _ ->
+      return model
+        |> send (Input Input.Clear)
+
     _ ->
       return model
 
@@ -38,18 +47,29 @@ view props model =
   node "div"
     []
     []
-    [ mount Counter.component Counter ()
-    , mount CounterList.component CounterList ()
-    , mount MouseTracker.component MouseTracker ()
-    , mount Http.component Http ()
-    , mount Foreign.component Foreign ()
-    , mount Embedding.component Embedding ()
+    [ Theme.wrapper
+      [ mount Input.component Input
+        (\props ->
+          { props
+          | placeholder = "Hello There"
+          , showClearIcon = True
+          , onClear = Just Cleared
+          }
+        )
+      ]
+    , mount Counter.component Counter identity
+    , mount CounterList.component CounterList identity
+    , mount MouseTracker.component MouseTracker identity
+    , mount Http.component Http identity
+    , mount Foreign.component Foreign identity
+    , mount Embedding.component Embedding identity
     ]
 
 main =
   program
     { subscriptions = \_ _ -> []
     , initialState = init
+    , defaultProps = ()
     , update = update
     , view = view
     }

@@ -78,26 +78,28 @@ view () state =
         """
     , p ("Count: " ++ (toString state.count))
     , mount Pager.component Pager
-      { pages = Array.fromList
-        [ node "div" []
-          [ style [ ( "background", "#F0F8FF") ]
-          , sharedStyle
-          ]
-          [ text "Page 1" ]
-        , node "div" []
-          [ style [ ( "background", "#F0FFF0") ]
-          , sharedStyle
-          ]
-          [ text "Page 2"
-          , button Increment "Increment"
-          ]
-        , node "div" []
-          [ style [ ( "background", "#F5F5DC") ]
-          , sharedStyle
-          ]
-          [ text "Page 3" ]
-        ]
-      }
+        ( always
+          { pages = Array.fromList
+            [ node "div" []
+              [ style [ ( "background", "#F0F8FF") ]
+              , sharedStyle
+              ]
+              [ text "Page 1" ]
+            , node "div" []
+              [ style [ ( "background", "#F0FFF0") ]
+              , sharedStyle
+              ]
+              [ text "Page 2"
+              , button Increment "Increment"
+              ]
+            , node "div" []
+              [ style [ ( "background", "#F5F5DC") ]
+              , sharedStyle
+              ]
+              [ text "Page 3" ]
+            ]
+          }
+        )
     ]
 
 
@@ -107,6 +109,7 @@ component : Component () State Msg Components msg
 component =
   { initialState = initialState
   , subscriptions = \_ _ -> []
+  , defaultProps = ()
   , update = update
   , view = view
   }

@@ -2,7 +2,7 @@ module Examples.Components.Pager exposing (..)
 
 {-| A component for paginating content.
 
-@docs State, Props, Msg, initialState, update, view, component
+@docs State, Props, Msg, initialState, defaultProps, update, view, component
 -}
 
 import Examples.Components.Static exposing (..)
@@ -36,6 +36,14 @@ type Msg
 initialState : State
 initialState =
   { page = 0
+  }
+
+
+{-| The default props.
+-}
+defaultProps : Props msg parentMsg
+defaultProps =
+  { pages = Array.empty
   }
 
 
@@ -96,6 +104,7 @@ view props state =
 component : Component (Props msg a) State Msg components msg
 component =
   { initialState = initialState
+  , defaultProps = defaultProps
   , subscriptions = \_ _ -> []
   , update = update
   , view = view

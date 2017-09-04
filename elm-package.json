@@ -25,7 +25,11 @@
     "Examples.Embedding",
     "Examples.Foreign",
     "Examples.Counter",
-    "Examples.Http"
+    "Examples.Http",
+
+    "Ui.Input",
+    "Ui.Icons",
+    "Ui.Theme"
   ],
   "dependencies": {
     "elm-lang/core": "5.1.1 <= v < 6.0.0"

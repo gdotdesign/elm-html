@@ -109,6 +109,7 @@ type alias Component props state msg command parentMsg =
   , subscriptions : props -> state -> List (Subscription msg)
   , view : props -> state -> Html msg parentMsg
   , initialState : state
+  , defaultProps : props
   }
 
 
@@ -159,11 +160,11 @@ node tag attributes styles contents =
 -}
 mount : Component props state msg command parentMsg
       -> (msg -> actionMsg)
-      -> props
+      -> (props -> props)
       -> Html parentMsg grandParentMsg
-mount component id props =
-  { component = component
-  , props = props
+mount component id method =
+  { props = method component.defaultProps
+  , component = component
   , id = id
   }
   |> Native.Html.component

@@ -42,6 +42,18 @@ type alias Props msg =
   }
 
 
+{-| The default props.
+-}
+defaultProps : Props msg
+defaultProps =
+  { delayedDecrement = False
+  , onDecrement = Nothing
+  , onIncrement = Nothing
+  , onChange = Nothing
+  , count = Nothing
+  }
+
+
 {-| Initial state for a counter.
 -}
 initialState : State
@@ -157,6 +169,7 @@ view props state =
 component : Component (Props msg) State Msg components msg
 component =
   { initialState = initialState
+  , defaultProps = defaultProps
   , subscriptions = \_ _ -> []
   , update = update
   , view = view

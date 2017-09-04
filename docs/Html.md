@@ -2,7 +2,7 @@
 
 The `Html` is defined as the following:
 
-```
+```elm
 type Html msg parentMsg
   = ELEMENT (Element msg parentMsg)
   | COMPONENT (DATA parentMsg)
@@ -31,7 +31,7 @@ state through `DATA` which the program can recognize.
 
 The definition of a node is:
 
-```
+```elm
 node
   : String
   -> List (Attribute msg)

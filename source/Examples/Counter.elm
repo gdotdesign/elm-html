@@ -89,12 +89,14 @@ view props state =
       , li "API for incrementing and decrementing"
       ]
     , mount Counter.component Counter
-      { onIncrement = Just Incremented
-      , onDecrement = Just Decremented
-      , delayedDecrement = True
-      , onChange = Just Changed
-      , count = Nothing
-      }
+        (\props ->
+          { props
+          | onIncrement = Just Incremented
+          , onDecrement = Just Decremented
+          , delayedDecrement = True
+          , onChange = Just Changed
+          }
+        )
     , node "div" []
       [ style
         [ ( "margin-top", "10px" )
@@ -119,6 +121,7 @@ component : Component () State Msg Components msg
 component =
   { initialState = initialState
   , subscriptions = \_ _ -> []
+  , defaultProps = ()
   , update = update
   , view = view
   }

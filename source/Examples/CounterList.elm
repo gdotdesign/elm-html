@@ -79,12 +79,13 @@ view props state =
         ]
         [ text ("Counter #" ++ (toString index) ++ ": ")
         , mount Counter.component (List index)
-          { onDecrement = Just (always Decremented)
-          , onIncrement = Just (always Incremented)
-          , onChange = Just (always Changed)
-          , delayedDecrement = False
-          , count = Nothing
-          }
+          (\props ->
+            { props
+            | onDecrement = Just (always Decremented)
+            , onIncrement = Just (always Incremented)
+            , onChange = Just (always Changed)
+            }
+          )
         ]
 
     counters =
@@ -95,15 +96,13 @@ view props state =
     container
       [ title "List of Counters"
       , p "Use this counter to change the number of counters:"
-      , mount
-          Counter.component
-          CountCounter
-          { count = Just state.counterCount
-          , onChange = Just SetCount
-          , delayedDecrement = False
-          , onDecrement = Nothing
-          , onIncrement = Nothing
-          }
+      , mount Counter.component CountCounter
+          (\props ->
+            { props
+            | count = Just state.counterCount
+            , onChange = Just SetCount
+            }
+          )
       , p """
           Here are the counters, each are wired in to count the number of
           increments, decrements and changes.
@@ -119,6 +118,7 @@ component : Component () State Msg Components msg
 component =
   { initialState = initialState
   , subscriptions = \_ _ -> []
+  , defaultProps = ()
   , update = update
   , view = view
   }

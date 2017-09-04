@@ -92,6 +92,7 @@ component : Component () State Msg components msg
 component =
   { subscriptions = subscriptions
   , initialState = initialState
+  , defaultProps = ()
   , update = update
   , view = view
   }
