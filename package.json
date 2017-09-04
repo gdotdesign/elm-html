@@ -8,7 +8,9 @@
   "dependencies": {
     "elm-dev-env": "gdotdesign/elm-dev-env",
     "jest": "^20.0.4",
-    "standard": "^10.0.3"
+    "standard": "^10.0.3",
+    "gulp-gh-pages": "0.5.4",
+    "gulp": "3.9.1"
   },
   "scripts": {
     "test": "yarn standard && yarn elm-dev docs"
