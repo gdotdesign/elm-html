@@ -232,6 +232,7 @@ class Program { // eslint-disable-line
         var styleHash = JSON.stringify(item.styles)
         var rule
 
+        // Check if there are any list items in the style
         if (item.styles._0) {
           if (this.styles.has(styleHash)) {
             rule = this.styles.get(styleHash)

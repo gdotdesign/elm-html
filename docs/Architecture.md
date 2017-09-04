@@ -37,11 +37,11 @@ where the types are:
 - state     - The components state
 - msg       - The union type of messages for the update
 - command   - The union type for the sub components
-- parentMsg - The messages of the parent for sending communication ( which
-              usually come props).
+- parentMsg - The messages of the parent for communication ( which usually
+              come from the props).
 
 ## The Update
-Components are updated by themselves through the update function:
+Components are updated by the program through their update function:
 
 ```elm
 update : msg -> props -> state -> Update state msg command parentMsg
@@ -60,14 +60,14 @@ type alias Update state msg command parentMsg =
 ```
 
 Basically a component returns:
-  - it's updated state,
-  - messages for the sub components
-  - messages for the parent component
-  - messages for side effects
-  - starting / aborting any processes
+  - state - it's updated state,
+  - commands - messages for the sub components
+  - parentMessages - messages for the parent component
+  - effects - messages for side effects
+  - processes - starting / aborting any processes
 
 ## Mounting
-Components can be mounted into an Html tree with the following function:
+Components can be mounted into an HTML tree with the following function:
 
 ```elm
 mount
