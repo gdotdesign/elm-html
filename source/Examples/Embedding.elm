@@ -1,32 +1,56 @@
 module Examples.Embedding exposing (..)
 
+{-| An example showcasing how to embed content inside the component (the React
+equivalent of children.)
+
+@docs State, Msg, Components, initialState, update, sharedStyle, view, component
+-}
+
 import Examples.Components.Static exposing (..)
 import Examples.Components.Pager as Pager
 
 import Rumble exposing (..)
 import Array
 
+
+{-| The state.
+-}
 type alias State =
   { count : Int
   }
 
+
+{-| The messages.
+-}
 type Msg
   = Increment
 
+
+{-| The components.
+-}
 type Components
   = Pager Pager.Msg
 
+
+{-| The initial state.
+-}
 initialState : State
 initialState =
   { count = 0
   }
 
+
+{-| The update.
+-}
 update : Msg -> () -> State -> Update State Msg Components msg
 update msg props state =
   case msg of
     Increment ->
       return { state | count = state.count + 1 }
 
+
+{-| Styles shared by the pages.
+-}
 sharedStyle : Rule
 sharedStyle =
   style
@@ -36,6 +60,9 @@ sharedStyle =
     , ( "display", "flex" )
     ]
 
+
+{-| The view.
+-}
 view : () -> State -> Html Msg msg
 view () state =
   container
@@ -73,6 +100,9 @@ view () state =
       }
     ]
 
+
+{-| The component.
+-}
 component : Component () State Msg Components msg
 component =
   { initialState = initialState

@@ -1,26 +1,46 @@
 module Examples.Components.Pager exposing (..)
 
+{-| A component for paginating content.
+
+@docs State, Props, Msg, initialState, update, view, component
+-}
+
 import Examples.Components.Static exposing (..)
 import Array exposing (Array)
 import Rumble exposing (..)
 
+
+{-| The state.
+-}
 type alias State =
   { page : Int
   }
 
-type alias Props msg a =
-  { pages : Array (Html msg a)
+
+{-| The props.
+-}
+type alias Props msg parentMsg =
+  { pages : Array (Html msg parentMsg)
   }
 
+
+{-| The messages.
+-}
 type Msg
   = Next
   | Prev
 
+
+{-| The initial state.
+-}
 initialState : State
 initialState =
   { page = 0
   }
 
+
+{-| The update.
+-}
 update : Msg -> Props msg a -> State -> Update State Msg components msg
 update msg props state =
   case msg of
@@ -31,6 +51,8 @@ update msg props state =
       return { page = max 0 (state.page - 1) }
 
 
+{-| The view.
+-}
 view : Props msg a -> State -> Html Msg msg
 view props state =
   node "div"
@@ -69,6 +91,8 @@ view props state =
     ]
 
 
+{-| The component.
+-}
 component : Component (Props msg a) State Msg components msg
 component =
   { initialState = initialState

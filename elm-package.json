@@ -19,8 +19,10 @@
     "Examples.Components.GoogleMaps",
     "Examples.Components.Counter",
     "Examples.Components.Static",
+    "Examples.Components.Pager",
     "Examples.MouseTracker",
     "Examples.CounterList",
+    "Examples.Embedding",
     "Examples.Foreign",
     "Examples.Counter",
     "Examples.Http"
