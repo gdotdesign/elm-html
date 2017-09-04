@@ -20,14 +20,13 @@ This is an experiment of creating a different architecture for Elm appliactions 
 
 # Roadmap
 These features are completed / planned
-- [x] Standard Html structure - text / node tree
-- [x] Component state handling - simple components that can update themselves
-- [x] Side effects - side effects using tasks
-- [x] Child to parent communication - events using tasks
-- [x] Embeddable content - embed content from parent component
+- [x] HTML structure - text / node tree
+- [x] Component state handling
+- [x] Side effects using tasks
+- [x] Child to parent communication using tasks
+- [x] Embeddable content from parent component
 - [x] Styled nodes
 - [x] Subscriptions
 - [x] Process handling
 - [x] Foreign Component
 - [ ] DOM Apis
-- [ ] Component Lifecycle

@@ -4,66 +4,80 @@ Rumbles architecture is based on components and tries to fix the following
 issues of The Elm Architecture (TEA) and the available packages:
 
 - Update boilerplate:
-	**use case:** Embed a button which has a ripple effect with one line.
+  **use case:** Embed a button which has a ripple effect with one line.
 
 - Communicating events to parent component:
-	**use case:** There is a date picker component and the parent wants to know
-	when the user picked a new date (either with mouse or keyboard).
+  **use case:** There is a date picker component and the parent wants to know
+  when the user picked a new date (either with mouse or keyboard).
 
 - Controlling sub components:
-	**use case:** There is a dropdown element, and the parent wants to open it
-	(whithout fully controlling it) for the onboarding process.
+  **use case:** There is a dropdown element, and the parent wants to open it
+  (whithout fully controlling it) for the onboarding process.
 
 - Embedding content from parent component:
-	**use case:** TODO
+  **use case:** A pager component where the parent component provides the pages.
 
 ## Defining components
 
 Definition of a component:
 
 ```elm
-type alias Component model msg event command =
-  { update : msg -> model -> Update model msg event command
-  , view : model -> Html msg
-  , model : model
+type alias Component props state msg command parentMsg =
+  { update : msg -> props -> state -> Update state msg command parentMsg
+  , subscriptions : props -> state -> List (Subscription msg)
+  , view : props -> state -> Html msg parentMsg
+  , initialState : state
   }
+
 ```
 
 where the types are:
 
-- model - The components model
-- msg - The components update messgae
-- event - The events that the component can emit
-- command - The type for the commands for the sub components
+- props     - The components props
+- state     - The components state
+- msg       - The union type of messages for the update
+- command   - The union type for the sub components
+- parentMsg - The messages of the parent for sending communication ( which
+              usually come props).
 
 ## The Update
 Components are updated by themselves through the update function:
 
 ```elm
-update : msg -> model -> Update msg model event command
+update : msg -> props -> state -> Update state msg command parentMsg
 ```
 
 where the `Update` is defined as:
 
 ```elm
-type alias Update model msg event command =
-  { commands : List (Task Never command)
-  , events : List (Task Never event)
+type alias Update state msg command parentMsg =
+  { parentMessages : List (Task Never parentMsg)
+  , processes : List (String, Process msg)
+  , commands : List (Task Never command)
   , effects : List (Task Never msg)
-  , model : model
+  , state : state
   }
 ```
 
-Basically a component returns it's updated model, commands for the sub
-components, events for the parent component and any side effects that needs
-to happen.
+Basically a component returns:
+  - it's updated state,
+  - messages for the sub components
+  - messages for the parent component
+  - messages for side effects
+  - starting / aborting any processes
 
 ## Mounting
 Components can be mounted into an Html tree with the following function:
 
 ```elm
 mount
-	: Component model msg event command
-	-> (msg -> commandMsg)
-	-> Html parentMsg
+  : Component props state msg command parentMsg
+  -> (msg -> actionMsg)
+  -> props
+  -> Html parentMsg grandParentMsg
 ```
+
+Where the arguments are:
+  - the component
+  - then ID
+  - the props
