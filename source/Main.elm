@@ -16,6 +16,7 @@ type alias Model =
 type Msg
   = Changed String
   | Cleared
+  | Load
 
 type Components
   = MouseTracker MouseTracker.Msg
@@ -73,4 +74,5 @@ main =
     , update = update
     , view = view
     }
+    (Just Load)
 

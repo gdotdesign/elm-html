@@ -182,15 +182,16 @@ embed parentHtml =
 -}
 program
   : Component props state msg command parentMsg
+  -> Maybe msg
   -> Program Never state msg
-program component =
+program component initialMsg =
   { component = component
   , props = {}
   , id = Root
   }
   |> Native.Html.component
   |> COMPONENT
-  |> Native.Html.program
+  |> Native.Html.program initialMsg
 
 
 {-| Embeds a foreign Inferno component.

@@ -2,11 +2,11 @@
 
 /* Native Elm interface. */
 var _gdotdesign$elm_html$Native_Html = (function () { // eslint-disable-line
-  function program (tree) {
+  function program (initialMsg, tree) {
     return function () {
       return function (object) {
         object.fullscreen = function () {
-          window.program = new Program(tree)
+          window.program = new Program(tree, initialMsg)
         }
       }
     }
@@ -27,6 +27,6 @@ var _gdotdesign$elm_html$Native_Html = (function () { // eslint-disable-line
     foreign: F2(function (props, component) { return { props: props, component: component } }),
     embed: function (value) { return value },
     component: component,
-    program: program
+    program: F2(program)
   }
 }()); // eslint-disable-line

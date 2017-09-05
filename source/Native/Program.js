@@ -5,7 +5,7 @@
 /* Represents a program */
 class Program { // eslint-disable-line
   /* Creates a program from a base tree */
-  constructor (rootComponent) {
+  constructor (rootComponent, initialMsg) {
     this.inferno = (window.Inferno || exports.Inferno)
     this.container = this.createContainer()
     this.root = rootComponent
@@ -21,6 +21,10 @@ class Program { // eslint-disable-line
     this.setupJss()
 
     this.render()
+
+    if (initialMsg.ctor === "Just") {
+      this.update(initialMsg._0, this.root._0.id("").ctor)
+    }
   }
 
   setupJss () {
