@@ -370,6 +370,12 @@ class Program { // eslint-disable-line
     // Clear up not used ids
     for (let key of this.map.keys()) {
       if (this.ids.has(key)) { continue }
+
+      for (let processId of this.processes.keys()) {
+        if (processId.startsWith(key)){
+          this.processes.get(processId).abort()
+        }
+      }
       this.map.delete(key)
     }
   }
