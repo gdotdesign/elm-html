@@ -272,11 +272,11 @@ emitThen task data =
 {-| Runs the given message.
 -}
 and
-  : Task Never parentMsg
+  : msg
   -> Update model msg command parentMsg
   -> Update model msg command parentMsg
-and task data =
-  { data | parentMessages = task :: data.parentMessages }
+and msg data =
+  { data | effects = Task.succeed msg :: data.effects }
 
 
 {-| Runs the given task of a side effect.

@@ -55,7 +55,7 @@ class Program { // eslint-disable-line
   */
   update (msg, id) {
     // Don't do anything, if we don't have the component
-    if (!this.map.has(id)) { return }
+    if (!this.map.has(id) || !msg) { return }
 
     // Get the instance of the component
     var instance = this.map.get(id)
@@ -115,8 +115,8 @@ class Program { // eslint-disable-line
     // Process the parent messages
     for (let task of _elm_lang$core$Native_List.toArray(data.parentMessages)) {
       // TODO: Nicer error handling
-      task.fork(console.error, function (msg) {
-        this.update(msg, instance.parent)
+      task.fork(console.error, function (value) {
+        this.update(value, instance.parent)
       }.bind(this))
     }
 
