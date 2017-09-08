@@ -10,6 +10,7 @@ import Rumble exposing (..)
 import Rumble.Navigation
 
 import Ui.Theme as Theme
+import Ui.Pager as Pager
 import Ui.Input as Input
 
 import Dict exposing (Dict)
@@ -33,7 +34,7 @@ type Components
   | Http Http.Msg
 
   | Input Input.Msg
-
+  | Pager Pager.Msg
 
 init : Model
 init =
@@ -95,6 +96,16 @@ view props model =
           | placeholder = "Hello There"
           , showClearIcon = True
           , onClear = Just Cleared
+          }
+        )
+      , mount Pager.component Pager
+        (\props ->
+          { props
+          | pages =
+            [ node "div" [] [] [ text "A" ]
+            , node "div" [] [] [ text "B" ]
+            , node "div" [] [] [ text "C" ]
+            ]
           }
         )
       ]
