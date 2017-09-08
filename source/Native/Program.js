@@ -2,6 +2,24 @@
 
 /* global _elm_lang$core$Native_List, AbortProcess */
 
+class MapMap {
+  constructor () {
+    this.map = new Map
+  }
+
+  set (key, id, value) {
+    this.mapOf(key).set(id, value)
+  }
+
+  delete (key, id) {
+    this.mapOf(key).delete(id)
+  }
+
+  mapOf (key) {
+    return this.map.get(key) || this.map.set(key, new Map).get(key)
+  }
+}
+
 /* Represents a program */
 class Program { // eslint-disable-line
   /* Creates a program from a base tree */
@@ -13,10 +31,11 @@ class Program { // eslint-disable-line
     this.styles = new Map()
     this.index = 0
 
-    this.subscriptions = new Map()
-    this.processes = new Map()
-    this.ids = new Set()
-    this.map = new Map()
+    this.subscriptions = new Map
+    this.processes = new Map
+    this.tasks = new MapMap
+    this.ids = new Set
+    this.map = new Map
 
     this.setupJss()
 
@@ -48,6 +67,22 @@ class Program { // eslint-disable-line
     return element
   }
 
+  forkTask (id, task) {
+    let taskId = _elm_lang$core$Native_Utils.guid()
+    // TODO: Nicer error handling
+    let cancel = task.fork(console.error, function (value) {
+      this.tasks.delete(id, taskId)
+      taskId = null
+      this.update(value, id)
+    }.bind(this))
+
+    // Tasks can settle before reaching this line so if the taskId is null
+    // then it is already settled
+    if (taskId) {
+      this.tasks.set(id, taskId, cancel)
+    }
+  }
+
   /* Handles an update.
 
      @param {ElmObject} msg - The message for the component at the branch
@@ -76,24 +111,18 @@ class Program { // eslint-disable-line
 
     // Process the side effect tasks
     for (let task of _elm_lang$core$Native_List.toArray(data.effects)) {
-      // TODO: Nicer error handling
-      task.fork(console.error, function (value) {
-        this.update(value, id)
-      }.bind(this))
+      this.forkTask(id, task)
     }
 
     // Process the command tasks
     for (let task of _elm_lang$core$Native_List.toArray(data.commands)) {
-      // TODO: Nicer error handling
-      task.fork(console.error, function (value) {
-        this.update(value._0, id + '::' + value.ctor)
-      }.bind(this))
+      this.forkTask(id + '::' + value.ctor, task)
     }
 
     // Process the processes tasks
     for (let item of _elm_lang$core$Native_List.toArray(data.processes)) {
       let proc = item._1()
-      let procId = id + '--' + item._0
+      let procId = id + '#' + item._0
 
       if (proc instanceof AbortProcess) {
         let runningProc = this.processes.get(procId)
@@ -114,10 +143,7 @@ class Program { // eslint-disable-line
 
     // Process the parent messages
     for (let task of _elm_lang$core$Native_List.toArray(data.parentMessages)) {
-      // TODO: Nicer error handling
-      task.fork(console.error, function (value) {
-        this.update(value, instance.parent)
-      }.bind(this))
+      this.forkTask(instance.parent, task)
     }
 
     // Schedule a render
@@ -371,8 +397,20 @@ class Program { // eslint-disable-line
     for (let key of this.map.keys()) {
       if (this.ids.has(key)) { continue }
 
+      let tasks = this.tasks.mapOf(key)
+
+      if (tasks.size > 0) {
+        console.log(`RUMBLE: Cancelling ${tasks.size} running tasks of ${key}`)
+      }
+
+      for (let item of tasks) {
+        item[1]()
+        this.tasks.delete(key, item[0])
+      }
+
       for (let processId of this.processes.keys()) {
         if (processId.startsWith(key)){
+          console.log(`RUMBLE: Cancelling process: ${processId}`)
           this.processes.get(processId).abort()
         }
       }

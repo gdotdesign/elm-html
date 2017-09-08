@@ -3,7 +3,7 @@ module Examples.Components.Counter exposing
 
 {-| A simple counter component with the following features:
   - buttons for increment / decrement
-  - a side effect for an other decrement which is triggered after 1 second
+  - a side effect for an other decrement which is triggered after 5 seconds
   - styling for the buttons
   - props for events: onIncrement, onDecrement and onChange
   - prop for the delayed decrement side effect
@@ -85,7 +85,7 @@ update msg props state =
         in
           if props.delayedDecrement then
             updateData
-              |> andThen (Task.delay 1000 DelayedDecrement)
+              |> andThen (Task.delay 5000 DelayedDecrement)
           else
             updateData
 

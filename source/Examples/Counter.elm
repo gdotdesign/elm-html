@@ -82,7 +82,7 @@ view props state =
     , p "Simple stateful component that implements:"
     , ul
       [ li "buttons for increment / decrement"
-      , li "a side effect for an other decrement which is triggered after 1 second"
+      , li "a side effect for an other decrement which is triggered after 5 seconds"
       , li "styling for the buttons"
       , li "props for events: onIncrement, onDecrement and onChange"
       , li "prop for the delayed decrement side effect"
