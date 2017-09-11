@@ -174,3 +174,6 @@ component =
   , update = update
   , view = view
   }
+
+main =
+  program component Nothing

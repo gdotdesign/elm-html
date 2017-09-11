@@ -185,8 +185,8 @@ program
   -> Maybe msg
   -> Program Never state msg
 program component initialMsg =
-  { component = component
-  , props = {}
+  { props = component.defaultProps
+  , component = component
   , id = Root
   }
   |> Native.Html.component
